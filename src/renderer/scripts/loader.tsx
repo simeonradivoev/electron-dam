@@ -121,23 +121,10 @@ function loadFbxModel(info: FileInfo, setImportedMesh: (mesh: any) => void) {
   );
 }
 
-function loadGltfModel(info: FileInfo, setImportedMesh: (mesh: any) => void) {
-  if (loadAssimpModel(info, setImportedMesh)) {
-    return;
-  }
-
-  const gltfLoader = new GLTFLoader();
-  gltfLoader.load(
-    info?.path,
-    (obj: any) => {
-      setImportedMesh(<primitive object={obj.scene} />);
-    },
-    (progress: any) => {},
-    (error: any) => {
-      console.error(error);
-      setImportedMesh(undefined);
-    }
-  );
+async function loadGltfModel(info: FileInfo): Promise<any | undefined> {
+  const gltfLoader = new GLTFLoader().setPath(`${info.directory}/`);
+  const gltf = await gltfLoader.loadAsync(info?.name);
+  return gltf.scene;
 }
 
 async function loadModel(info: FileInfo): Promise<any | undefined> {
@@ -169,7 +156,7 @@ const modelLoaders = new Map<string, ExtensionLoaderSetter>([
   ['.stl', loadModel],
   ['.fbx', loadModel],
   ['.glb', loadModel],
-  ['.gltf', loadModel],
+  ['.gltf', loadGltfModel],
 ]);
 
 const imageLoaders = new Map<string, (fileInfo: FileInfo) => Promise<string>>([

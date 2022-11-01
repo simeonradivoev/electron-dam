@@ -94,7 +94,6 @@ async function buildFileInfo(
   } else if (
     filePath.endsWith('.obj') ||
     filePath.endsWith('.glb') ||
-    filePath.endsWith('.gltf') ||
     filePath.endsWith('.fbx') ||
     filePath.endsWith('.stl')
   ) {

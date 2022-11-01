@@ -15,11 +15,16 @@ export enum ModelFormat {
   Obj = '.obj',
   Fbx = '.fbx',
   Glb = '.glb',
+  GLTF = '.gltf',
   Stl = '.stl',
 }
 export enum TextureFormat {
   Png = '.png',
   Jpg = '.jpg',
+  Gif = '.gif',
+  Svg = '.svg',
+  Ico = '.ico',
+  Apng = '.apng',
 }
 export enum TextFormat {
   Md = '.md',

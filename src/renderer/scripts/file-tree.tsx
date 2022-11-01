@@ -7,18 +7,21 @@ import {
   useQuery,
   UseQueryResult,
 } from '@tanstack/react-query';
-import { FileType } from 'shared/constants';
+import {
+  AudioFileFormat,
+  FileType,
+  ModelFormat,
+  TextureFormat,
+} from 'shared/constants';
 
 const iconMap = new Map<string, IconName>([
-  ['.jpg', 'media'],
-  ['.png', 'media'],
-  ['.wav', 'music'],
-  ['.mp3', 'music'],
-  ['.ogg', 'music'],
-  ['.fbx', 'cube'],
-  ['.obj', 'cube'],
-  ['.stl', 'cube'],
-  ['.glb', 'cube'],
+  ...Object.values(AudioFileFormat).map(
+    (f) => [f, 'media'] as [string, IconName]
+  ),
+  ...Object.values(TextureFormat).map(
+    (f) => [f, 'media'] as [string, IconName]
+  ),
+  ...Object.values(ModelFormat).map((f) => [f, 'cube'] as [string, IconName]),
 ]);
 
 export const forEachParent = (
