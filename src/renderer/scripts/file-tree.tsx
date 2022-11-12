@@ -60,6 +60,22 @@ export const forEachNodeIndexed = (
   });
 };
 
+export const getFirstSelected = (
+  nodes: TreeNodeInfo<FileTreeNode>[] | undefined
+): TreeNodeInfo<FileTreeNode> | undefined => {
+  if (nodes === undefined) {
+    return undefined;
+  }
+
+  let selected: TreeNodeInfo<FileTreeNode> | undefined;
+  nodes.forEach((node) => {
+    if (node.isSelected) {
+      selected = node;
+    }
+  });
+  return selected;
+};
+
 export const forEachNode = (
   nodes: TreeNodeInfo<FileTreeNode>[] | undefined,
   callback: (node: TreeNodeInfo<FileTreeNode>) => void
@@ -159,12 +175,15 @@ export const LoadFiles = async ({
       nodeData: fileNode,
     };
 
-    const transaction = database?.transaction('files', 'readonly');
-    const store = transaction?.objectStore('files');
+    const transaction = database?.transaction(
+      ['selected', 'expanded'],
+      'readonly'
+    );
+    const expandedStore = transaction?.objectStore('expanded');
+    const selectedStore = transaction?.objectStore('selected');
 
-    const dbNode = await store?.get(fileNode.path);
-    node.isSelected = dbNode?.selected;
-    node.isExpanded = dbNode?.expanded;
+    node.isSelected = !!(await selectedStore?.get(fileNode.path));
+    node.isExpanded = !!(await expandedStore?.get(fileNode.path));
 
     UpdateIcon(node);
 
@@ -188,15 +207,7 @@ export const BuildNodeQueries = (
   setFileInfo: (fileInfo: FileInfo | null) => void
 ): {
   nodes: UseQueryResult<TreeNodeInfo<FileTreeNode>[], unknown>;
-  setSelectedMutation: UseMutationResult<
-    TreeNodeInfo<FileTreeNode>[] | undefined,
-    unknown,
-    {
-      id: string | number;
-      selected: boolean;
-    },
-    unknown
-  >;
+  setSelected: (id: string | number, selected: boolean) => void;
   setExpandedMutation: UseMutationResult<
     TreeNodeInfo<FileTreeNode>[],
     unknown,
@@ -233,20 +244,16 @@ export const BuildNodeQueries = (
     id: string | number,
     selected: boolean
   ): Promise<TreeNodeInfo<FileTreeNode>[] | undefined> => {
-    let transaction = database?.transaction('files', 'readwrite');
-    let store = transaction?.objectStore('files');
+    const transactionExpanded = database?.transaction('expanded', 'readwrite');
+    const transactionSelected = database?.transaction('selected', 'readwrite');
+    const storeSelected = transactionSelected?.objectStore('selected');
+    const storeExpanded = transactionExpanded?.objectStore('expanded');
 
     // const nodesCopy = structuredClone(nodes.data);
 
     setFileInfo(null);
 
-    if (store) {
-      for await (const cursor of store) {
-        const updatedValue = cursor.value;
-        updatedValue.selected = false;
-        cursor.update(updatedValue);
-      }
-    }
+    storeSelected?.clear();
 
     let node: TreeNodeInfo<FileTreeNode> | undefined;
 
@@ -256,7 +263,10 @@ export const BuildNodeQueries = (
       if (id === n.id) {
         node = n;
         forEachParent(path, nodes.data, (n) => {
-          n.isExpanded = true;
+          if (!n.isExpanded) {
+            n.isExpanded = true;
+            storeExpanded?.put(true, n.nodeData?.path);
+          }
         });
       }
       n.isSelected = id === n.id;
@@ -268,20 +278,16 @@ export const BuildNodeQueries = (
 
     // Force the file info to update
     const fileNode = node.nodeData as FileTreeNode;
-    window.api
+    /* window.api
       .getFileDetails(fileNode.path)
       .then((fileInfo) => {
         setFileInfo(fileInfo);
         return fileInfo;
       })
-      .catch((e) => console.error(e));
+      .catch((e) => console.error(e)); */
 
     // Update DB
-    transaction = database?.transaction('files', 'readwrite');
-    store = transaction?.objectStore('files');
-    const uiNode = (await store?.get(fileNode.path)) ?? ({} as FileDBValue);
-    uiNode.selected = selected;
-    await store?.put(uiNode, fileNode.path);
+    await storeSelected?.put(true, fileNode.path);
     return nodes.data ?? undefined;
   };
 
@@ -298,11 +304,9 @@ export const BuildNodeQueries = (
 
     // Update DB
     const fileNode = node.nodeData as FileTreeNode;
-    const transaction = database?.transaction('files', 'readwrite');
-    const store = transaction?.objectStore('files');
-    const uiNode = (await store?.get(fileNode.path)) ?? ({} as FileDBValue);
-    uiNode.expanded = expanded;
-    await store?.put(uiNode, fileNode.path);
+    const transaction = database?.transaction('expanded', 'readwrite');
+    const store = transaction?.objectStore('expanded');
+    await store?.put(expanded, fileNode.path);
 
     return nodes.data ?? [];
   };
@@ -328,6 +332,13 @@ export const BuildNodeQueries = (
       },
     }
   );
+
+  const setSelected = (id: string | number, selected: boolean) =>
+    setSelectedMutation.mutate({
+      id,
+      selected,
+    });
+
   const setExpandedMutation = useMutation(
     ['files', database, projectDirectory],
     async ({
@@ -347,5 +358,5 @@ export const BuildNodeQueries = (
       },
     }
   );
-  return { nodes, setSelectedMutation, setExpandedMutation };
+  return { nodes, setSelected, setExpandedMutation };
 };

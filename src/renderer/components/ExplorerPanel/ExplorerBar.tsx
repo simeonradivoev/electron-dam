@@ -15,6 +15,11 @@ interface ExplorerBarProps {
   toggleType: (type: FileType) => void;
   filter: string | undefined;
   setFilter: (filter: string | undefined) => void;
+  contextMenu: (
+    path: string,
+    bundlePath: string | undefined,
+    isDirectory: boolean
+  ) => JSX.Element;
 }
 
 const ExplorerBar = ({
@@ -28,6 +33,7 @@ const ExplorerBar = ({
   toggleType,
   filter,
   setFilter,
+  contextMenu,
 }: ExplorerBarProps) => {
   return (
     <div className="side-panel">
@@ -47,6 +53,7 @@ const ExplorerBar = ({
         files={files}
         setSelected={setSelected}
         setExpanded={setExpanded}
+        contextMenu={contextMenu}
       />
     </div>
   );

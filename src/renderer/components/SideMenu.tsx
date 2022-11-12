@@ -21,7 +21,7 @@ const SideMenu = ({}: Props) => {
       <Button
         title="Bundles"
         minimal
-        active={!!useMatch('bundles')}
+        active={!!useMatch('bundles/*')}
         onClick={() => {
           navigate('/bundles');
         }}
@@ -30,7 +30,7 @@ const SideMenu = ({}: Props) => {
       <Button
         title="Explorer"
         minimal
-        active={!!useMatch('explorer')}
+        active={!!useMatch('explorer/*')}
         onClick={() => {
           navigate({ pathname: 'explorer', search: '?' });
         }}

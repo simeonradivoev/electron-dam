@@ -1,8 +1,7 @@
-import React from 'react';
 import FramelessTitleBar from 'frameless-titlebar';
 import { UseQueryResult } from '@tanstack/react-query';
 import { TitleBarTheme } from 'frameless-titlebar/dist/title-bar/typings';
-import { Button, ButtonGroup, MenuItem } from '@blueprintjs/core';
+import { useLocation } from 'react-router-dom';
 import icon from '../../../assets/icon.png';
 
 type Props = {
@@ -11,10 +10,12 @@ type Props = {
 };
 
 const TitleBar = ({ projectDirectory, setSelectedProjectDirectory }: Props) => {
+  const location = useLocation();
+
   return (
     <FramelessTitleBar
       iconSrc={icon}
-      title={projectDirectory.data ?? 'No Project Selected'}
+      title={location.pathname}
       theme={{ bar: { borderBottom: '' } } as TitleBarTheme}
       menu={[
         {

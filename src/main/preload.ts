@@ -93,10 +93,13 @@ export const API = {
     return ipcRenderer.invoke(Channels.ImportBundleMetadata, url);
   },
   minimizeWindow() {
-    return ipcRenderer.send(Channels.MinimizeWindow);
+    ipcRenderer.send(Channels.MinimizeWindow);
   },
   maximizeWindow() {
-    return ipcRenderer.send(Channels.MaximizeWindow);
+    ipcRenderer.send(Channels.MaximizeWindow);
+  },
+  openPath(path: string) {
+    ipcRenderer.send(Channels.OpenPath, path);
   },
 };
 

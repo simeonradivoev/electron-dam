@@ -175,14 +175,13 @@ const audioLoaders = new Map<string, (fileInfo: FileInfo) => Promise<string>>([
   ['.flac', loadAudio],
 ]);
 
-export default function RegisterFileLoadFile(): {
-  fileInfo: FileInfo | null;
+export const ImportMedia = (
+  fileInfo: FileInfo | null | undefined
+): {
   importedMesh: UseQueryResult<any, unknown>;
   importedAudio: UseQueryResult<string | null, unknown>;
   importedImage: UseQueryResult<string | null, unknown>;
-  setFileInfo: (fileInfo: FileInfo | null) => void;
-} {
-  const [fileInfo, setFileInfoState] = useState<FileInfo | null>(null);
+} => {
   const importedMesh = useQuery<any | null>(
     ['imported-mesh', fileInfo?.path],
     async () => {
@@ -219,15 +218,21 @@ export default function RegisterFileLoadFile(): {
     { enabled: !!fileInfo }
   );
 
+  return { importedMesh, importedAudio, importedImage };
+};
+
+export default function RegisterFileLoadFile(): {
+  fileInfo: FileInfo | null;
+  setFileInfo: (fileInfo: FileInfo | null) => void;
+} {
+  const [fileInfo, setFileInfoState] = useState<FileInfo | null>(null);
+
   const setFileInfo = (info: FileInfo | null) => {
     setFileInfoState(info);
   };
 
   return {
     fileInfo,
-    importedMesh,
-    importedAudio,
-    importedImage,
     setFileInfo,
   };
 }

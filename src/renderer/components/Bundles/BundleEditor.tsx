@@ -10,15 +10,23 @@ import {
   Toaster,
   ToasterInstance,
 } from '@blueprintjs/core';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { IDBPDatabase } from 'idb';
-import React, { ReactNode, useCallback, useRef, useState } from 'react';
-
-type Props = {
-  fileInfo: FileInfo;
-  setFileInfo: (fileInfo: FileInfo | null) => void;
-  database: IDBPDatabase<FilesDB> | undefined;
-};
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  UseQueryResult,
+} from '@tanstack/react-query';
+import React, {
+  ReactNode,
+  useCallback,
+  useContext,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import { useOutletContext } from 'react-router-dom';
+import { AppContext } from 'renderer/AppContext';
+import { BundleInfoContextType } from './BundleInfo';
 
 const arraysEqual = <T,>(lhs: T[] | undefined, rhs: T[] | undefined) => {
   if (!lhs && !rhs) {
@@ -46,47 +54,64 @@ const arraysEqual = <T,>(lhs: T[] | undefined, rhs: T[] | undefined) => {
   return true;
 };
 
-const BundleEditor = ({ fileInfo, setFileInfo, database }: Props) => {
+const BundleEditor = () => {
+  const { fileInfo } = useOutletContext<BundleInfoContextType>();
+
+  const { database } = useContext(AppContext);
   const queryClient = useQueryClient();
   const toasterRef = useRef<any>();
 
   const [description, setDescription] = useState(
-    fileInfo.bundle?.bundle.description
+    fileInfo.data?.bundle?.bundle.description
   );
-  const [link, setLink] = useState(fileInfo.bundle?.bundle.sourceUrl);
-  const currentTags = useQuery<string[]>(['tags', fileInfo?.path], async () => {
-    return window.api.getTags(fileInfo?.path ?? '');
-  });
-  const tags = useQuery<string[]>(
-    ['tags', fileInfo?.path, fileInfo.bundle?.bundle],
+  const [link, setLink] = useState(fileInfo.data?.bundle?.bundle.sourceUrl);
+  const currentTags = useQuery<string[]>(
+    ['tags', fileInfo.data?.path],
     async () => {
-      return window.api.getTags(fileInfo?.path ?? '');
+      return window.api.getTags(fileInfo.data?.path ?? '');
+    }
+  );
+  const tags = useQuery<string[]>(
+    ['tags', fileInfo.data?.path, fileInfo.data?.bundle?.bundle],
+    async () => {
+      return window.api.getTags(fileInfo.data?.path ?? '');
     }
   );
   const updateTags = useMutation(
-    ['tags', fileInfo?.path, fileInfo.bundle?.bundle],
+    ['tags', fileInfo.data?.path, fileInfo.data?.bundle?.bundle],
     async (values: string[]) => {
       return values;
     },
     {
       onSuccess: (data) => {
         queryClient.setQueriesData(
-          ['tags', fileInfo?.path, fileInfo.bundle?.bundle],
+          ['tags', fileInfo.data?.path, fileInfo.data?.bundle?.bundle],
           data
         );
       },
     }
   );
-  const changed =
-    description !== fileInfo.bundle?.bundle.description ||
-    link !== fileInfo.bundle?.bundle.sourceUrl ||
-    !arraysEqual(currentTags.data, tags.data);
+
+  const changed = useMemo(
+    () =>
+      description !== fileInfo.data?.bundle?.bundle.description ||
+      link !== fileInfo.data?.bundle?.bundle.sourceUrl ||
+      !arraysEqual(currentTags.data, tags.data),
+    [
+      currentTags.data,
+      tags.data,
+      fileInfo.data?.bundle?.bundle.description,
+      fileInfo.data?.bundle?.bundle.sourceUrl,
+      description,
+      link,
+    ]
+  );
 
   const handleSubmit = useCallback(
     async (e: React.SyntheticEvent) => {
       e.preventDefault();
 
-      if (!fileInfo.bundle) {
+      if (!fileInfo.data?.bundle) {
         return;
       }
 
@@ -95,43 +120,46 @@ const BundleEditor = ({ fileInfo, setFileInfo, database }: Props) => {
         sourceUrl: { value: string };
       };
 
-      const newFileInfo = structuredClone(fileInfo);
+      const newFileInfo = structuredClone(fileInfo.data);
       newFileInfo.bundle!.bundle.description = target.description.value;
       newFileInfo.bundle!.bundle.sourceUrl = target.sourceUrl.value;
 
       const newTags = await window.api.updateTags(
-        fileInfo?.path ?? '',
+        fileInfo.data?.path ?? '',
         tags.data ?? []
       );
 
-      queryClient.setQueriesData(['tags', fileInfo?.path], newTags);
+      queryClient.setQueriesData(['tags', fileInfo.data?.path], newTags);
       queryClient.invalidateQueries(['tags', database]);
 
       const newBundle = await window.api.updateBundle(
-        fileInfo.path,
+        fileInfo.data.path,
         newFileInfo.bundle!.bundle
       );
 
       if (newBundle) {
-        fileInfo.bundle.bundle = newBundle;
+        fileInfo.data.bundle.bundle = newBundle;
       } else {
-        fileInfo.bundle = undefined;
+        fileInfo.data.bundle = undefined;
       }
 
-      setFileInfo(newFileInfo);
+      queryClient.setQueriesData(
+        ['fileInfo', fileInfo.data?.path],
+        newFileInfo
+      );
     },
-    [setFileInfo, fileInfo, tags, database, queryClient]
+    [fileInfo, tags, database, queryClient]
   );
 
   const handleDelete = useCallback(async () => {
-    await window.api.deleteBundle(fileInfo.path);
+    await window.api.deleteBundle(fileInfo.data!.path);
     queryClient.invalidateQueries(['files']);
-    setFileInfo(null);
-  }, [queryClient, fileInfo.path, setFileInfo]);
+    queryClient.invalidateQueries(['fileInfo', fileInfo.data!.path]);
+  }, [queryClient, fileInfo.data?.path]);
 
   const handleReset = useCallback(() => {
-    setDescription(fileInfo.bundle?.bundle.description);
-    setLink(fileInfo.bundle?.bundle.sourceUrl);
+    setDescription(fileInfo.data!.bundle?.bundle.description);
+    setLink(fileInfo.data!.bundle?.bundle.sourceUrl);
     updateTags.mutate(currentTags?.data ?? []);
   }, [setDescription, setLink, fileInfo, updateTags, currentTags]);
 
@@ -163,18 +191,27 @@ const BundleEditor = ({ fileInfo, setFileInfo, database }: Props) => {
     [updateTags, tags]
   );
 
+  if (!fileInfo.data) {
+    return <></>;
+  }
+
   return (
     <>
       <form onSubmit={handleSubmit} onReset={handleReset}>
         <FormGroup label="Name">
-          <InputGroup disabled name="name" fill defaultValue={fileInfo.name} />
+          <InputGroup
+            disabled
+            name="name"
+            fill
+            defaultValue={fileInfo.data!.name}
+          />
         </FormGroup>
 
         <FormGroup label="Description">
           <TextArea
             name="description"
             className={
-              description !== fileInfo.bundle?.bundle.description
+              description !== fileInfo.data!.bundle?.bundle.description
                 ? 'changed'
                 : undefined
             }
@@ -188,7 +225,9 @@ const BundleEditor = ({ fileInfo, setFileInfo, database }: Props) => {
             type="url"
             name="sourceUrl"
             className={
-              link !== fileInfo.bundle?.bundle.sourceUrl ? 'changed' : undefined
+              link !== fileInfo.data!.bundle?.bundle.sourceUrl
+                ? 'changed'
+                : undefined
             }
             fill
             value={link}

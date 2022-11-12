@@ -52,8 +52,12 @@ declare global {
   };
 
   interface FilesDB extends DBSchema {
-    files: {
-      value: FileDBValue;
+    selected: {
+      value: boolean;
+      key: string;
+    };
+    expanded: {
+      value: boolean;
       key: string;
     };
   }

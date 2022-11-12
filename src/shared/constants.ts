@@ -80,4 +80,5 @@ export enum Channels {
   ImportBundleMetadata = 'import-bundle-metadata',
   MinimizeWindow = 'minimize-window',
   MaximizeWindow = 'maximize-window',
+  OpenPath = 'open-path',
 }

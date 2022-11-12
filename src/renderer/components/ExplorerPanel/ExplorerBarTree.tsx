@@ -6,9 +6,9 @@ import {
   MenuItem,
   Menu,
 } from '@blueprintjs/core';
-import { useQueryClient, UseQueryResult } from '@tanstack/react-query';
+import { UseQueryResult } from '@tanstack/react-query';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { filterNodes } from 'renderer/scripts/file-tree';
 
 type Props = {
@@ -16,6 +16,11 @@ type Props = {
   setSelected: (id: string | number, selected: boolean) => void;
   setExpanded: (nodePath: NodePath, expanded: boolean) => void;
   filter: string | undefined;
+  contextMenu: (
+    path: string,
+    bundlePath: string | undefined,
+    isDirectory: boolean
+  ) => JSX.Element;
 };
 
 const ExplorerBarTree = ({
@@ -23,11 +28,12 @@ const ExplorerBarTree = ({
   setSelected,
   setExpanded,
   filter,
+  contextMenu,
 }: Props) => {
   const treeRef = useRef<Tree<FileTreeNode>>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const [focus, setFocus] = useState(searchParams.get('focus'));
-  const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const handleNodeClick = useCallback(
     (
@@ -37,8 +43,9 @@ const ExplorerBarTree = ({
     ) => {
       const originallySelected = node.isSelected;
       setSelected(node.id, !originallySelected);
+      navigate(`/explorer/${node.id}`);
     },
-    [setSelected]
+    [setSelected, navigate]
   );
 
   const handleNodeCollapse = useCallback(
@@ -55,36 +62,22 @@ const ExplorerBarTree = ({
     [setExpanded]
   );
 
-  const handleBundleCreateClick = useCallback(
-    async (directory: string) => {
-      window.api.createBundle(directory);
-      queryClient.invalidateQueries(['files']);
-    },
-    [queryClient]
-  );
-
   const handleContextMenu = useCallback(
     (
       _node: TreeNodeInfo<FileTreeNode>,
       nodePath: NodePath,
       e: React.MouseEvent<HTMLElement>
     ) => {
-      if (!_node.nodeData?.isDirectory) {
-        return;
-      }
       ContextMenu.show(
-        <Menu>
-          <MenuItem
-            disabled={!!_node.nodeData.bundlePath}
-            icon="folder-new"
-            text="Create Bundle"
-            onClick={() => handleBundleCreateClick(_node.nodeData?.path ?? '')}
-          />
-        </Menu>,
+        contextMenu(
+          _node.nodeData?.path ?? '',
+          _node.nodeData?.bundlePath,
+          _node.nodeData?.isDirectory ?? true
+        ),
         { left: e.clientX, top: e.clientY }
       );
     },
-    [handleBundleCreateClick]
+    [contextMenu]
   );
 
   useEffect(() => {

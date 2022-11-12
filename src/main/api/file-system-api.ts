@@ -5,6 +5,7 @@ import {
   ipcMain,
   IpcMainInvokeEvent,
   nativeImage,
+  shell,
 } from 'electron';
 import { readdir, lstat } from 'fs/promises';
 import path, { extname } from 'path';
@@ -304,4 +305,16 @@ export async function LoadDatabase(store: Store<StoreSchema>) {
   }
 }
 
+async function onOpenPath(event: Electron.IpcMainEvent, pathToOpen: string) {
+  const info = await lstat(pathToOpen);
+  if (info) {
+    if (info.isDirectory()) {
+      shell.openPath(pathToOpen);
+    } else {
+      shell.showItemInFolder(pathToOpen);
+    }
+  }
+}
+
 ipcMain.handle(Channels.GetPreview, handleGetPreview);
+ipcMain.on(Channels.OpenPath, onOpenPath);

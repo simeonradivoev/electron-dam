@@ -2,11 +2,12 @@ import { Button, Classes, Divider } from '@blueprintjs/core';
 
 type Props = {
   fileInfo: FileInfo | null;
+  className?: string;
 };
 
-const BundlePreview = ({ fileInfo }: Props) => {
+const BundlePreview = ({ fileInfo, className }: Props) => {
   return (
-    <div className="preview-bundle">
+    <div className={`preview-bundle ${className}`}>
       {fileInfo?.previewPath ? (
         <div
           className="preview-image-container"

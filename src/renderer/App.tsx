@@ -1,13 +1,10 @@
-import { HashRouter as Router, Routes, Route } from 'react-router-dom';
+import { Outlet } from 'react-router-dom';
 import './App.scss';
-import { useEffect, useRef, useState } from 'react';
-import Split from 'react-split';
+import { useEffect, useState } from 'react';
 import { IDBPDatabase, openDB } from 'idb/with-async-ittr';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FocusStyleManager, Toaster, ToasterInstance } from '@blueprintjs/core';
+import { FocusStyleManager } from '@blueprintjs/core';
 import { FileType } from 'shared/constants';
-import ExplorerBar from './components/ExplorerPanel/ExplorerBar';
-import FileInfoPanel from './components/FileInfoPanel/FileInfoPanel';
 import RegisterFileLoadFile from './scripts/loader';
 import {
   ToggleTag,
@@ -19,17 +16,15 @@ import {
 import { BuildNodeQueries, GetProjectDirectory } from './scripts/file-tree';
 import ProjectSelection from './components/ProjectSelection';
 import SideMenu from './components/SideMenu';
-import Bundles from './components/Bundles/Bundles';
-import Settings from './components/Settings/Settings';
 import TitleBar from './components/TitleBar';
+import { AppContext } from './AppContext';
 
 FocusStyleManager.onlyShowFocusOnTabs();
 
 const App: React.FC = () => {
   const queryClient = useQueryClient();
 
-  const { fileInfo, importedMesh, importedAudio, importedImage, setFileInfo } =
-    RegisterFileLoadFile();
+  const { fileInfo, setFileInfo } = RegisterFileLoadFile();
 
   const projectDirectory = useQuery<string | null>(
     ['project-directory'],
@@ -63,7 +58,7 @@ const App: React.FC = () => {
   );
   const [filter, setFilter] = useState<string | undefined>();
 
-  const { nodes, setSelectedMutation, setExpandedMutation } = BuildNodeQueries(
+  const { nodes, setSelected, setExpandedMutation } = BuildNodeQueries(
     projectDirectory,
     queryClient,
     selectedTags,
@@ -72,11 +67,6 @@ const App: React.FC = () => {
     database,
     setFileInfo
   );
-  const setSelected = (id: string | number, selected: boolean) =>
-    setSelectedMutation.mutate({
-      id,
-      selected,
-    });
 
   const [sideBarSize, setSideBarSize] = useState<number>(
     Number(window.sessionStorage.getItem('sideBarSize') ?? 30)
@@ -100,12 +90,17 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const loadDatabase = async () => {
-      const db = await openDB<FilesDB>('selection database', 3, {
+      const db = await openDB<FilesDB>('selection database', 4, {
         upgrade(udb, oldVersion, newVersion, transaction) {
-          if (!udb.objectStoreNames.contains('files')) {
-            udb.createObjectStore('files');
+          if (!udb.objectStoreNames.contains('selected')) {
+            udb.createObjectStore('selected');
           } else {
-            transaction.objectStore('files');
+            transaction.objectStore('selected');
+          }
+          if (!udb.objectStoreNames.contains('expanded')) {
+            udb.createObjectStore('expanded');
+          } else {
+            transaction.objectStore('expanded');
           }
           setDatabase(udb);
         },
@@ -118,107 +113,51 @@ const App: React.FC = () => {
   }, [setDatabase]);
 
   return (
-    <>
+    <AppContext.Provider
+      value={{
+        files: nodes,
+        setSelected,
+        setExpanded: (path, expanded) =>
+          setExpandedMutation.mutate({
+            path,
+            expanded,
+          }),
+        tags,
+        typeFilter,
+        selectedTags,
+        toggleTag: (tag) =>
+          ToggleTag(queryClient, database, tag, selectedTags, setSelectedTags),
+        toggleType: (type) => ToggleFileType(type, typeFilter, setTypeFilter),
+        filter,
+        setFilter,
+        sideBarSize,
+        database,
+        darkMode,
+        setDarkMode,
+        setSideBarSize,
+        setFileInfo,
+        fileInfo,
+      }}
+    >
       <TitleBar
         projectDirectory={projectDirectory}
         setSelectedProjectDirectory={setSelectedProjectDirectory}
       />
       <div className={`theme-wrapper ${darkMode ? 'bp4-dark dark' : ''}`}>
         {projectDirectory.data ? (
-          <Router>
+          <>
             <SideMenu />
             <div className="viewport">
-              <Routes>
-                <Route path="/" element={<></>} />
-                <Route
-                  path="/bundles"
-                  element={
-                    <Bundles
-                      database={database}
-                      setFileInfo={setFileInfo}
-                      nodes={nodes}
-                      setSelected={setSelected}
-                      fileInfo={fileInfo}
-                      filter={filter}
-                    />
-                  }
-                />
-                <Route
-                  path="/explorer"
-                  element={
-                    <Split
-                      direction="horizontal"
-                      cursor="col-resize"
-                      className="wrap"
-                      snapOffset={30}
-                      minSize={100}
-                      expandToMin={false}
-                      gutterSize={10}
-                      sizes={[sideBarSize, 100 - sideBarSize]}
-                      onDragEnd={(size) => {
-                        setSideBarSize(size[0]);
-                        window.sessionStorage.setItem(
-                          'sideBarSize',
-                          String(size[0])
-                        );
-                      }}
-                    >
-                      <ExplorerBar
-                        typeFilter={typeFilter}
-                        toggleType={(type) =>
-                          ToggleFileType(type, typeFilter, setTypeFilter)
-                        }
-                        selectedTags={selectedTags}
-                        toggleTag={(tag: string) =>
-                          ToggleTag(
-                            queryClient,
-                            database,
-                            tag,
-                            selectedTags,
-                            setSelectedTags
-                          )
-                        }
-                        files={nodes}
-                        setSelected={setSelected}
-                        setExpanded={(path, expanded) =>
-                          setExpandedMutation.mutate({
-                            path,
-                            expanded,
-                          })
-                        }
-                        tags={tags}
-                        filter={filter}
-                        setFilter={setFilter}
-                      />
-                      <FileInfoPanel
-                        panelSize={100 - sideBarSize}
-                        importedMesh={importedMesh}
-                        importedImage={importedImage}
-                        importedAudio={importedAudio}
-                        fileInfo={fileInfo}
-                        database={database}
-                        setSelected={setSelected}
-                        filter={filter}
-                      />
-                    </Split>
-                  }
-                />
-                <Route
-                  path="/settings"
-                  element={
-                    <Settings darkMode={darkMode} setDarkMode={setDarkMode} />
-                  }
-                />
-              </Routes>
+              <Outlet />
             </div>
-          </Router>
+          </>
         ) : (
           <ProjectSelection
             setSelectedProjectDirectory={setSelectedProjectDirectory}
           />
         )}
       </div>
-    </>
+    </AppContext.Provider>
   );
 };
 

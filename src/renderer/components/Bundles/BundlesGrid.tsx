@@ -1,24 +1,31 @@
 import { TreeNodeInfo } from '@blueprintjs/core';
-import { UseQueryResult } from '@tanstack/react-query';
 
-import { useEffect, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { AppContext } from 'renderer/AppContext';
 import { forEachNode } from 'renderer/scripts/file-tree';
 import Bundle from './Bundle';
 
-type Props = {
-  files: UseQueryResult<TreeNodeInfo<FileTreeNode>[], unknown>;
-  onSelect: (id: string | number) => void;
-  viewInExplorer: (id: string | number) => void;
-  setFileInfo: (fileInfo: FileInfo | null) => void;
-};
-
-const BundlesGrid = ({
-  files,
-  onSelect,
-  viewInExplorer,
-  setFileInfo,
-}: Props) => {
+const BundlesGrid = () => {
+  const { files, setFileInfo, setSelected } = useContext(AppContext);
   const [entries, setEntries] = useState<TreeNodeInfo<FileTreeNode>[]>([]);
+  const navigate = useNavigate();
+
+  const viewInExplorer = (id: string | number) => {
+    setSelected(id, true);
+    navigate({
+      pathname: '/explorer',
+      search: `?focus=${id}`,
+    });
+  };
+
+  const handleSelect = (id: string | number) => {
+    setSelected(id, true);
+    navigate({
+      pathname: `/bundles/${id}/info`,
+    });
+  };
+
   useEffect(() => {
     if (!files?.data) {
       return;
@@ -38,7 +45,7 @@ const BundlesGrid = ({
       {entries.map((e) => (
         <Bundle
           setFileInfo={setFileInfo}
-          onSelect={onSelect}
+          onSelect={handleSelect}
           viewInExplorer={viewInExplorer}
           info={e}
           node={e.nodeData ?? ({} as FileTreeNode)}

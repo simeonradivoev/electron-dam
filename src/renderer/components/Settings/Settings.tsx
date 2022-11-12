@@ -1,12 +1,9 @@
 import { Switch } from '@blueprintjs/core';
-import React from 'react';
+import React, { useContext } from 'react';
+import { AppContext } from 'renderer/AppContext';
 
-type Props = {
-  darkMode: boolean;
-  setDarkMode: (darkMode: boolean) => void;
-};
-
-const Settings = ({ darkMode, setDarkMode }: Props) => {
+const Settings = () => {
+  const { darkMode, setDarkMode } = useContext(AppContext);
   return (
     <div>
       <form>

@@ -26,6 +26,15 @@ body {
 
 div[class^="style_Bar"] {
   background-color: $pt-dark-app-background-color !important;
+
+  a,
+  a:hover,
+  a:visited,
+  a:link,
+  a:active {
+    text-decoration: none;
+    color: $pt-dark-text-color;
+  }
 }
 
 div[class^="style_MenuList"] {
@@ -37,23 +46,7 @@ div[class^="style_MenuList"] {
   height: 100vh;
   display: flex;
   flex-direction: column;
-
-
-
-  // Title Bar
-  &:first-child {
-
-    a,
-    a:hover,
-    a:visited,
-    a:link,
-    a:active {
-      text-decoration: none;
-      color: $pt-dark-text-color;
-    }
-  }
 }
-
 
 .changed {
   border-left-width: 0.5em;
@@ -67,10 +60,11 @@ div[class^="style_MenuList"] {
 
 .theme-wrapper {
   width: 100%;
-  height: 100%;
+  flex-grow: 1;
   display: flex;
   flex-direction: row;
   max-width: 100%;
+  overflow: hidden;
 }
 
 .bundles-grid {
@@ -183,7 +177,6 @@ div[class^="style_MenuList"] {
   flex-direction: column;
   width: 100%;
   padding-left: 1em;
-  padding-right: 1em;
   padding-bottom: 1em;
 
   .breadcrumbs {
@@ -191,17 +184,14 @@ div[class^="style_MenuList"] {
     max-height: 2em;
   }
 
-  .bp4-tab-panel {
-    margin-top: 1em;
-  }
+  #preview-bundle-tab-panel {
+    .preview-bundle {
+      overflow: visible;
+      padding-right: 1em;
 
-  .bundle-info-tab {}
-
-  .preview-bundle {
-
-
-    h1 {
-      margin-top: 0;
+      h1 {
+        margin-top: 0;
+      }
     }
   }
 
@@ -310,7 +300,11 @@ div[class^="style_MenuList"] {
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding-right: 1em;
+
+  #header {
+    display: flex;
+    flex-direction: row;
+  }
 
   .tags {
     margin: 0.5em;
@@ -326,13 +320,18 @@ div[class^="style_MenuList"] {
     overflow: hidden;
   }
 
-  .bp4-breadcrumbs {
+  .breadcrumbs {
     min-height: 2.5em;
+    flex-grow: 1;
   }
 
   .preview-3d {
     @extend .preview;
     display: contents;
+  }
+
+  .preview-empty {
+    flex-grow: 1;
   }
 
   .preview-audio {
@@ -373,11 +372,11 @@ div[class^="style_MenuList"] {
 
   .preview-bundle {
     flex-grow: 1;
+    padding-right: 0.5em;
   }
 }
 
 .preview-bundle {
-  overflow: auto;
 
   .preview-image-container {
     width: 100%;
@@ -436,6 +435,10 @@ div[class^="style_MenuList"] {
   @extend .scroll;
   overflow-y: scroll;
   overflow-x: hidden;
+
+  &.wide::-webkit-scrollbar {
+    width: 1em;
+  }
 }
 
 .x-scroll {
