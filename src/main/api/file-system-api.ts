@@ -9,7 +9,6 @@ import {
 } from 'electron';
 import { readdir, lstat } from 'fs/promises';
 import path, { extname } from 'path';
-import Loki from 'lokijs';
 import Store from 'electron-store';
 import {
   Channels,
@@ -19,11 +18,11 @@ import {
   previewTypes,
   supportedTypes,
 } from '../../shared/constants';
-import InitializeFileInfoApi from './file-info-api';
 
-let database: Loki;
-
-function InitializeFileSystemApi(store: Store<StoreSchema>, db: Loki) {
+export default function InitializeFileSystemApi(
+  store: Store<StoreSchema>,
+  db: Loki
+): { removeAllTags: (filePath: string) => void } {
   function beforeQuit() {
     db.save((saveError) => {
       if (saveError) {
@@ -46,6 +45,10 @@ function InitializeFileSystemApi(store: Store<StoreSchema>, db: Loki) {
       .find({ tags: { $size: { $gt: 0 } } })
       .forEach((file) => file.tags.forEach((tag) => tagsSet.add(tag)));
     return Array.from(tagsSet);
+  }
+
+  function removeAllTags(id: string) {
+    files.findAndRemove({ path: id });
   }
 
   function updateTags(
@@ -92,8 +95,9 @@ function InitializeFileSystemApi(store: Store<StoreSchema>, db: Loki) {
     );
   }
 
-  async function findChildrenRec(
+  async function findChildrenFilesRec(
     tagSet: Set<string>,
+    parentHasTag: boolean,
     typeSet: Set<string>,
     filter: string | undefined,
     parent: FileTreeNode,
@@ -148,12 +152,27 @@ function InitializeFileSystemApi(store: Store<StoreSchema>, db: Loki) {
           }
         }
 
+        let tagsFit = parentHasTag;
+        if (child.tags.length > 0) {
+          tagsFit ||= child.tags.some((tag) => tagSet.has(tag));
+        }
+
+        // Directory
         if (dir.isDirectory()) {
-          await findChildrenRec(tagSet, typeSet, filter, child, fitsFilter);
+          await findChildrenFilesRec(
+            tagSet,
+            tagsFit,
+            typeSet,
+            filter,
+            child,
+            fitsFilter
+          );
           if (child.children.length <= 0) {
             return;
           }
-        } else if (
+        }
+        // Non Directory
+        else if (
           !supportedTypes.has(childExt) ||
           ingoredFiles.has(child.name) ||
           !fitsFilter
@@ -168,11 +187,7 @@ function InitializeFileSystemApi(store: Store<StoreSchema>, db: Loki) {
             return;
           }
 
-          if (
-            tagSet.size > 0 &&
-            (child.tags.length <= 0 ||
-              !child.tags.some((tag) => tagSet.has(tag)))
-          ) {
+          if (!parentHasTag && tagSet.size > 0 && !tagsFit) {
             return;
           }
         }
@@ -203,8 +218,9 @@ function InitializeFileSystemApi(store: Store<StoreSchema>, db: Loki) {
       size: 0,
     };
 
-    await findChildrenRec(
+    await findChildrenFilesRec(
       tagSet,
+      false,
       typeSet,
       filter?.toLowerCase(),
       parent,
@@ -231,9 +247,11 @@ function InitializeFileSystemApi(store: Store<StoreSchema>, db: Loki) {
     ipcMain.removeHandler(Channels.FileTree);
     ipcMain.removeHandler(Channels.GetGlobalTags);
   });
+
+  return { removeAllTags };
 }
 
-export async function handleGetPreview(
+async function handleGetPreview(
   event: Electron.IpcMainInvokeEvent,
   filePath: string,
   maxSize: number
@@ -247,62 +265,6 @@ export async function handleGetPreview(
       return null;
     });
   return thumbnail?.toDataURL();
-}
-
-export function LoadDatabaseExact(
-  store: Store<StoreSchema>,
-  directory: string
-) {
-  database?.close();
-
-  database = new Loki(path.join(directory, 'dam-database.db'), {
-    autosave: true,
-    serializationMethod: 'pretty',
-    persistenceMethod: 'fs',
-    autosaveInterval: 4000,
-    autosaveCallback: () => {
-      console.log('autosaved db');
-    },
-  });
-
-  database.loadDatabase(undefined, (error) => {
-    if (error) {
-      console.error(error);
-      return;
-    }
-
-    InitializeFileSystemApi(store, database);
-    InitializeFileInfoApi(store, database);
-  });
-}
-
-export async function SelectProjectDirectory(
-  store: Store<StoreSchema>,
-  window: BrowserWindow | undefined
-): Promise<string | null> {
-  if (!window) {
-    return null;
-  }
-
-  const directory = await dialog.showOpenDialog(window, {
-    properties: ['openDirectory'],
-  });
-
-  if (!directory.canceled && directory.filePaths.length > 0) {
-    const directoryPath = directory.filePaths[0];
-    store.set('projectDirectory', directoryPath);
-    LoadDatabaseExact(store, directoryPath);
-    return directoryPath;
-  }
-
-  return null;
-}
-
-export async function LoadDatabase(store: Store<StoreSchema>) {
-  const projectDir = store.get('projectDirectory') as string;
-  if (projectDir && !!(await lstat(projectDir).catch((e) => false))) {
-    LoadDatabaseExact(store, projectDir);
-  }
 }
 
 async function onOpenPath(event: Electron.IpcMainEvent, pathToOpen: string) {

@@ -81,4 +81,8 @@ export enum Channels {
   MinimizeWindow = 'minimize-window',
   MaximizeWindow = 'maximize-window',
   OpenPath = 'open-path',
+  DownloadPreview = 'download-preview',
+  GetBundles = 'get-bundles',
+  GetBundle = 'get-bundle',
+  CreateVirtualBundle = 'create-virtual-bundle',
 }

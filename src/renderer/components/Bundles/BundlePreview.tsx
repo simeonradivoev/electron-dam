@@ -1,23 +1,23 @@
-import { Button, Classes, Divider } from '@blueprintjs/core';
+import { Button, Classes, Divider, Icon } from '@blueprintjs/core';
 
 type Props = {
-  fileInfo: FileInfo | null;
+  bundle: BundleInfo | null;
   className?: string;
 };
 
-const BundlePreview = ({ fileInfo, className }: Props) => {
+const BundlePreview = ({ bundle, className }: Props) => {
   return (
     <div className={`preview-bundle ${className}`}>
-      {fileInfo?.previewPath ? (
+      {bundle?.previewUrl ? (
         <div
           className="preview-image-container"
           style={{
             backgroundImage: `url(file://${encodeURI(
-              fileInfo.previewPath.replaceAll('\\', '/')
+              bundle.previewUrl.replaceAll('\\', '/')
             )})`,
           }}
         >
-          <img alt={`${fileInfo.name} Preview`} src={fileInfo.previewPath} />
+          <img alt={`${bundle.name} Preview`} src={bundle.previewUrl} />
         </div>
       ) : (
         <div className="preview-image-container" />
@@ -25,14 +25,14 @@ const BundlePreview = ({ fileInfo, className }: Props) => {
       <Divider />
       <div className="bundle-content">
         <div className="title">
-          <h1 className={fileInfo ? '' : Classes.SKELETON}>
-            {fileInfo?.name ?? 'Bundle Loading Placeholder Text'}
+          <h1 className={bundle ? '' : Classes.SKELETON}>
+            {bundle?.name ?? 'Bundle Loading Placeholder Text'}
           </h1>
-          {fileInfo?.bundle?.bundle.sourceUrl ? (
+
+          {bundle?.bundle.sourceUrl ? (
             <Button
-              onClick={() =>
-                window.open(fileInfo.bundle?.bundle.sourceUrl, '_blank')
-              }
+              onClick={() => window.open(bundle.bundle.sourceUrl, '_blank')}
+              title={bundle.bundle.sourceUrl}
               intent="primary"
               small
               icon="link"
@@ -41,7 +41,7 @@ const BundlePreview = ({ fileInfo, className }: Props) => {
             <></>
           )}
         </div>
-        <p className="css-fix">{fileInfo?.bundle?.bundle.description}</p>
+        <p className="css-fix">{bundle?.bundle.description}</p>
       </div>
     </div>
   );

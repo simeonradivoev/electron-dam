@@ -28,7 +28,7 @@ declare global {
     bundle?: {
       name: string;
       isParentBundle: boolean;
-      bundle: Bundle;
+      bundle: BundleInfo;
     };
     readme?: string;
   }
@@ -41,10 +41,22 @@ declare global {
     info: FileInfo;
     contents: any;
   }
-  type FileMetadata = {
+  interface FileMetadata {
     path: string;
     tags: string[];
-  };
+  }
+  interface VirtualBundle extends Bundle {
+    id: string;
+    previewUrl?: string | undefined;
+    name: string;
+  }
+  interface BundleInfo {
+    name: string;
+    id: string;
+    previewUrl?: string;
+    isVirtual: boolean;
+    bundle: Bundle;
+  }
   type FileDBValue = {
     selected: boolean | undefined;
     expanded: boolean | undefined;
@@ -80,7 +92,9 @@ declare global {
   }
 
   interface BundleMetadata {
+    title?: string;
     description?: string;
     keywords?: string[];
+    preview?: string;
   }
 }

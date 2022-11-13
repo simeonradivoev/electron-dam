@@ -16,7 +16,7 @@ import {
 
 const iconMap = new Map<string, IconName>([
   ...Object.values(AudioFileFormat).map(
-    (f) => [f, 'media'] as [string, IconName]
+    (f) => [f, 'music'] as [string, IconName]
   ),
   ...Object.values(TextureFormat).map(
     (f) => [f, 'media'] as [string, IconName]

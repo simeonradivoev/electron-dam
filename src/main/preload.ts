@@ -92,6 +92,9 @@ export const API = {
   importBundleMetadata(url: string): Promise<BundleMetadata> {
     return ipcRenderer.invoke(Channels.ImportBundleMetadata, url);
   },
+  downloadPreview(bundlePath: string, url: string): Promise<void> {
+    return ipcRenderer.invoke(Channels.DownloadPreview, bundlePath, url);
+  },
   minimizeWindow() {
     ipcRenderer.send(Channels.MinimizeWindow);
   },
@@ -100,6 +103,15 @@ export const API = {
   },
   openPath(path: string) {
     ipcRenderer.send(Channels.OpenPath, path);
+  },
+  getBundles(): Promise<BundleInfo[]> {
+    return ipcRenderer.invoke(Channels.GetBundles);
+  },
+  getBundle(id: string): Promise<BundleInfo | undefined> {
+    return ipcRenderer.invoke(Channels.GetBundle, id);
+  },
+  createVirtualBundle(bundle: VirtualBundle): Promise<VirtualBundle> {
+    return ipcRenderer.invoke(Channels.CreateVirtualBundle, bundle);
   },
 };
 

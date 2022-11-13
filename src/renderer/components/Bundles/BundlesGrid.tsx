@@ -1,57 +1,103 @@
-import { TreeNodeInfo } from '@blueprintjs/core';
+import {
+  Button,
+  InputGroup,
+  Navbar,
+  NavbarDivider,
+  NavbarGroup,
+  Spinner,
+} from '@blueprintjs/core';
+import { useQuery } from '@tanstack/react-query';
 
 import { useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppContext } from 'renderer/AppContext';
-import { forEachNode } from 'renderer/scripts/file-tree';
 import Bundle from './Bundle';
 
 const BundlesGrid = () => {
-  const { files, setFileInfo, setSelected } = useContext(AppContext);
-  const [entries, setEntries] = useState<TreeNodeInfo<FileTreeNode>[]>([]);
+  const { setFileInfo, setSelected, projectDirectory } = useContext(AppContext);
+  const [filter, setFilter] = useState('');
+  const bundles = useQuery<BundleInfo[]>(
+    ['bundles', projectDirectory],
+    async ({ queryKey }) => {
+      return window.api.getBundles();
+    },
+    {
+      enabled: !!projectDirectory?.data,
+      refetchOnWindowFocus: false,
+      refetchOnMount: false,
+    }
+  );
   const navigate = useNavigate();
 
-  const viewInExplorer = (id: string | number) => {
-    setSelected(id, true);
-    navigate({
-      pathname: '/explorer',
-      search: `?focus=${id}`,
-    });
-  };
-
   const handleSelect = (id: string | number) => {
-    setSelected(id, true);
     navigate({
       pathname: `/bundles/${id}/info`,
     });
   };
 
-  useEffect(() => {
-    if (!files?.data) {
-      return;
-    }
-    const elements: TreeNodeInfo<FileTreeNode>[] = [];
-    forEachNode(files.data, (node) => {
-      const fileNode = node.nodeData as FileTreeNode;
-      if (fileNode.isDirectory && fileNode.bundlePath) {
-        elements.push(node);
-      }
+  const handleNew = () => {
+    navigate({
+      pathname: `/bundles/new`,
     });
-    setEntries(elements);
-  }, [files]);
+  };
+
+  const handleRefresh = () => {
+    bundles.refetch();
+  };
+
+  function handleSearchSubmit(e: any) {
+    e.preventDefault();
+    setFilter(e.target.value);
+  }
 
   return (
-    <div className="bundles-grid y-scroll">
-      {entries.map((e) => (
-        <Bundle
-          setFileInfo={setFileInfo}
-          onSelect={handleSelect}
-          viewInExplorer={viewInExplorer}
-          info={e}
-          node={e.nodeData ?? ({} as FileTreeNode)}
-          key={e.nodeData?.path}
-        />
-      ))}
+    <div className="bundles-grid">
+      <Navbar>
+        <NavbarGroup align="left">
+          <Button
+            onClick={handleNew}
+            title="Create New Virtual Bundle"
+            minimal
+            icon="add"
+          />
+        </NavbarGroup>
+        <NavbarGroup align="right">
+          <InputGroup
+            inputRef={(element) => {
+              ((element ?? {}) as any).onsearch = handleSearchSubmit;
+            }}
+            name="search"
+            fill
+            className="search"
+            leftIcon="search"
+            placeholder="Search"
+            type="search"
+            defaultValue={filter}
+          />
+          <Button
+            disabled={bundles.isFetching}
+            onClick={handleRefresh}
+            minimal
+            icon="refresh"
+          />
+          <NavbarDivider />
+          <Button minimal icon="menu" rightIcon="caret-down" />
+        </NavbarGroup>
+      </Navbar>
+      <div className="grid y-scroll">
+        {bundles.data ? (
+          bundles.data.map((b) => (
+            <Bundle
+              setFileInfo={setFileInfo}
+              onSelect={handleSelect}
+              bundle={b}
+              key={b.id}
+            />
+          ))
+        ) : (
+          <Spinner />
+        )}
+      </div>
     </div>
   );
 };

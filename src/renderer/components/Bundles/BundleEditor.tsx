@@ -1,5 +1,8 @@
 import {
+  Alert,
   Button,
+  ControlGroup,
+  FileInput,
   FormGroup,
   InputGroup,
   Label,
@@ -10,7 +13,9 @@ import {
   Toaster,
   ToasterInstance,
 } from '@blueprintjs/core';
+
 import {
+  UseMutateFunction,
   useMutation,
   useQuery,
   useQueryClient,
@@ -26,147 +31,167 @@ import React, {
 } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { AppContext } from 'renderer/AppContext';
-import { BundleInfoContextType } from './BundleInfo';
+import { arraysEqual } from 'renderer/scripts/utils';
+import { BundleDetailsContextType } from './BundleDetailsLayout';
 
-const arraysEqual = <T,>(lhs: T[] | undefined, rhs: T[] | undefined) => {
-  if (!lhs && !rhs) {
-    return true;
-  }
+const useQueryAndSetter = <T,>(
+  keys: any[],
+  parent: any | undefined,
+  defaultValueGetter: () => Promise<T>
+): [
+  value: UseQueryResult<T, unknown>,
+  setValue: UseMutateFunction<void, unknown, T | undefined, unknown>
+] => {
+  const queryClient = useQueryClient();
+  const value = useQuery<T>(keys, async () => defaultValueGetter(), {
+    enabled: !!parent,
+  });
 
-  if (!rhs) {
-    return false;
-  }
+  const { mutate: setValue } = useMutation(keys, async (v: T | undefined) => {
+    queryClient.setQueryData(keys, v);
+  });
 
-  if (!lhs) {
-    return false;
-  }
-
-  if (lhs.length !== rhs.length) {
-    return false;
-  }
-
-  for (let index = 0; index < lhs.length; index += 1) {
-    if (lhs[index] !== rhs[index]) {
-      return false;
-    }
-  }
-
-  return true;
+  return [value, setValue];
 };
 
 const BundleEditor = () => {
-  const { fileInfo } = useOutletContext<BundleInfoContextType>();
-
-  const { database } = useContext(AppContext);
+  const { bundle } = useOutletContext<BundleDetailsContextType>();
+  const { database, files } = useContext(AppContext);
   const queryClient = useQueryClient();
-  const toasterRef = useRef<any>();
+  const toasterRef = useRef<Toaster>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
 
-  const [description, setDescription] = useState(
-    fileInfo.data?.bundle?.bundle.description
+  const [description, setDescription] = useQueryAndSetter(
+    ['newDescription', bundle.data?.bundle],
+    bundle.data,
+    async () => bundle.data?.bundle.description
   );
-  const [link, setLink] = useState(fileInfo.data?.bundle?.bundle.sourceUrl);
+  const [link, setLink] = useQueryAndSetter(
+    ['newLink', bundle.data?.bundle],
+    bundle.data,
+    async () => bundle.data?.bundle.sourceUrl
+  );
+  const [preview, setPreview] = useQueryAndSetter(
+    ['newPreview', bundle.data?.bundle],
+    bundle.data,
+    async () => bundle.data?.previewUrl
+  );
+  const [name, setName] = useQueryAndSetter(
+    ['newName', bundle.data?.bundle],
+    bundle.data,
+    async () => bundle.data?.name
+  );
+  const [tags, setTags] = useQueryAndSetter(
+    ['newTags', bundle.data?.bundle],
+    bundle.data,
+    async () => window.api.getTags(bundle.data?.id ?? '')
+  );
+
   const currentTags = useQuery<string[]>(
-    ['tags', fileInfo.data?.path],
+    ['tags', bundle.data?.id],
     async () => {
-      return window.api.getTags(fileInfo.data?.path ?? '');
-    }
-  );
-  const tags = useQuery<string[]>(
-    ['tags', fileInfo.data?.path, fileInfo.data?.bundle?.bundle],
-    async () => {
-      return window.api.getTags(fileInfo.data?.path ?? '');
-    }
-  );
-  const updateTags = useMutation(
-    ['tags', fileInfo.data?.path, fileInfo.data?.bundle?.bundle],
-    async (values: string[]) => {
-      return values;
-    },
-    {
-      onSuccess: (data) => {
-        queryClient.setQueriesData(
-          ['tags', fileInfo.data?.path, fileInfo.data?.bundle?.bundle],
-          data
-        );
-      },
+      return window.api.getTags(bundle.data?.id ?? '');
     }
   );
 
   const changed = useMemo(
     () =>
-      description !== fileInfo.data?.bundle?.bundle.description ||
-      link !== fileInfo.data?.bundle?.bundle.sourceUrl ||
+      description.data !== bundle.data?.bundle.description ||
+      link.data !== bundle.data?.bundle.sourceUrl ||
+      name.data !== bundle.data?.name ||
+      preview.data !== bundle.data?.previewUrl ||
       !arraysEqual(currentTags.data, tags.data),
-    [
-      currentTags.data,
-      tags.data,
-      fileInfo.data?.bundle?.bundle.description,
-      fileInfo.data?.bundle?.bundle.sourceUrl,
-      description,
-      link,
-    ]
+    [currentTags.data, tags.data, bundle.data, description, link, name, preview]
   );
 
   const handleSubmit = useCallback(
     async (e: React.SyntheticEvent) => {
       e.preventDefault();
 
-      if (!fileInfo.data?.bundle) {
+      if (!bundle.data?.bundle) {
         return;
       }
 
       const target = e.target as typeof e.target & {
         description: { value: string };
         sourceUrl: { value: string };
+        name: { value: string };
+        preview: { value: string };
       };
 
-      const newFileInfo = structuredClone(fileInfo.data);
-      newFileInfo.bundle!.bundle.description = target.description.value;
-      newFileInfo.bundle!.bundle.sourceUrl = target.sourceUrl.value;
+      const newBundleInfo = structuredClone(bundle.data);
+      if (newBundleInfo.bundle) {
+        newBundleInfo.bundle.description = description.data;
+        newBundleInfo.bundle.sourceUrl = link.data;
+        if (bundle.data.isVirtual) {
+          const virtualNewBundleInfo = newBundleInfo as VirtualBundle;
+          virtualNewBundleInfo.name = name.data ?? '';
+          virtualNewBundleInfo.previewUrl = preview.data;
+        }
+      }
 
       const newTags = await window.api.updateTags(
-        fileInfo.data?.path ?? '',
+        bundle.data?.id ?? '',
         tags.data ?? []
       );
 
-      queryClient.setQueriesData(['tags', fileInfo.data?.path], newTags);
+      queryClient.setQueriesData(['tags', bundle.data?.id], newTags);
       queryClient.invalidateQueries(['tags', database]);
 
-      const newBundle = await window.api.updateBundle(
-        fileInfo.data.path,
-        newFileInfo.bundle!.bundle
-      );
+      try {
+        const newBundle = await window.api.updateBundle(
+          bundle.data.id,
+          newBundleInfo.bundle
+        );
 
-      if (newBundle) {
-        fileInfo.data.bundle.bundle = newBundle;
-      } else {
-        fileInfo.data.bundle = undefined;
+        if (newBundle) {
+          bundle.data.bundle = newBundle;
+        } else {
+          bundle.data = undefined;
+        }
+
+        queryClient.invalidateQueries(['bundle', bundle.data?.id]);
+      } catch (error: any) {
+        toasterRef.current?.show({ message: error.message, intent: 'danger' });
       }
-
-      queryClient.setQueriesData(
-        ['fileInfo', fileInfo.data?.path],
-        newFileInfo
-      );
     },
-    [fileInfo, tags, database, queryClient]
+    [bundle, tags, database, queryClient]
   );
 
+  const handleDeleteButton = () => {
+    setDeleteConfirm(true);
+  };
+
   const handleDelete = useCallback(async () => {
-    await window.api.deleteBundle(fileInfo.data!.path);
+    await window.api.deleteBundle(bundle.data!.id);
     queryClient.invalidateQueries(['files']);
-    queryClient.invalidateQueries(['fileInfo', fileInfo.data!.path]);
-  }, [queryClient, fileInfo.data?.path]);
+    queryClient.invalidateQueries(['bundle', bundle.data?.id]);
+  }, [queryClient, bundle.data]);
 
   const handleReset = useCallback(() => {
-    setDescription(fileInfo.data!.bundle?.bundle.description);
-    setLink(fileInfo.data!.bundle?.bundle.sourceUrl);
-    updateTags.mutate(currentTags?.data ?? []);
-  }, [setDescription, setLink, fileInfo, updateTags, currentTags]);
+    name.refetch();
+    description.refetch();
+    link.refetch();
+    preview.refetch();
+    tags.refetch();
+  }, [name, description, link, preview, tags]);
+
+  const handlePreviewUpdate = useCallback(async () => {
+    if (link && bundle.data?.id) {
+      try {
+        await window.api.downloadPreview(bundle.data?.id, link.data ?? '');
+        bundle.refetch();
+        files.refetch();
+      } catch (error: any) {
+        toasterRef?.current?.show({ message: `${error}`, intent: 'danger' });
+      }
+    }
+  }, [link, files, bundle]);
 
   const handleImport = useCallback(async () => {
     if (link) {
       try {
-        const metadata = await window.api.importBundleMetadata(link);
+        const metadata = await window.api.importBundleMetadata(link.data ?? '');
         if (metadata.description) {
           setDescription(metadata.description);
         }
@@ -175,48 +200,82 @@ const BundleEditor = () => {
         toaster?.show({ message: `${error}`, intent: 'danger' });
       }
     }
-  }, [link]);
+  }, [link, setDescription]);
 
   const handleTagDelete = useCallback(
     (tag: ReactNode, index: number) => {
-      updateTags.mutate((tags.data ?? []).filter((t, i) => i !== index));
+      setTags((tags.data ?? []).filter((t, i) => i !== index));
     },
-    [updateTags, tags]
+    [setTags, tags]
   );
 
   const handleTagAdd = useCallback(
     (values: string[], method: TagInputAddMethod): boolean | void => {
-      updateTags.mutate([...(tags?.data ?? []), ...values]);
+      setTags([...(tags?.data ?? []), ...values]);
     },
-    [updateTags, tags]
+    [setTags, tags]
   );
 
-  if (!fileInfo.data) {
+  if (!bundle.data) {
     return <></>;
   }
 
   return (
     <>
-      <form onSubmit={handleSubmit} onReset={handleReset}>
+      <form
+        className="bundle-editor"
+        onSubmit={handleSubmit}
+        onReset={handleReset}
+      >
         <FormGroup label="Name">
           <InputGroup
-            disabled
+            className={name.data !== bundle.data!.name ? 'changed' : undefined}
+            disabled={!bundle.data.isVirtual}
             name="name"
             fill
-            defaultValue={fileInfo.data!.name}
+            value={name.data}
+            onChange={(v) => setName(v.target.value)}
           />
+        </FormGroup>
+
+        <FormGroup label="Preview">
+          <ControlGroup>
+            <div id="preview">
+              <img alt="preview" src={bundle.data!.previewUrl} />
+            </div>
+            <InputGroup
+              className={
+                preview.data !== bundle.data!.previewUrl ? 'changed' : undefined
+              }
+              disabled={!bundle.data.isVirtual}
+              name="preview"
+              fill
+              value={preview.data}
+              onChange={(v) => setPreview(v.target.value)}
+            />
+            {!bundle.data.isVirtual && (
+              <Button
+                disabled={!link}
+                onClick={handlePreviewUpdate}
+                icon="import"
+                title="Download preview image from link and save it to disk"
+              >
+                Update Preview
+              </Button>
+            )}
+          </ControlGroup>
         </FormGroup>
 
         <FormGroup label="Description">
           <TextArea
             name="description"
             className={
-              description !== fileInfo.data!.bundle?.bundle.description
+              description.data !== bundle.data!.bundle.description
                 ? 'changed'
                 : undefined
             }
             fill
-            value={description}
+            value={description.data}
             onChange={(v) => setDescription(v.target.value)}
           />
         </FormGroup>
@@ -225,12 +284,12 @@ const BundleEditor = () => {
             type="url"
             name="sourceUrl"
             className={
-              link !== fileInfo.data!.bundle?.bundle.sourceUrl
+              link.data !== bundle.data!.bundle.sourceUrl
                 ? 'changed'
                 : undefined
             }
             fill
-            value={link}
+            value={link.data}
             onChange={(v) => setLink(v.target.value)}
           />
         </FormGroup>
@@ -252,13 +311,31 @@ const BundleEditor = () => {
         <Button disabled={!changed} icon="reset" type="reset">
           Reset
         </Button>
-        <Button disabled={!link} onClick={handleImport} icon="import">
+        <Button
+          disabled={!link}
+          onClick={handleImport}
+          icon="import"
+          title="Download metadata from the link"
+        >
           Import
         </Button>
-        <Button icon="trash" onClick={handleDelete} intent="danger">
+        <Button icon="trash" onClick={handleDeleteButton} intent="danger">
           Delete
         </Button>
         <Toaster position={Position.BOTTOM_RIGHT} ref={toasterRef} />
+        <Alert
+          intent="danger"
+          confirmButtonText="Delete"
+          isOpen={deleteConfirm}
+          onConfirm={handleDelete}
+          onCancel={() => setDeleteConfirm(false)}
+          canEscapeKeyCancel
+          cancelButtonText="Cancel"
+          icon="trash"
+        >
+          Are you sure you want to delete the bundle, your files will <b>NOT</b>{' '}
+          be lost.
+        </Alert>
       </form>
     </>
   );

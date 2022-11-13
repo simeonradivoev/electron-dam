@@ -1,8 +1,30 @@
-import { ipcMain, BrowserWindow } from 'electron';
+import { ipcMain, BrowserWindow, dialog } from 'electron';
 import { lstat } from 'fs/promises';
 import Store from 'electron-store';
 import { Channels } from '../../shared/constants';
-import { SelectProjectDirectory } from './file-system-api';
+import { LoadDatabaseExact } from './database-api';
+
+export async function SelectProjectDirectory(
+  store: Store<StoreSchema>,
+  window: BrowserWindow | undefined
+): Promise<string | null> {
+  if (!window) {
+    return null;
+  }
+
+  const directory = await dialog.showOpenDialog(window, {
+    properties: ['openDirectory'],
+  });
+
+  if (!directory.canceled && directory.filePaths.length > 0) {
+    const directoryPath = directory.filePaths[0];
+    store.set('projectDirectory', directoryPath);
+    LoadDatabaseExact(store, directoryPath);
+    return directoryPath;
+  }
+
+  return null;
+}
 
 export default function InstallProjectDirectoryApi(store: Store<StoreSchema>) {
   ipcMain.handle(Channels.GetProjectDirectory, async () => {

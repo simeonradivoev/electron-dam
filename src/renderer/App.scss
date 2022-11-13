@@ -20,6 +20,15 @@ body {
   margin: 0;
 }
 
+.bp4-navbar {
+  height: 3em;
+  padding: 0 0.5em;
+
+  .bp4-navbar-group {
+    height: 3em;
+  }
+}
+
 .bp4-popover-wrapper {
   flex: 0;
 }
@@ -67,16 +76,29 @@ div[class^="style_MenuList"] {
   overflow: hidden;
 }
 
-.bundles-grid {
+.file-stats {
   display: flex;
   flex-direction: row;
-  flex-wrap: wrap;
-  justify-content: flex-start;
-  align-content: flex-start;
-  overflow: auto;
   gap: 1em;
-  padding: 1em;
+}
+
+.bundles-grid {
+
+  display: flex;
+  flex-direction: column;
   flex-grow: 1;
+
+  .grid {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    align-content: flex-start;
+    overflow: auto;
+    gap: 1em;
+    padding: 1em;
+    flex-grow: 1;
+  }
 
   .bundle {
 
@@ -110,7 +132,10 @@ div[class^="style_MenuList"] {
     }
 
     p {
+      display: -webkit-box;
       overflow: hidden;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
       text-overflow: ellipsis;
       max-height: 2.3em;
       font-size: 0.8em;
@@ -135,6 +160,29 @@ div[class^="style_MenuList"] {
 
         .overlay-icon {
           opacity: 0.8;
+        }
+
+        #properties span {
+          background-color: transparent;
+        }
+      }
+
+      #properties {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        display: flex;
+        flex-direction: row-reverse;
+        padding-right: 1em;
+        padding-left: 1em;
+        padding-bottom: 0.5em;
+
+        span {
+          color: $pt-app-background-color;
+          background-color: fade-out($color: $pt-text-color, $amount: 0.3);
+          border-radius: 0.2em;
+          padding: 0.2em;
         }
       }
 
@@ -172,16 +220,38 @@ div[class^="style_MenuList"] {
   }
 }
 
+.new-bundle-layout {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.new-bundle {
+  display: flex;
+  flex-direction: column;
+  padding: 1em;
+  width: 100%;
+}
+
+.bundle-details-layout {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  overflow: visible;
+}
+
 .bundle-info {
   display: flex;
   flex-direction: column;
   width: 100%;
   padding-left: 1em;
   padding-bottom: 1em;
+  overflow: auto;
 
   .breadcrumbs {
     min-height: 2em;
     max-height: 2em;
+    flex-grow: 1;
   }
 
   #preview-bundle-tab-panel {
@@ -296,15 +366,45 @@ div[class^="style_MenuList"] {
   }
 }
 
+.new-bundle {
+  #preview {
+    height: 12em;
+    width: 100%;
+    overflow: hidden;
+    background-color: $pt-dark-code-background-color;
+
+    img {
+      width: 100%;
+      /* or any custom size */
+      height: 100%;
+      object-fit: cover;
+      object-position: top;
+    }
+  }
+}
+
+.bundle-editor {
+  #preview {
+    height: 30px;
+
+    img {
+      width: 100%;
+      /* or any custom size */
+      height: 100%;
+      object-fit: cover;
+    }
+  }
+}
+
+#header {
+  display: flex;
+  flex-direction: row;
+}
+
 .file-info-panel {
   display: flex;
   flex-direction: column;
   height: 100%;
-
-  #header {
-    display: flex;
-    flex-direction: row;
-  }
 
   .tags {
     margin: 0.5em;

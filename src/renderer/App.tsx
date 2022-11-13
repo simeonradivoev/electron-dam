@@ -137,6 +137,7 @@ const App: React.FC = () => {
         setSideBarSize,
         setFileInfo,
         fileInfo,
+        projectDirectory,
       }}
     >
       <TitleBar

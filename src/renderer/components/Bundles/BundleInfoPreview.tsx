@@ -12,26 +12,28 @@ import { AppContext } from 'renderer/AppContext';
 import { flattenNodes } from 'renderer/scripts/file-tree';
 import humanFileSize from 'renderer/scripts/utils';
 import BundleFileEntry from './BundleFileEntry';
-import { BundleInfoContextType } from './BundleInfo';
+import { BundleDetailsContextType } from './BundleDetailsLayout';
 import BundlePreview from './BundlePreview';
 
 const BundleInfoPreview = () => {
-  const { fileInfo } = useOutletContext<BundleInfoContextType>();
+  const { bundle } = useOutletContext<BundleDetailsContextType>();
   const { files } = useContext(AppContext);
 
   const flatNodes = useQuery<TreeNodeInfo<FileTreeNode>[]>(
-    ['flag-nodes', fileInfo.data],
-    () => {
+    ['flag-nodes', bundle.data?.id],
+    ({ queryKey }) => {
       return flattenNodes(files.data)
         .filter((node) => !node.nodeData?.isDirectory)
-        .filter((node) => node.nodeData?.path.startsWith(fileInfo.data!.path));
+        .filter((node) =>
+          node.nodeData?.path.startsWith(queryKey[1] as string)
+        );
     },
-    { enabled: !!fileInfo.data }
+    { enabled: !!bundle.data?.id }
   );
 
   return (
     <>
-      <BundlePreview fileInfo={fileInfo.data ?? null} />
+      <BundlePreview bundle={bundle.data ?? null} />
       {flatNodes.data ? (
         <>
           <ul className="file-stats">
@@ -49,6 +51,11 @@ const BundleInfoPreview = () => {
             ) : (
               <Tag icon="floppy-disk" minimal>
                 <div className={Classes.SKELETON}>Size: Loading</div>
+              </Tag>
+            )}
+            {bundle.data?.isVirtual && (
+              <Tag icon="cloud" minimal title={bundle.data?.id}>
+                Virtual
               </Tag>
             )}
           </ul>

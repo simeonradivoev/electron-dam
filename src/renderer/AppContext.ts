@@ -22,6 +22,7 @@ export interface AppContextSchema {
   setSideBarSize: (size: number) => void;
   setFileInfo: (fileInfo: FileInfo | null) => void;
   fileInfo: FileInfo | null;
+  projectDirectory: UseQueryResult<string | null> | undefined;
 }
 
 export const AppContext = createContext({} as AppContextSchema);

@@ -25,19 +25,27 @@ async function searchParents<T>(
 
 async function loadDirectoryBundle(
   bundleDirectory: string
-): Promise<Bundle | undefined> {
+): Promise<BundleInfo | undefined> {
   const bundlePath = path.join(bundleDirectory, 'bundle.json');
   const bundleStat = await fs.lstat(bundlePath).catch((e) => null);
   if (bundleStat) {
     const fileData = await fs.readFile(bundlePath, 'utf8');
-    return JSON.parse(fileData);
+    const entry: BundleInfo = {
+      id: bundleDirectory,
+      bundle: JSON.parse(fileData),
+      isVirtual: false,
+      name: path.basename(bundleDirectory),
+    };
+    return entry;
   }
   return undefined;
 }
 
 async function searchParentBundle(
   searchPath: string
-): Promise<{ bundle: Bundle; name: string; directory: string } | undefined> {
+): Promise<
+  { bundle: BundleInfo; name: string; directory: string } | undefined
+> {
   return searchParents(searchPath, async (parentPath: string) => {
     const bundle = await loadDirectoryBundle(parentPath);
     if (bundle) {
@@ -85,6 +93,7 @@ async function buildFileInfo(
 
     const bundle = await loadDirectoryBundle(filePath);
     if (bundle) {
+      bundle.previewUrl = info.previewPath;
       info.bundle = {
         name: path.basename(filePath),
         isParentBundle: false,
@@ -117,7 +126,7 @@ async function buildFileInfo(
         const result = ajs.ConvertFileList(fileList, 'glb2');
 
         // check if the conversion succeeded
-        if (!result.IsSuccess() || result.FileCount() == 0) {
+        if (!result.IsSuccess() || result.FileCount() === 0) {
           console.error(result.GetErrorCode());
           return;
         }

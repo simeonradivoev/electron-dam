@@ -9,47 +9,69 @@ import {
 import { ContextMenu2, IPopover2Props, MenuItem2 } from '@blueprintjs/popover2';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback } from 'react';
+import { useOutletContext } from 'react-router-dom';
+import { BundlesContextType } from './BundlesLayout';
 
 type Props = {
-  info: TreeNodeInfo;
-  node: FileTreeNode;
+  bundle: BundleInfo;
   onSelect: (id: string | number) => void;
-  viewInExplorer: (id: string | number) => void;
   setFileInfo: (fileInfo: FileInfo | null) => void;
 };
 
-const Bundle = ({
-  node,
-  info,
-  onSelect: select,
-  viewInExplorer,
-  setFileInfo,
-}: Props) => {
+const Bundle = ({ bundle, onSelect: select, setFileInfo }: Props) => {
   const queryClient = useQueryClient();
+  const { viewInExplorer } = useOutletContext<BundlesContextType>();
+  const isSelected = false;
 
-  const thumbnail = useQuery(['thumbanil', node.previewPath], async () => {
-    if (node.previewPath) {
-      return window.api.getPreview(node.previewPath, 128);
+  const thumbnail = useQuery(
+    ['thumbanil', bundle.id, bundle.previewUrl, bundle.isVirtual],
+    async ({
+      queryKey,
+    }: {
+      queryKey: [
+        key: string,
+        id: string,
+        previewUrl: string | undefined,
+        isVirtual: boolean
+      ];
+    }) => {
+      const [key, id, previewPath, isVirtual] = queryKey;
+      if (isVirtual) {
+        return previewPath;
+      }
+      if (previewPath) {
+        return window.api.getPreview(previewPath, 128);
+      }
+      return window.api.getPreview(id, 128);
     }
-    return window.api.getPreview(node.path, 128);
-  });
+  );
 
   const handleDelete = useCallback(async () => {
-    await window.api.deleteBundle(node.path);
+    await window.api.deleteBundle(bundle.id);
     queryClient.invalidateQueries(['files']);
     setFileInfo(null);
-  }, [queryClient, node.path, setFileInfo]);
+  }, [queryClient, bundle.id, setFileInfo]);
+
+  const handleView = useCallback(() => {
+    if (bundle.isVirtual) {
+      window.open(bundle.id, '_blank');
+    } else {
+      viewInExplorer(bundle.id);
+    }
+  }, [bundle, viewInExplorer]);
 
   return (
     <ContextMenu2
       popoverProps={{ position: Position.RIGHT_TOP } as IPopover2Props}
-      className={`bundle ${info.isSelected ? 'active' : ''}`}
+      title={bundle.name}
+      className={`bundle ${isSelected ? 'active' : ''}`}
       content={
         <Menu>
           <MenuItem2
+            disabled={bundle.isVirtual}
             icon="folder-open"
             text="View In Explorer"
-            onClick={() => viewInExplorer(info.id)}
+            onClick={handleView}
           />
           <MenuItem2
             intent="danger"
@@ -64,13 +86,22 @@ const Bundle = ({
         className="preview"
         minimal
         onClick={() => {
-          select(info.id);
+          select(bundle.id);
         }}
       >
         <Icon className="overlay-icon" icon="search" />
-        {thumbnail ? <img alt={node.name} src={thumbnail.data} /> : <Spinner />}
+        <div id="properties">
+          {bundle.isVirtual && (
+            <Icon title="Virtual Bundle" className="virtual" icon="cloud" />
+          )}
+        </div>
+        {thumbnail ? (
+          <img alt={bundle.name} src={thumbnail.data} />
+        ) : (
+          <Spinner />
+        )}
       </Button>
-      <p>{node.name}</p>
+      <p>{bundle.name}</p>
     </ContextMenu2>
   );
 };

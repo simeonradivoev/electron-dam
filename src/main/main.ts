@@ -14,11 +14,11 @@ import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
 import Store from 'electron-store';
 import { resolveHtmlPath } from './util';
-import { LoadDatabase, SelectProjectDirectory } from './api/file-system-api';
-import InitializeBundlesApi from './api/bundles-api';
+import { InitializeBundlesApiGlobal } from './api/bundles-api';
 import InstallProjectDirectoryApi from './api/project-api';
 import InitializeMetadataApi from './api/import-metadata-api';
 import InitializeWindowApi from './api/window-api';
+import { LoadDatabase } from './api/database-api';
 
 class AppUpdater {
   constructor() {
@@ -32,7 +32,7 @@ let mainWindow: BrowserWindow | null = null;
 const store = new Store<StoreSchema>();
 
 InitializeWindowApi();
-InitializeBundlesApi();
+InitializeBundlesApiGlobal();
 InstallProjectDirectoryApi(store);
 InitializeMetadataApi();
 

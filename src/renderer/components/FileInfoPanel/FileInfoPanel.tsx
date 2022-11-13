@@ -106,7 +106,10 @@ const FileInfoPanel: React.FC<FileInfoPanelProps> = ({
     );
   } else if (fileInfo.data?.isDirectory && fileInfo.data?.bundle) {
     previewPanel = (
-      <BundlePreview className="y-scroll wide" fileInfo={fileInfo.data} />
+      <BundlePreview
+        className="y-scroll wide"
+        bundle={fileInfo.data.bundle?.bundle}
+      />
     );
   } else {
     previewPanel = <div className="preview-empty" />;
