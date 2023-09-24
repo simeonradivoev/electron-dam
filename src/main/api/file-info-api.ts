@@ -3,9 +3,8 @@ import path from 'path';
 import Store from 'electron-store';
 import { ipcMain, IpcMainInvokeEvent } from 'electron';
 import { Blob } from 'buffer';
+import { assimpjs } from 'assimpjs';
 import { Channels, previewTypes } from '../../shared/constants';
-
-const assimpjs = require('assimpjs')();
 
 async function searchParents<T>(
   searchPath: string,
