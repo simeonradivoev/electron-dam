@@ -199,8 +199,8 @@
     "webpack-merge": "^5.8.0"
   },
   "build": {
-    "productName": "ElectronReact",
-    "appId": "org.erb.ElectronReact",
+    "productName": "Electron DAM",
+    "appId": "com.simeonradivoev.ElectronDam",
     "asar": true,
     "asarUnpack": "**\\*.{node,dll}",
     "files": [
@@ -258,12 +258,12 @@
     ],
     "publish": {
       "provider": "github",
-      "owner": "electron-react-boilerplate",
-      "repo": "electron-react-boilerplate"
+      "owner": "simeonradivoev",
+      "repo": "electron-dam"
     }
   },
   "collective": {
-    "url": "https://opencollective.com/electron-react-boilerplate-594"
+    "url": ""
   },
   "devEngines": {
     "node": ">=14.x",
