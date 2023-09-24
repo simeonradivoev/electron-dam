@@ -43,7 +43,7 @@ const ExplorerBarTree = ({
     ) => {
       const originallySelected = node.isSelected;
       setSelected(node.id, !originallySelected);
-      navigate(`/explorer/${node.id}`);
+      navigate(`/explorer/${encodeURIComponent(node.id)}`);
     },
     [setSelected, navigate]
   );
