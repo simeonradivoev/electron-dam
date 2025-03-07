@@ -15,19 +15,24 @@ I created this app because I got to a point where I had a ton of assets accumula
 * Light/Dark Mode using [Blueprint JS](https://blueprintjs.com/)
 * Tagging
 * Searching and Filtering
+* Homepage with stats
+* Virtual Bundles
 
 ## Supported formats
 * 3D Models: (obj, fbx, gltf, stl)
 * Audio: (mp3,flac,wav,ogg)
 * Images: (png,jpg,gif,svg,apng,ico)
+* Text: (txt,md)
 
 ## Screenshots
-![AudioPreview](.github/Screenshots/electron_27HidJ71TB.png)
+![AudioPreview](.github/Screenshots/electron_mx0DTr60kQ.png)
 ![BundlesGrid](.github/Screenshots/electron_NxIUXz8iCN.png)
+![HomeScreen](.github/Screenshots/electron_OCFSKhu24y.png)
 ![ImagePreview](.github/Screenshots/electron_Q2yWv052BV.png)
 ![BundlePreview](.github/Screenshots/electron_zLNclm1mOu.png)
 ![BundlePreview](.github/Screenshots/electron_MzX5N9h0ds.png)
 ![ModelPreview](.github/Screenshots/electron_UGd604YMdN.png)
+### Dark Mode
 ![DarkMode](.github/Screenshots/electron_ONLVP4GnkT.png)
 
 ## 🔩 Technology Stack
