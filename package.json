@@ -1,29 +1,4 @@
 {
-  "version": "0.1.0-alpha",
-  "description": "A bundle based digital asset manager built on top of electron using React and typescript. Based on the Electron React Boilerplate",
-  "keywords": [
-    "DAM",
-    "manager",
-    "assets",
-    "gamedev",
-    "development",
-    "digital-assets"
-  ],
-  "homepage": "https://github.com/simeonradivoev/electron-dam",
-  "bugs": {
-    "url": "https://github.com/simeonradivoev/electron-dam/issues"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/simeonradivoev/electron-dam.git"
-  },
-  "license": "MIT",
-  "author": {
-    "name": "Simeon Radivoev",
-    "email": "simeonradivoev@gmail.com",
-    "url": "https://simeonradivoev.com/"
-  },
-  "contributors": [],
   "main": "./src/main/main.ts",
   "scripts": {
     "build": "concurrently \"npm run build:main\" \"npm run build:renderer\"",

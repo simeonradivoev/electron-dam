@@ -1,13 +1,30 @@
 {
   "name": "electron-dam",
-  "version": "0.0.1",
-  "description": "A Digital Asset Manager built on top of Electron and React",
+  "version": "0.1.0-alpha",
+  "description": "A bundle based digital asset manager built on top of electron using React and typescript. Based on the Electron React Boilerplate",
+  "keywords": [
+    "DAM",
+    "manager",
+    "assets",
+    "gamedev",
+    "development",
+    "digital-assets"
+  ],
+  "homepage": "https://github.com/simeonradivoev/electron-dam",
+  "bugs": {
+    "url": "https://github.com/simeonradivoev/electron-dam/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/simeonradivoev/electron-dam.git"
+  },
   "license": "MIT",
   "author": {
-    "name": "Simeon Radivoev ",
+    "name": "Simeon Radivoev",
     "email": "simeonradivoev@gmail.com",
-    "url": "https://github.com/electron-react-boilerplate"
+    "url": "https://simeonradivoev.com/"
   },
+  "contributors": [],
   "main": "./dist/main/main.js",
   "scripts": {
     "electron-rebuild": "node -r ts-node/register ../../.erb/scripts/electron-rebuild.js",
