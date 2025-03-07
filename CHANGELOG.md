@@ -15,9 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Audio player has more functionality nad polish
+- Audio player has more functionality and polish
 - Double clicking an audio file should auto play it
-- Folders now show grid preview of its contents
+- Folders now show grid preview of their contents
 - Scrolling to selected files should work better
 - Bundle preview should now remember its scroll position
 - Added a basic home screen

@@ -1,20 +1,13 @@
+/* eslint-disable prettier/prettier */
 // src/renderer/components/HomePanel/Home.tsx
-import React, { useState, useEffect, useContext } from 'react';
-import {
-  Button,
-  Card,
-  Icon,
-  NonIdealState,
-  Spinner,
-  Tag,
-} from '@blueprintjs/core';
+import { useState, useEffect, useContext } from 'react';
+import { Card, Icon, NonIdealState, Spinner, Tag } from '@blueprintjs/core';
 import { useQueryClient } from '@tanstack/react-query';
 import { AppContext } from 'renderer/AppContext';
 import { useNavigate } from 'react-router-dom';
-import Bundle from '../Bundles/Bundle';
-import banner from '../../../../assets/icon.png';
 import { forEachNode } from 'renderer/scripts/file-tree';
-import { node } from 'webpack';
+import humanFileSize from 'renderer/scripts/utils';
+import Bundle from '../Bundles/Bundle';
 
 interface Props {
   // Add any props you need here
@@ -115,13 +108,7 @@ const Home = (props: Props) => {
             <Icon icon="folder-open" /> All Assets Size
           </p>
           <h1>
-            {sizeOfAllFiles < 0 ? (
-              <Spinner />
-            ) : (
-              `${
-                Math.floor((sizeOfAllFiles / (1024 * 1024 * 1024)) * 10) / 10
-              } GB`
-            )}
+            {sizeOfAllFiles < 0 ? <Spinner /> : humanFileSize(sizeOfAllFiles)}
           </h1>
         </Card>
       </div>
