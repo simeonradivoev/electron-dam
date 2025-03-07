@@ -7,13 +7,16 @@ import {
   Tag,
   Spinner,
   Button,
+  Navbar,
+  NavbarGroup,
+  NavbarDivider,
 } from '@blueprintjs/core';
 import { Breadcrumbs2, Popover2 } from '@blueprintjs/popover2';
 import { Canvas } from '@react-three/fiber';
 import { useQuery } from '@tanstack/react-query';
 import { useContext } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { useMatch } from 'react-router-dom';
+import { useMatch, useSearchParams } from 'react-router-dom';
 import { AppContext } from 'renderer/AppContext';
 import { ImportMedia } from 'renderer/scripts/loader';
 import humanFileSize from 'renderer/scripts/utils';
@@ -22,6 +25,7 @@ import PreviewPanel3D from '../PreviewPanel3D';
 import PreviewPanelAudio from '../PreviewPanelAudio';
 import PreviewPanelImage from '../PreviewPanelImage';
 import FileInfoTags from './FileInfoTags';
+import FolderFileGrid from './FolderFileGrid';
 
 interface FileInfoPanelProps {
   panelSize: number;
@@ -40,8 +44,9 @@ const FileInfoPanel: React.FC<FileInfoPanelProps> = ({
   filter,
   contextMenu,
 }) => {
-  const { database } = useContext(AppContext);
+  const { database, viewInExplorer } = useContext(AppContext);
   const match = useMatch('/explorer/:file');
+  const [searchParams] = useSearchParams();
   const fileInfo = useQuery(
     ['fileInfo', match?.params.file],
     async (queryKey) => {
@@ -78,6 +83,7 @@ const FileInfoPanel: React.FC<FileInfoPanelProps> = ({
         <PreviewPanelAudio
           panelSize={panelSize}
           importedAudio={importedAudio}
+          autoPlay={searchParams.get('autoPlay') === 'true'}
         />
       </div>
     );
@@ -104,13 +110,23 @@ const FileInfoPanel: React.FC<FileInfoPanelProps> = ({
         />
       </Tabs>
     );
-  } else if (fileInfo.data?.isDirectory && fileInfo.data?.bundle) {
+  }
+  // Bundles
+  else if (fileInfo.data?.isDirectory && fileInfo.data?.bundle) {
     previewPanel = (
       <BundlePreview
         className="y-scroll wide"
         bundle={fileInfo.data.bundle?.bundle}
+        onSelect={(s: string | number) => {
+          setSelected(s, true);
+        }}
+        showFiles
       />
     );
+  }
+  // Folder
+  else if (fileInfo.data?.isDirectory) {
+    previewPanel = <FolderFileGrid path={fileInfo.data.path} />;
   } else {
     previewPanel = <div className="preview-empty" />;
   }
@@ -146,7 +162,7 @@ const FileInfoPanel: React.FC<FileInfoPanelProps> = ({
                       const selectPath = info.path
                         .slice(0, info.relativePathStart + 1)
                         .concat(array.slice(0, index + 1).join('\\'));
-                      setSelected(selectPath, true);
+                      viewInExplorer(selectPath);
                     }
                   : undefined,
               text: path,
@@ -172,42 +188,45 @@ const FileInfoPanel: React.FC<FileInfoPanelProps> = ({
 
   return (
     <div className="file-info-panel">
-      <div id="header">
-        <Breadcrumbs2
-          className="breadcrumbs"
-          collapseFrom="end"
-          overflowListProps={{ alwaysRenderOverflow: true }}
-          items={
-            (BREADCRUMBS.isPreviousData
-              ? BREADCRUMBS.data?.concat({
-                  text: <Spinner size={16} />,
-                } as BreadcrumbProps)
-              : BREADCRUMBS.data) ?? []
-          }
-        />
-        <Divider />
-        <Popover2
-          interactionKind="click"
-          position="bottom"
-          minimal
-          content={
-            fileInfo.data ? (
-              contextMenu(
-                fileInfo.data.path ?? '',
-                fileInfo.data.path?.substring(
-                  fileInfo.data.relativePathStart + 1
-                ),
-                fileInfo.data.isDirectory ?? true
+      <Navbar id="header ">
+        <NavbarGroup>
+          <Breadcrumbs2
+            className="breadcrumbs"
+            collapseFrom="end"
+            overflowListProps={{ alwaysRenderOverflow: true }}
+            items={
+              (BREADCRUMBS.isPreviousData
+                ? BREADCRUMBS.data?.concat({
+                    text: <Spinner size={16} />,
+                  } as BreadcrumbProps)
+                : BREADCRUMBS.data) ?? []
+            }
+          />
+        </NavbarGroup>
+        <NavbarGroup align="right">
+          <NavbarDivider />
+          <Popover2
+            interactionKind="click"
+            position="bottom"
+            minimal
+            content={
+              fileInfo.data ? (
+                contextMenu(
+                  fileInfo.data.path ?? '',
+                  fileInfo.data.path?.substring(
+                    fileInfo.data.relativePathStart + 1
+                  ),
+                  fileInfo.data.isDirectory ?? true
+                )
+              ) : (
+                <></>
               )
-            ) : (
-              <></>
-            )
-          }
-        >
-          <Button minimal icon="menu" />
-        </Popover2>
-      </div>
-      <Divider />
+            }
+          >
+            <Button minimal icon="menu" />
+          </Popover2>
+        </NavbarGroup>
+      </Navbar>
       <div className="preview-3d">
         <Canvas
           style={{ display: importedMesh.data ? 'block' : 'none' }}

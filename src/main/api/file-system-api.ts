@@ -24,7 +24,7 @@ export default function InitializeFileSystemApi(
   db: Loki
 ): { removeAllTags: (filePath: string) => void } {
   function beforeQuit() {
-    db.save((saveError) => {
+    db.save((saveError: any) => {
       if (saveError) {
         console.error(saveError);
       }
@@ -43,7 +43,7 @@ export default function InitializeFileSystemApi(
     const tagsSet = new Set<string>();
     files
       .find({ tags: { $size: { $gt: 0 } } })
-      .forEach((file) => file.tags.forEach((tag) => tagsSet.add(tag)));
+      .forEach((file: FileMetadata) => file.tags.forEach((tag) => tagsSet.add(tag)));
     return Array.from(tagsSet);
   }
 
@@ -82,7 +82,7 @@ export default function InitializeFileSystemApi(
       parentStack.pop();
       const parentPath = parentStack.join(path.sep);
       const tags = files.findOne({ path: parentPath })?.tags;
-      tags?.forEach((tag) => parentTags.add(tag));
+      tags?.forEach((tag:string) => parentTags.add(tag));
     }
     return Array.from(parentTags);
   }

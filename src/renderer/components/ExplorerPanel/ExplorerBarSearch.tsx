@@ -7,6 +7,8 @@ import {
   ButtonGroup,
   Tag,
   TreeNodeInfo,
+  Navbar,
+  NavbarDivider,
 } from '@blueprintjs/core';
 import { useQueryClient, UseQueryResult } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -55,7 +57,7 @@ const ExplorerBarSearch = ({
   }
 
   return (
-    <div>
+    <Navbar>
       {' '}
       <ControlGroup fill>
         <InputGroup
@@ -121,7 +123,7 @@ const ExplorerBarSearch = ({
           )}
         </div>
       </Collapse>
-    </div>
+    </Navbar>
   );
 };
 

@@ -23,6 +23,9 @@ export interface AppContextSchema {
   setFileInfo: (fileInfo: FileInfo | null) => void;
   fileInfo: FileInfo | null;
   projectDirectory: UseQueryResult<string | null> | undefined;
+  clearSelectedProjectDirectory: () => void;
+  viewInExplorer: (id: string | number) => void;
+  setSelectedProjectDirectory: (directory: string | null) => void;
 }
 
 export const AppContext = createContext({} as AppContextSchema);

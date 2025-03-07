@@ -1,5 +1,5 @@
 {
-  "version": "0.0.1-pre-alpha",
+  "version": "0.1.0-alpha",
   "description": "A bundle based digital asset manager built on top of electron using React and typescript. Based on the Electron React Boilerplate",
   "keywords": [
     "DAM",
@@ -116,6 +116,7 @@
     "immutability-helper": "^3.1.1",
     "lodash-es": "^4.17.21",
     "lokijs": "^1.5.12",
+    "rand-seed": "^2.1.7",
     "react": "^18.2.0",
     "react-audio-player": "^0.17.0",
     "react-dom": "^18.2.0",
@@ -123,6 +124,7 @@
     "react-router-dom": "^6.3.0",
     "react-split": "^2.0.14",
     "react-wavesurfer": "^0.8.6",
+    "scroll-into-view-if-needed": "^3.1.0",
     "three": "^0.144.0",
     "wavesurfer.js": "^6.2.0"
   },
@@ -133,12 +135,14 @@
     "@testing-library/jest-dom": "^5.16.5",
     "@testing-library/react": "^13.3.0",
     "@types/jest": "^28.1.7",
+    "@types/lokijs": "^1.5.14",
     "@types/node": "18.7.6",
     "@types/react": "^18.0.17",
     "@types/react-dom": "^18.0.6",
     "@types/react-test-renderer": "^18.0.0",
     "@types/terser-webpack-plugin": "^5.0.4",
     "@types/three": "^0.144.0",
+    "@types/wavesurfer.js": "^6.0.12",
     "@types/webpack-bundle-analyzer": "^4.4.2",
     "@typescript-eslint/eslint-plugin": "^5.33.1",
     "@typescript-eslint/parser": "^5.33.1",
@@ -264,7 +268,7 @@
   "collective": {
     "url": ""
   },
-  "devEngines": {
+  "engines": {
     "node": ">=14.x",
     "npm": ">=7.x"
   },

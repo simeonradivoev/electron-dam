@@ -1,7 +1,5 @@
 import {
   Button,
-  Divider,
-  InputGroup,
   Navbar,
   NavbarDivider,
   NavbarGroup,
@@ -13,14 +11,18 @@ import {
 } from '@blueprintjs/core';
 import { BreadcrumbProps, Breadcrumbs2 } from '@blueprintjs/popover2';
 import { useQuery, UseQueryResult } from '@tanstack/react-query';
-import { useState } from 'react';
-import { Outlet, useLocation, useMatch, useNavigate } from 'react-router-dom';
+import { useContext, useEffect, useRef } from 'react';
+import { Outlet, useBlocker, useLocation, useNavigate } from 'react-router-dom';
+import { AppContext } from 'renderer/AppContext';
 
 export type BundleDetailsContextType = {
   bundle: UseQueryResult<BundleInfo | undefined, unknown>;
+  viewInExplorer: (id: string | number) => void;
 };
 
 const BundleDetailsLayout = () => {
+  const { viewInExplorer } = useContext(AppContext);
+  const previewRef = useRef<HTMLDivElement | null>(null);
   const bundleMatch = useLocation();
   const params = bundleMatch.pathname.substring('/bundles/'.length);
   const tabParamIndex = params.lastIndexOf('/');
@@ -58,6 +60,24 @@ const BundleDetailsLayout = () => {
     navigate(`/bundles/${idParam}/${newTabId}`);
   };
 
+  useEffect(() => {
+    previewRef.current?.scroll(
+      0,
+      Number.parseFloat(localStorage.getItem(`bundle-scroll-${idParam}`) ?? '0')
+    );
+  });
+
+  const blocker = useBlocker(() => {
+    if (previewRef.current) {
+      localStorage.setItem(
+        `bundle-scroll-${idParam}`,
+        previewRef.current?.scrollTop.toString() ?? '0'
+      );
+    }
+
+    return false;
+  });
+
   return (
     <div className="bundle-details-layout">
       <Navbar>
@@ -76,8 +96,12 @@ const BundleDetailsLayout = () => {
           <Tab id="info" title="Info" />
           <Tab id="edit" title="Edit" disabled={!bundle.data} />
         </Tabs>
-        <div id="preview-bundle-tab-panel" className="y-scroll wide">
-          <Outlet context={{ bundle } as BundleDetailsContextType} />
+        <div
+          ref={previewRef}
+          id="preview-bundle-tab-panel"
+          className="y-scroll wide"
+        >
+          <Outlet context={{ bundle, viewInExplorer }} />
         </div>
       </div>
     </div>

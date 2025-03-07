@@ -1,6 +1,8 @@
 import { Icon, Spinner, TreeNodeInfo } from '@blueprintjs/core';
 import { useQuery } from '@tanstack/react-query';
-import { useRef, useState } from 'react';
+import { useContext, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { AppContext } from 'renderer/AppContext';
 import { useIntersection } from 'renderer/scripts/interactionObserver';
 
 type Props = {
@@ -9,6 +11,8 @@ type Props = {
 
 const BundleFileEntry = ({ node }: Props) => {
   const [isInView, setIsInView] = useState(false);
+  const { viewInExplorer } = useContext(AppContext);
+
   const preview = useQuery<string | null>(
     [node.nodeData?.path],
     async () => {
@@ -19,13 +23,18 @@ const BundleFileEntry = ({ node }: Props) => {
     { enabled: isInView }
   );
   const elementRef = useRef<HTMLDivElement | null>(null);
+  const navigate = useNavigate();
 
   useIntersection(elementRef, () => {
     setIsInView(true);
   });
 
+  const handleNavigation = () => {
+    viewInExplorer(node.id);
+  };
+
   return (
-    <div title={node.nodeData?.name} ref={elementRef} className="asset">
+    <div title={node.nodeData?.name} ref={elementRef} className="asset" onClick={handleNavigation}>
       {isInView && (
         <>
           {preview.data ? (

@@ -1,26 +1,34 @@
+
 import {
   Button,
   Icon,
   Menu,
   Position,
-  Spinner,
-  TreeNodeInfo,
+  Spinner
 } from '@blueprintjs/core';
 import { ContextMenu2, IPopover2Props, MenuItem2 } from '@blueprintjs/popover2';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useCallback } from 'react';
-import { useOutletContext } from 'react-router-dom';
-import { BundlesContextType } from './BundlesLayout';
+import { useCallback, useContext } from 'react';
+import { AppContext } from 'renderer/AppContext';
 
-type Props = {
+interface Props {
   bundle: BundleInfo;
   onSelect: (id: string | number) => void;
   setFileInfo: (fileInfo: FileInfo | null) => void;
-};
+  handleRefresh?: () => void;
 
-const Bundle = ({ bundle, onSelect: select, setFileInfo }: Props) => {
+  allowDelete?: boolean;
+}
+
+const Bundle = ({
+  bundle,
+  onSelect: select,
+  setFileInfo,
+  handleRefresh = undefined,
+  allowDelete = false,
+}: Props) => {
   const queryClient = useQueryClient();
-  const { viewInExplorer } = useOutletContext<BundlesContextType>();
+  const { viewInExplorer } = useContext(AppContext);
   const isSelected = false;
 
   const thumbnail = useQuery(
@@ -50,7 +58,10 @@ const Bundle = ({ bundle, onSelect: select, setFileInfo }: Props) => {
     await window.api.deleteBundle(bundle.id);
     queryClient.invalidateQueries(['files']);
     setFileInfo(null);
-  }, [queryClient, bundle.id, setFileInfo]);
+    if (handleRefresh) {
+      handleRefresh();
+    }
+  }, [queryClient, bundle.id, setFileInfo, handleRefresh]);
 
   const handleView = useCallback(() => {
     if (bundle.isVirtual) {
@@ -73,17 +84,19 @@ const Bundle = ({ bundle, onSelect: select, setFileInfo }: Props) => {
             text="View In Explorer"
             onClick={handleView}
           />
-          <MenuItem2
-            intent="danger"
-            icon="trash"
-            text="Delete"
-            onClick={handleDelete}
-          />
+          {allowDelete && (
+            <MenuItem2
+              intent="danger"
+              icon="trash"
+              text="Delete"
+              onClick={handleDelete}
+            />
+          )}
         </Menu>
       }
     >
       <Button
-        className="preview"
+        className={`preview ${bundle.isVirtual ? 'virtual' : ''}`}
         minimal
         onClick={() => {
           select(bundle.id);
@@ -104,6 +117,11 @@ const Bundle = ({ bundle, onSelect: select, setFileInfo }: Props) => {
       <p>{bundle.name}</p>
     </ContextMenu2>
   );
+};
+
+Bundle.defaultProps = {
+  handleRefresh: undefined,
+  allowDelete: false,
 };
 
 export default Bundle;

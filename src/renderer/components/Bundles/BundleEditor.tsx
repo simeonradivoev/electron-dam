@@ -60,6 +60,7 @@ const BundleEditor = () => {
   const queryClient = useQueryClient();
   const toasterRef = useRef<Toaster>(null);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
 
   const [description, setDescription] = useQueryAndSetter(
     ['newDescription', bundle.data?.bundle],
@@ -155,7 +156,7 @@ const BundleEditor = () => {
         toasterRef.current?.show({ message: error.message, intent: 'danger' });
       }
     },
-    [bundle, tags, database, queryClient]
+    [bundle, tags, database, queryClient, description, link, name, preview]
   );
 
   const handleDeleteButton = () => {
@@ -216,6 +217,10 @@ const BundleEditor = () => {
     [setTags, tags]
   );
 
+  const handleSubmitButton = useCallback(() => {
+    formRef.current?.requestSubmit();
+  }, [formRef]);
+
   if (!bundle.data) {
     return <></>;
   }
@@ -226,6 +231,7 @@ const BundleEditor = () => {
         className="bundle-editor"
         onSubmit={handleSubmit}
         onReset={handleReset}
+        ref={formRef}
       >
         <FormGroup label="Name">
           <InputGroup
@@ -304,7 +310,7 @@ const BundleEditor = () => {
           icon="floppy-disk"
           intent={changed ? 'success' : 'none'}
           disabled={!changed}
-          type="submit"
+          onClick={handleSubmitButton}
         >
           Save
         </Button>

@@ -47,6 +47,7 @@ const BundleNew = (props: Props) => {
       name: bundleName,
       sourceUrl,
       id: bundleId,
+      date: new Date(Date.now()),
     };
     setIsCreatingBundle(true);
     await window.api.createVirtualBundle(virutalBundle);

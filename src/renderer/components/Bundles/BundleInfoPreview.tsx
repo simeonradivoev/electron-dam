@@ -6,7 +6,7 @@ import {
   TreeNodeInfo,
 } from '@blueprintjs/core';
 import { useQuery } from '@tanstack/react-query';
-import React, { useContext } from 'react';
+import React, { useContext, useCallback } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { AppContext } from 'renderer/AppContext';
 import { flattenNodes } from 'renderer/scripts/file-tree';
@@ -14,13 +14,17 @@ import humanFileSize from 'renderer/scripts/utils';
 import BundleFileEntry from './BundleFileEntry';
 import { BundleDetailsContextType } from './BundleDetailsLayout';
 import BundlePreview from './BundlePreview';
+import FolderFileGrid from '../FileInfoPanel/FolderFileGrid';
 
+/**
+ * This is the bundle preview that is shown in the bundles tab not in the explorer
+ */
 const BundleInfoPreview = () => {
-  const { bundle } = useOutletContext<BundleDetailsContextType>();
+  const { bundle, viewInExplorer } = useOutletContext<BundleDetailsContextType>();
   const { files } = useContext(AppContext);
 
   const flatNodes = useQuery<TreeNodeInfo<FileTreeNode>[]>(
-    ['flag-nodes', bundle.data?.id],
+    ['flat-nodes', bundle.data?.id],
     ({ queryKey }) => {
       return flattenNodes(files.data)
         .filter((node) => !node.nodeData?.isDirectory)
@@ -31,9 +35,16 @@ const BundleInfoPreview = () => {
     { enabled: !!bundle.data?.id }
   );
 
+  const handleView = useCallback(() => {
+    viewInExplorer(bundle.data!.id);
+  }, [bundle, viewInExplorer]);
+
   return (
     <>
-      <BundlePreview bundle={bundle.data ?? null} />
+      <BundlePreview
+        bundle={bundle.data ?? null}
+        onSelect={() => handleView()}
+      />
       {flatNodes.data ? (
         <>
           <ul className="file-stats">
@@ -60,11 +71,7 @@ const BundleInfoPreview = () => {
             )}
           </ul>
           <Divider />
-          <div className="asset-grid">
-            {flatNodes.data.map((node) => (
-              <BundleFileEntry node={node} key={node.id} />
-            ))}
-          </div>
+          <FolderFileGrid path={bundle.data?.id ?? ''} />
         </>
       ) : (
         <>

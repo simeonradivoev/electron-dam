@@ -3,8 +3,8 @@ import Store from 'electron-store';
 import { lstat } from 'fs/promises';
 import path from 'path';
 import Loki from 'lokijs';
-import InitializeBundlesApi from './bundles-api';
-import InitializeFileInfoApi from './file-info-api';
+import InitializeBundlesApi, { CleanupBundlesApi } from './bundles-api';
+import InitializeFileInfoApi, { CleanupFileInfoApi } from './file-info-api';
 import InitializeFileSystemApi from './file-system-api';
 
 let database: Loki;
@@ -13,7 +13,15 @@ export function LoadDatabaseExact(
   store: Store<StoreSchema>,
   directory: string
 ) {
-  database?.close();
+  database?.close((error) => {
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    CleanupFileInfoApi();
+    CleanupBundlesApi();
+  });
 
   database = new Loki(path.join(directory, 'dam-database.db'), {
     autosave: true,

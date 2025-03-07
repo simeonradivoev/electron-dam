@@ -49,6 +49,7 @@ declare global {
     id: string;
     previewUrl?: string | undefined;
     name: string;
+    date: Date;
   }
   interface BundleInfo {
     name: string;
@@ -56,6 +57,16 @@ declare global {
     previewUrl?: string;
     isVirtual: boolean;
     bundle: Bundle;
+    date: Date;
+  }
+  interface HomePageStats {
+    bundleCount: number;
+    virtualBundleCount: number;
+  }
+  interface HomePageBundles {
+    random: BundleInfo[];
+    recent: BundleInfo[];
+    stats: HomePageStats;
   }
   type FileDBValue = {
     selected: boolean | undefined;

@@ -2,15 +2,17 @@ import {
   TreeNodeInfo,
   Tree,
   ContextMenu,
-  Spinner,
-  MenuItem,
-  Menu,
+  Spinner
 } from '@blueprintjs/core';
 import { UseQueryResult } from '@tanstack/react-query';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { filterNodes } from 'renderer/scripts/file-tree';
+import scrollIntoView from 'scroll-into-view-if-needed';
 
+/**
+ * This is where the tree view is rendered
+ */
 type Props = {
   files: UseQueryResult<TreeNodeInfo<FileTreeNode>[], unknown>;
   setSelected: (id: string | number, selected: boolean) => void;
@@ -32,7 +34,7 @@ const ExplorerBarTree = ({
 }: Props) => {
   const treeRef = useRef<Tree<FileTreeNode>>(null);
   const [searchParams, setSearchParams] = useSearchParams();
-  const [focus, setFocus] = useState(searchParams.get('focus'));
+  const focus = searchParams.get('focus');
   const navigate = useNavigate();
 
   const handleNodeClick = useCallback(
@@ -46,6 +48,22 @@ const ExplorerBarTree = ({
       navigate(`/explorer/${encodeURIComponent(node.id)}`);
     },
     [setSelected, navigate]
+  );
+
+  const handleNodeDoubleClick = useCallback(
+    (
+      node: TreeNodeInfo,
+      nodePath: NodePath,
+      e: React.MouseEvent<HTMLElement>
+    ) => {
+      const originallySelected = node.isSelected;
+      setSelected(node.id, !originallySelected);
+      navigate({
+        pathname: `/explorer/${encodeURIComponent(node.id)}`,
+        search: `?autoPlay=${true}`,
+      });
+    },
+    [navigate, setSelected]
   );
 
   const handleNodeCollapse = useCallback(
@@ -87,7 +105,14 @@ const ExplorerBarTree = ({
       const scroll = async () => {
         // Wait for the tree to populate
         await new Promise((resolve) => setTimeout(resolve, 0));
-        treeRef.current?.getNodeContentElement(focus)?.scrollIntoView();
+        const element = treeRef.current?.getNodeContentElement(focus);
+        if (element) {
+          scrollIntoView(element, {
+            block: 'nearest',
+            inline: 'nearest',
+            scrollMode: 'if-needed',
+          });
+        }
       };
 
       scroll();
@@ -95,17 +120,23 @@ const ExplorerBarTree = ({
       const scroll = async () => {
         // Wait for the tree to populate
         await new Promise((resolve) => setTimeout(resolve, 0));
+
         const node = filterNodes(files.data, (n) => !!n.isSelected)[0];
         if (node) {
-          treeRef.current
-            ?.getNodeContentElement(node.id)
-            ?.scrollIntoView({ inline: 'center', block: 'center' });
+          const element = treeRef.current?.getNodeContentElement(node.id);
+          if (element) {
+            scrollIntoView(element, {
+              block: 'nearest',
+              inline: 'nearest',
+              scrollMode: 'if-needed',
+            });
+          }
         }
       };
 
       scroll();
     }
-  }, [focus, !!files.data, filter]);
+  }, [focus, files.data, filter]);
 
   return files.isSuccess && !files.isFetching ? (
     <Tree<FileTreeNode>
@@ -113,6 +144,7 @@ const ExplorerBarTree = ({
       className="tree y-scroll"
       contents={files.data}
       onNodeClick={handleNodeClick}
+      onNodeDoubleClick={handleNodeDoubleClick}
       onNodeCollapse={handleNodeCollapse}
       onNodeExpand={handleNodeExpand}
       onNodeContextMenu={handleContextMenu}

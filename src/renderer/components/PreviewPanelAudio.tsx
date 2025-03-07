@@ -1,63 +1,94 @@
 import { Button, ControlGroup, Divider, Slider } from '@blueprintjs/core';
 import { UseQueryResult } from '@tanstack/react-query';
-import React, { useEffect, useRef, useState } from 'react';
-import ReactAudioPlayer from 'react-audio-player';
 
-const WaveSurfer = require('wavesurfer.js');
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import ReactAudioPlayer from 'react-audio-player';
+import WaveSurfer from 'wavesurfer.js';
 
 type Props = {
   importedAudio: UseQueryResult<string | null, unknown>;
   panelSize: number;
+  autoPlay: boolean;
 };
 
-const PreviewPanelAudio = ({ panelSize, importedAudio }: Props) => {
+const PreviewPanelAudio = ({ panelSize, importedAudio, autoPlay }: Props) => {
   const waveformRef = useRef<HTMLDivElement>(null);
-  const wavesurfer = useRef<any>(null);
-  const [playing, setPlay] = useState(false);
-  const [volume, setVolume] = useState(0.5);
-  const [muted, setMuted] = useState(false);
+  const wavesurferRef = useRef<WaveSurfer>();
+  const [playing, setPlay] = useState(autoPlay);
+  const [volume, setVolume] = useState(
+    Number.parseFloat(localStorage.getItem('volume') ?? '0.5')
+  );
+  const [loop, setLoop] = useState(localStorage.getItem('loop') === 'true');
+  const [muted, setMuted] = useState(localStorage.getItem('muted') === 'true');
+
+  const updatePlay = (play: boolean) => {
+    if (play) {
+      wavesurferRef.current?.play();
+    } else {
+      wavesurferRef.current?.pause();
+    }
+  };
 
   useEffect(() => {
-    wavesurfer.current = WaveSurfer.create({
-      container: waveformRef.current,
-      barWidth: 3,
-      barRadius: 3,
+    localStorage.setItem('loop', loop.toString());
+  }, [loop]);
+
+  const handleLoop = () => {
+    if (localStorage.getItem('loop') === 'true') {
+      wavesurferRef.current?.play();
+    }
+  };
+
+  useEffect(() => {
+    wavesurferRef.current = WaveSurfer.create({
+      container: waveformRef.current!,
       cursorWidth: 2,
       responsive: true,
       height: 150,
+      waveColor: '#2d72d2',
+      progressColor: '#c87619',
       // If true, normalize by the maximum peak instead of 1.0.
       normalize: true,
       hideScrollbar: true,
+      mediaControls: true,
     });
-    wavesurfer.current.load(importedAudio.data);
-    setPlay(false);
+    wavesurferRef.current.on('finish', handleLoop);
+    wavesurferRef.current.on('play', () => setPlay(true));
+    wavesurferRef.current.on('pause', () => setPlay(false));
 
-    wavesurfer.current.on('ready', function () {
-      if (wavesurfer.current) {
-        wavesurfer.current.setVolume(volume);
-        setVolume(volume);
+    // Fixes issue with having # in name or path. encodeURI doesn't work
+    const fileUrl = importedAudio.data!.replace('#', '%23');
+    wavesurferRef.current.load(fileUrl);
+    setPlay(autoPlay);
+
+    wavesurferRef.current.on('ready', function () {
+      if (wavesurferRef.current) {
+        wavesurferRef.current.setVolume(muted ? 0 : volume);
+        updatePlay(autoPlay);
       }
     });
 
     return () => {
-      wavesurfer.current.destroy();
+      wavesurferRef.current?.destroy();
     };
-  }, [importedAudio, volume]);
+  }, [importedAudio]);
+
+  useEffect(() => updatePlay(playing), [playing]);
 
   useEffect(() => {
-    if (playing) {
-      wavesurfer.current.play();
-    } else {
-      wavesurfer.current.pause();
-    }
-  }, [playing]);
-
-  useEffect(() => {
-    wavesurfer.current.setVolume(muted ? 0 : volume);
+    wavesurferRef.current?.setVolume(muted ? 0 : volume);
+    localStorage.setItem('muted', muted ? 'true' : 'false');
+    localStorage.setItem('volume', volume.toString());
   }, [volume, muted]);
 
   useEffect(() => {
-    wavesurfer.current.drawer.fireEvent('redraw');
+    wavesurferRef.current?.fireEvent('redraw');
   }, [panelSize]);
 
   return (
@@ -70,12 +101,22 @@ const PreviewPanelAudio = ({ panelSize, importedAudio }: Props) => {
             icon={playing ? 'pause' : 'play'}
             intent={playing ? 'primary' : 'none'}
             onClick={() => {
-              setPlay(!playing);
+              if (wavesurferRef.current?.isPlaying()) {
+                wavesurferRef.current?.pause();
+              } else {
+                wavesurferRef.current?.play();
+              }
             }}
-          >
-            {playing ? 'Pause' : 'Play'}
-          </Button>
+          />
           <Button
+            icon="stop"
+            onClick={() => {
+              wavesurferRef.current?.stop();
+            }}
+          />
+          <Button active={loop} onClick={() => setLoop(!loop)} icon="repeat" />
+          <Button
+            active={muted}
             onClick={() => setMuted(!muted)}
             icon={muted ? 'volume-off' : 'volume-up'}
           />

@@ -1,8 +1,10 @@
+import Loki from 'lokijs';
 import { ipcMain, IpcMainInvokeEvent } from 'electron';
-import { lstat, writeFile, unlink, readdir, readFile } from 'fs/promises';
-import path, { dirname } from 'path';
+import { lstat, writeFile, unlink, readdir, readFile, stat } from 'fs/promises';
+import path from 'path';
 import Store from 'electron-store';
 import { Channels, previewTypes } from '../../shared/constants';
+import { getRandom } from '../util';
 
 async function createBundle(directory: string): Promise<boolean> {
   const directoryStat = await lstat(directory);
@@ -44,7 +46,8 @@ export default function InitializeBundlesApi(
   ): Promise<BundleInfo | undefined> {
     const bundlePath = path.join(filePath, 'bundle.json');
 
-    if (await lstat(bundlePath).catch((e) => false)) {
+    const bundleStat = await lstat(bundlePath).catch((e) => null);
+    if (bundleStat) {
       const bundleRaw = await readFile(bundlePath, 'utf8');
       const bundle = JSON.parse(bundleRaw);
       const bundleEntry: BundleInfo = {
@@ -52,6 +55,7 @@ export default function InitializeBundlesApi(
         bundle,
         name: path.basename(filePath),
         isVirtual: false,
+        date: bundleStat.birthtime,
       };
 
       for (let index = 0; index < previewTypes.length; index += 1) {
@@ -109,10 +113,38 @@ export default function InitializeBundlesApi(
         previewUrl: b.previewUrl,
         bundle: b,
         isVirtual: true,
+        date: b.date,
       })
     );
 
-    return bundles;
+    return bundles.sort((a, b) => b.date?.getTime() - a.date?.getTime());
+  }
+
+  async function getHomeBundles(): Promise<HomePageBundles | undefined> {
+    const bundles = await getBundles();
+
+    const randomIndices: Array<number> = [];
+    for (let i = 0; i < 3; i += 1) {
+      let randomIndex = Math.floor(Math.random() * bundles.length);
+      while (randomIndices.includes(randomIndex)) {
+        randomIndex = Math.floor(Math.random() * bundles.length);
+      }
+      randomIndices.push(randomIndex);
+    }
+    const seed = new Date(Date.now()).setHours(0, 0, 0, 0);
+
+    const projectDir = store.get('projectDirectory') as string | undefined;
+
+    return {
+      random: getRandom(bundles, 3, seed.toString()),
+      recent: bundles
+        .sort((a, b) => b.date?.getTime() - a.date?.getTime())
+        .slice(0, Math.min(5, bundles.length)),
+      stats: {
+        bundleCount: bundles.length,
+        virtualBundleCount: bundles.filter((b) => b.isVirtual).length
+      },
+    };
   }
 
   async function getBundle(id: string): Promise<BundleInfo | undefined> {
@@ -130,12 +162,15 @@ export default function InitializeBundlesApi(
   }
 
   async function deleteBundle(bundleId: string): Promise<void> {
-    const virtualBundle = virtualBundles.findOne({ sourceUrl: bundleId });
+    const virtualBundle = virtualBundles.findOne({ id: bundleId });
     if (virtualBundle) {
-      virtualBundles.findAndRemove({ sourceUrl: bundleId });
+      virtualBundles.findAndRemove({ id: bundleId });
       return;
     }
-    await unlink(path.join(bundleId, 'bundle.json'));
+    const bundlePath = path.join(bundleId, 'bundle.json');
+    if (await lstat(bundlePath).catch((e) => false)) {
+      unlink(bundlePath);
+    }
     await removeAllTags(bundleId);
   }
 
@@ -168,6 +203,7 @@ export default function InitializeBundlesApi(
     ): Promise<Bundle | undefined> => updateBundle(bundlePath, bundle)
   );
   ipcMain.handle(Channels.GetBundles, async () => getBundles());
+  ipcMain.handle(Channels.GetHomeBundle, async () => getHomeBundles());
   ipcMain.handle(
     Channels.CreateVirtualBundle,
     async (_event: IpcMainInvokeEvent, bundle: VirtualBundle) =>
@@ -178,8 +214,17 @@ export default function InitializeBundlesApi(
     async (_event: IpcMainInvokeEvent, id: string) => getBundle(id)
   );
   ipcMain.handle(
-    'delete-bundle',
+    Channels.DeleteBundle,
     async (_event: IpcMainInvokeEvent, bundlePath: string): Promise<void> =>
       deleteBundle(bundlePath)
   );
+}
+
+export function CleanupBundlesApi() {
+  ipcMain.removeHandler(Channels.UpdateBundle);
+  ipcMain.removeHandler(Channels.GetBundles);
+  ipcMain.removeHandler(Channels.GetHomeBundle);
+  ipcMain.removeHandler(Channels.CreateVirtualBundle);
+  ipcMain.removeHandler(Channels.GetBundle);
+  ipcMain.removeHandler(Channels.DeleteBundle);
 }

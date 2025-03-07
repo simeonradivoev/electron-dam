@@ -83,6 +83,7 @@ const createWindow = async () => {
     webPreferences: {
       // sandbox: false,
       webSecurity: false,
+      nodeIntegration: true,
       preload: app.isPackaged
         ? path.join(__dirname, 'preload.js')
         : path.join(__dirname, '../../.erb/dll/preload.js'),

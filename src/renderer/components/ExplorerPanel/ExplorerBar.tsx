@@ -47,7 +47,6 @@ const ExplorerBar = ({
         toggleTag={toggleTag}
         files={files}
       />
-      <Divider />
       <ExplorerBarTree
         filter={filter}
         files={files}

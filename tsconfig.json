@@ -24,7 +24,7 @@
     "resolveJsonModule": true,
     "allowJs": true,
     "outDir": "release/app/dist",
-    "noEmitOnError": true
+    "noEmitOnError": false
   },
   "exclude": [
     "test",

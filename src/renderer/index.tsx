@@ -1,7 +1,14 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createContext } from 'react';
 import { createRoot } from 'react-dom/client';
-import { HashRouter as Router, Route, Routes } from 'react-router-dom';
+import {
+  HashRouter as Router,
+  Route,
+  Routes,
+  ScrollRestoration,
+  createHashRouter,
+  RouterProvider,
+} from 'react-router-dom';
 import App from './App';
 import BundleEditor from './components/Bundles/BundleEditor';
 import BundleDetailsLayout from './components/Bundles/BundleDetailsLayout';
@@ -11,29 +18,43 @@ import BundleNew from './components/Bundles/BundleNew';
 import Explorer from './components/ExplorerPanel/Explorer';
 import Settings from './components/Settings/Settings';
 import BundlesLayout from './components/Bundles/BundlesLayout';
+import Home from './components/HomePanel/Home';
 
 const container = document.getElementById('root')!;
 const root = createRoot(container);
 const queryClient = new QueryClient();
+const route = createHashRouter([
+  {
+    path: '/',
+    element: <App />,
+    children: [
+      { index: true, element: <Home /> },
+      {
+        path: 'bundles',
+        children: [
+          { index: true, element: <BundlesGrid /> },
+          {
+            path: ':file/*',
+            element: <BundleDetailsLayout />,
+            children: [
+              { path: 'info', element: <BundleInfoPreview /> },
+              { path: 'edit', element: <BundleEditor /> },
+            ],
+          },
+          { path: 'new', element: <BundleNew /> },
+        ],
+      },
+      {
+        path: 'explorer/*',
+        element: <Explorer />
+      },
+      { path: 'settings', element: <Settings /> },
+    ],
+  },
+]);
 
 root.render(
   <QueryClientProvider client={queryClient}>
-    <Router>
-      <Routes>
-        <Route path="/" element={<App />}>
-          <Route index element={<></>} />
-          <Route path="bundles/*" element={<BundlesLayout />}>
-            <Route index element={<BundlesGrid />} />
-            <Route path=":file/*" element={<BundleDetailsLayout />}>
-              <Route path="info" element={<BundleInfoPreview />} />
-              <Route path="edit" element={<BundleEditor />} />
-            </Route>
-            <Route path="new" element={<BundleNew />} />
-          </Route>
-          <Route path="explorer/*" element={<Explorer />} />
-          <Route path="settings" element={<Settings />} />
-        </Route>
-      </Routes>
-    </Router>
+    <RouterProvider router={route} />
   </QueryClientProvider>
 );

@@ -64,7 +64,28 @@ div[class^="style_MenuList"] {
 }
 
 .dark {
-  background-color: $pt-dark-app-background-color;
+  background-color: $pt-dark-app-background-color !important;
+
+  .bundle {
+    background: $pt-dark-code-background-color !important;
+    color: $pt-dark-code-text-color !important;
+  }
+
+  .home {
+    background-color: $pt-dark-app-background-color !important;
+
+    .bp4-card {
+      box-shadow: none !important;
+    }
+  }
+
+  .bundles-grid .grid {
+    background-color: $pt-dark-app-background-color !important;
+  }
+
+  .tree {
+    background-color: $dark-gray1 !important;
+  }
 }
 
 .theme-wrapper {
@@ -98,6 +119,7 @@ div[class^="style_MenuList"] {
     gap: 1em;
     padding: 1em;
     flex-grow: 1;
+    background-color: $pt-app-background-color;
   }
 
   .bundle {
@@ -115,6 +137,7 @@ div[class^="style_MenuList"] {
     border-width: 1px;
     border-style: solid;
     border-radius: $pt-border-radius;
+    background-color: $white;
 
     &.active {
       background-color: $pt-intent-primary;
@@ -146,10 +169,14 @@ div[class^="style_MenuList"] {
       position: relative;
       width: 8em;
       height: 8em;
-      border-radius: 0.2em;
+      border-radius: calc($pt-border-radius * 2);
       overflow: hidden;
       padding: 0;
       cursor: pointer;
+
+      &.virtual {
+        border-radius: 2em;
+      }
 
       &:hover {
         background: black;
@@ -264,44 +291,44 @@ div[class^="style_MenuList"] {
       }
     }
   }
+}
 
-  .asset-grid {
-    margin-top: 1em;
+.asset-grid {
+  margin-top: 1em;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1em;
+
+  .asset {
+    width: 8em;
+    height: 8em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    border-width: 1px;
+    border-color: rgba($color: $pt-dark-popover-border-color, $alpha: $pt-border-shadow-opacity);
+    border-style: solid;
     display: flex;
-    flex-wrap: wrap;
-    gap: 1em;
+    flex-direction: column;
+    padding: 0.5em;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    border-radius: $pt-border-radius;
+    background-color: rgba($color: $pt-icon-color, $alpha: 0.05);
 
-    .asset {
-      width: 8em;
-      height: 8em;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      border-width: 1px;
-      border-color: rgba($color: $pt-dark-popover-border-color, $alpha: $pt-border-shadow-opacity);
-      border-style: solid;
-      display: flex;
-      flex-direction: column;
-      padding: 0.5em;
-      justify-content: center;
-      align-items: center;
-      cursor: pointer;
-      border-radius: $pt-border-radius;
-      background-color: rgba($color: $pt-icon-color, $alpha: 0.05);
+    &:hover {
+      background-color: rgba($color: $pt-icon-color, $alpha: 0.1);
+    }
 
-      &:hover {
-        background-color: rgba($color: $pt-icon-color, $alpha: 0.1);
-      }
+    img {
+      width: 100%;
+      height: 100%;
+    }
 
-      img {
-        width: 100%;
-        height: 100%;
-      }
-
-      .bp4-icon svg {
-        width: 4em;
-        height: 4em;
-        color: $pt-icon-color;
-      }
+    .bp4-icon svg {
+      width: 4em;
+      height: 4em;
+      color: $pt-icon-color;
     }
   }
 }
@@ -330,6 +357,25 @@ div[class^="style_MenuList"] {
 
 .tree {
   flex-grow: 1;
+  background-color: $pt-app-background-color;
+}
+
+.quick-tags {
+  display: flex;
+  flex-direction: row;
+  gap: 0.3em;
+  flex-wrap: wrap;
+  margin: 0.3em;
+  max-height: 5.5em;
+
+  .amount {
+    min-height: 0.5em;
+    padding: 0;
+    margin: 0.05em;
+    text-align: center;
+    font-size: 0.8em;
+    margin-left: 0.5em;
+  }
 }
 
 .side-panel {
@@ -337,26 +383,14 @@ div[class^="style_MenuList"] {
   flex-direction: column;
   height: 100%;
 
-  .search {
-    margin: 0.2em;
+  .bp4-navbar {
+    height: fit-content;
+    padding-top: 0.25em;
+    padding-bottom: 0.25em;
   }
 
-  .quick-tags {
-    display: flex;
-    flex-direction: row;
-    gap: 0.3em;
-    flex-wrap: wrap;
-    margin: 0.3em;
-    max-height: 5.5em;
-
-    .amount {
-      min-height: 0.5em;
-      padding: 0;
-      margin: 0.05em;
-      text-align: center;
-      font-size: 0.8em;
-      margin-left: 0.5em;
-    }
+  .search {
+    margin: 0.2em;
   }
 
   .centered {
@@ -438,6 +472,11 @@ div[class^="style_MenuList"] {
     @extend .preview;
     display: flex;
     flex-direction: column;
+
+    #waveform wave wave {
+      border-right-width: 0.2em !important;
+      border-color: $pt-code-text-color !important;
+    }
   }
 
   .preview-image {
@@ -500,8 +539,11 @@ div[class^="style_MenuList"] {
     align-items: center;
     gap: 1em;
 
+    h1 {
+      margin-right: auto;
+    }
+
     button {
-      margin-left: auto;
       width: 2em;
       height: 2em;
     }
@@ -597,4 +639,74 @@ div[class^="style_MenuList"] {
 
 .bp4-breadcrumb {
   white-space: nowrap;
+}
+
+.home {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 2em;
+  overflow-y: scroll;
+  overflow-x: hidden;
+  background-color: $pt-app-background-color;
+
+  .banner {
+    width: 18em;
+    margin-top: 4em;
+    margin-bottom: 8em;
+  }
+
+  .stats-container {
+    display: flex;
+    flex-direction: row;
+    gap: 2em;
+    margin-top: 4em;
+    flex-wrap: wrap;
+    justify-content: center;
+    padding-left: 2em;
+    padding-right: 2em;
+  }
+
+  .tags-container {
+    display: flex;
+    padding-left: 2em;
+    padding-right: 2em;
+
+    .quick-tags {
+      max-height: fit-content !important;
+    }
+  }
+
+  .bundles-container {
+    display: flex;
+    width: 100%;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 2em;
+    padding-left: 2em;
+    padding-right: 2em;
+    flex-wrap: wrap;
+
+    .bundles-section {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      height: 21em;
+
+      .grid {
+        justify-content: center;
+        column-gap: 1em;
+        row-gap: 10em;
+      }
+
+      h2 {
+        width: 100%;
+        text-align: center;
+      }
+    }
+  }
 }

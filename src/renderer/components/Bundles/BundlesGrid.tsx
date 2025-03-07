@@ -9,12 +9,13 @@ import {
 import { useQuery } from '@tanstack/react-query';
 
 import { useContext, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useOutletContext } from 'react-router-dom';
 import { AppContext } from 'renderer/AppContext';
 import Bundle from './Bundle';
 
 const BundlesGrid = () => {
   const { setFileInfo, setSelected, projectDirectory } = useContext(AppContext);
+  const { viewInExplorer } = useContext(AppContext);
   const [filter, setFilter] = useState('');
   const bundles = useQuery<BundleInfo[]>(
     ['bundles', projectDirectory],
@@ -31,7 +32,7 @@ const BundlesGrid = () => {
 
   const handleSelect = (id: string | number) => {
     navigate({
-      pathname: `/bundles/${id}/info`,
+      pathname: `/bundles/${encodeURI(id.toString())}/info`,
     });
   };
 
@@ -92,6 +93,8 @@ const BundlesGrid = () => {
               onSelect={handleSelect}
               bundle={b}
               key={b.id}
+              handleRefresh={handleRefresh}
+              allowDelete
             />
           ))
         ) : (

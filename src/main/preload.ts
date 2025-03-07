@@ -113,6 +113,9 @@ export const API = {
   createVirtualBundle(bundle: VirtualBundle): Promise<VirtualBundle> {
     return ipcRenderer.invoke(Channels.CreateVirtualBundle, bundle);
   },
+  getHomeBundles(): Promise<HomePageBundles | undefined> {
+    return ipcRenderer.invoke(Channels.GetHomeBundle);
+  },
 };
 
 contextBridge.exposeInMainWorld('api', API);

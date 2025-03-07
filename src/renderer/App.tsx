@@ -1,4 +1,4 @@
-import { Outlet } from 'react-router-dom';
+import { Outlet, ScrollRestoration, useNavigate } from 'react-router-dom';
 import './App.scss';
 import { useEffect, useState } from 'react';
 import { IDBPDatabase, openDB } from 'idb/with-async-ittr';
@@ -25,6 +25,7 @@ const App: React.FC = () => {
   const queryClient = useQueryClient();
 
   const { fileInfo, setFileInfo } = RegisterFileLoadFile();
+  const navigate = useNavigate();
 
   const projectDirectory = useQuery<string | null>(
     ['project-directory'],
@@ -81,6 +82,9 @@ const App: React.FC = () => {
     }
   );
 
+  const clearSelectedProjectDirectory = () =>
+    projectDirectoryMutation.mutate({ path: null });
+
   const setSelectedProjectDirectory = (path: string | null) =>
     projectDirectoryMutation.mutate({ path });
 
@@ -112,6 +116,14 @@ const App: React.FC = () => {
     loadDatabase();
   }, [setDatabase]);
 
+  const viewInExplorer = (id: string | number) => {
+    setSelected(id, true);
+    navigate({
+      pathname: `/explorer/${encodeURIComponent(id)}`,
+      search: `?focus=${encodeURIComponent(id)}`,
+    });
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -138,6 +150,9 @@ const App: React.FC = () => {
         setFileInfo,
         fileInfo,
         projectDirectory,
+        clearSelectedProjectDirectory,
+        viewInExplorer,
+        setSelectedProjectDirectory,
       }}
     >
       <TitleBar

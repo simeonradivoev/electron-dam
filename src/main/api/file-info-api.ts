@@ -11,15 +11,9 @@ async function searchParents<T>(
   filter: (parentPath: string) => Promise<T | undefined>
 ): Promise<T | undefined> {
   const parentChain = searchPath.split(path.sep);
-  while (parentChain.length > 0) {
-    parentChain.pop();
-    const parentPath = parentChain.join(path.sep);
-    const value = await filter(parentPath);
-    if (value) {
-      return value;
-    }
-  }
-  return undefined;
+  const promises = parentChain.map((parentPath) => filter(parentPath));
+  const results = await Promise.all(promises);
+  return results.find((result) => result !== undefined) ?? undefined;
 }
 
 async function loadDirectoryBundle(
@@ -34,6 +28,7 @@ async function loadDirectoryBundle(
       bundle: JSON.parse(fileData),
       isVirtual: false,
       name: path.basename(bundleDirectory),
+      date: bundleStat.birthtime,
     };
     return entry;
   }
@@ -176,9 +171,9 @@ export default function InitializeFileInfoApi(
 
   ipcMain.on(Channels.FileDetails, fileDetails);
   ipcMain.handle(Channels.GetFileDetails, getFileDetails);
+}
 
-  db.addListener('close', () => {
-    ipcMain.removeListener(Channels.FileDetails, fileDetails);
-    ipcMain.removeHandler(Channels.GetFileDetails);
-  });
+export function CleanupFileInfoApi() {
+  ipcMain.removeAllListeners(Channels.FileDetails);
+  ipcMain.removeHandler(Channels.GetFileDetails);
 }
