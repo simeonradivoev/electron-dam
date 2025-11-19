@@ -86,4 +86,6 @@ export enum Channels {
   GetBundle = 'get-bundle',
   CreateVirtualBundle = 'create-virtual-bundle',
   GetHomeBundle = 'get-home-bundles',
+  ConvertBundleToLocal = 'convert-bundle-to-local',
+  MoveBundle = 'move-bundle',
 }

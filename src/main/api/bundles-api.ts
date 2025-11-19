@@ -1,6 +1,7 @@
 import Loki from 'lokijs';
-import { ipcMain, IpcMainInvokeEvent } from 'electron';
-import { lstat, writeFile, unlink, readdir, readFile, stat } from 'fs/promises';
+import { ipcMain, IpcMainInvokeEvent, dialog } from 'electron';
+import { lstat, writeFile, unlink, readdir, readFile, stat, mkdir } from 'fs/promises';
+import { spawn } from 'child_process';
 import path from 'path';
 import Store from 'electron-store';
 import { Channels, previewTypes } from '../../shared/constants';
@@ -194,6 +195,109 @@ export default function InitializeBundlesApi(
     ).then(() => finalBundle);
   }
 
+  async function convertBundleToLocal(id: string): Promise<boolean> {
+    const virtualBundle = virtualBundles.findOne({ id });
+    if (!virtualBundle) {
+      return false;
+    }
+
+    const { canceled, filePaths } = await dialog.showOpenDialog({
+      properties: ['openFile'],
+      filters: [{ name: 'Zip Files', extensions: ['zip'] }],
+    });
+
+    if (canceled || filePaths.length === 0) {
+      return false;
+    }
+
+    const zipPath = filePaths[0];
+    const projectDir = store.get('projectDirectory') as string | undefined;
+
+    if (!projectDir) {
+      return false;
+    }
+
+    const sanitizedBundleName = virtualBundle.name.replace(/[<>:"/\\|?*]/g, '_');
+    const destinationPath = path.join(projectDir, sanitizedBundleName);
+
+    try {
+      await mkdir(destinationPath, { recursive: true });
+
+      // Use PowerShell to expand archive
+      const command = `Expand-Archive -Path "${zipPath}" -DestinationPath "${destinationPath}" -Force`;
+      const child = spawn('powershell.exe', [command]);
+
+      await new Promise<void>((resolve, reject) => {
+        child.on('exit', (code) => {
+          if (code === 0) {
+            resolve();
+          } else {
+            reject(new Error(`PowerShell exited with code ${code}`));
+          }
+        });
+        child.on('error', reject);
+      });
+
+      // Create bundle.json
+      const bundle: Bundle = {
+        ...virtualBundle,
+      };
+      await writeFile(
+        path.join(destinationPath, 'bundle.json'),
+        JSON.stringify(bundle)
+      );
+
+      // Remove virtual bundle
+      virtualBundles.findAndRemove({ id });
+
+      return true;
+    } catch (error) {
+      console.error('Failed to convert bundle:', error);
+      // Cleanup if possible
+      throw error;
+    }
+  }
+
+  async function moveBundle(oldPath: string, newPath: string): Promise<boolean> {
+    // 1. Verify newPath doesn't exist
+    if (await lstat(newPath).catch(() => false)) {
+      throw new Error(`Destination already exists: ${newPath}`);
+    }
+
+    // 2. Move directory
+    const fs = require('fs/promises'); // Ensure we have fs/promises
+    await fs.rename(oldPath, newPath);
+
+    // 3. Update files collection
+    const files = db.getCollection<FileMetadata>('files');
+    if (files) {
+      const fileEntry = files.findOne({ path: oldPath });
+      if (fileEntry) {
+        fileEntry.path = newPath;
+        files.update(fileEntry);
+      }
+
+      // Also update any children files if they are tracked?
+      // The current file-system-api tracks files by path.
+      // If we move a directory, all children paths change.
+      // We should probably update all files that start with oldPath.
+      files.find({ path: { $regex: new RegExp(`^${oldPath.replace(/\\/g, '\\\\')}`) } }).forEach(file => {
+        file.path = file.path.replace(oldPath, newPath);
+        files.update(file);
+      });
+    }
+
+    // 4. Update virtual bundles if applicable (though move is usually for local)
+    const virtualBundle = virtualBundles.findOne({ id: oldPath });
+    if (virtualBundle) {
+      virtualBundle.id = newPath;
+      virtualBundle.name = path.basename(newPath);
+      virtualBundles.update(virtualBundle);
+    }
+
+    return true;
+  }
+
   ipcMain.handle(
     Channels.UpdateBundle,
     async (
@@ -218,6 +322,16 @@ export default function InitializeBundlesApi(
     async (_event: IpcMainInvokeEvent, bundlePath: string): Promise<void> =>
       deleteBundle(bundlePath)
   );
+  ipcMain.handle(
+    Channels.ConvertBundleToLocal,
+    async (_event: IpcMainInvokeEvent, id: string): Promise<boolean> =>
+      convertBundleToLocal(id)
+  );
+  ipcMain.handle(
+    Channels.MoveBundle,
+    async (_event: IpcMainInvokeEvent, oldPath: string, newPath: string): Promise<boolean> =>
+      moveBundle(oldPath, newPath)
+  );
 }
 
 export function CleanupBundlesApi() {
@@ -227,4 +341,6 @@ export function CleanupBundlesApi() {
   ipcMain.removeHandler(Channels.CreateVirtualBundle);
   ipcMain.removeHandler(Channels.GetBundle);
   ipcMain.removeHandler(Channels.DeleteBundle);
+  ipcMain.removeHandler(Channels.ConvertBundleToLocal);
+  ipcMain.removeHandler(Channels.MoveBundle);
 }

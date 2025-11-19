@@ -69,6 +69,11 @@ div[class^="style_MenuList"] {
   .bundle {
     background: $pt-dark-code-background-color !important;
     color: $pt-dark-code-text-color !important;
+
+    &.active {
+      background-color: $pt-intent-primary !important;
+      color: $pt-dark-text-color !important;
+    }
   }
 
   .home {

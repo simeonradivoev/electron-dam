@@ -9,15 +9,17 @@ import {
 import { ContextMenu2, IPopover2Props, MenuItem2 } from '@blueprintjs/popover2';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useContext } from 'react';
+import { AppToaster } from 'renderer/toaster';
 import { AppContext } from 'renderer/AppContext';
 
 interface Props {
   bundle: BundleInfo;
-  onSelect: (id: string | number) => void;
+  onSelect: (id: string | number, e?: React.MouseEvent) => void;
   setFileInfo: (fileInfo: FileInfo | null) => void;
   handleRefresh?: () => void;
 
   allowDelete?: boolean;
+  isSelected?: boolean;
 }
 
 const Bundle = ({
@@ -26,10 +28,10 @@ const Bundle = ({
   setFileInfo,
   handleRefresh = undefined,
   allowDelete = false,
+  isSelected = false,
 }: Props) => {
   const queryClient = useQueryClient();
   const { viewInExplorer } = useContext(AppContext);
-  const isSelected = false;
 
   const thumbnail = useQuery(
     ['thumbanil', bundle.id, bundle.previewUrl, bundle.isVirtual],
@@ -84,6 +86,25 @@ const Bundle = ({
             text="View In Explorer"
             onClick={handleView}
           />
+          {bundle.isVirtual && (
+            <MenuItem2
+              icon="import"
+              text="Convert to Local"
+              onClick={async () => {
+                try {
+                  await window.api.convertBundleToLocal(bundle.id);
+                  queryClient.invalidateQueries(['bundles']);
+                } catch (error: unknown) {
+                  const message =
+                    error instanceof Error ? error.message : String(error);
+                  AppToaster.show({
+                    message: `Failed to convert bundle: ${message}`,
+                    intent: 'danger',
+                  });
+                }
+              }}
+            />
+          )}
           {allowDelete && (
             <MenuItem2
               intent="danger"
@@ -98,8 +119,8 @@ const Bundle = ({
       <Button
         className={`preview ${bundle.isVirtual ? 'virtual' : ''}`}
         minimal
-        onClick={() => {
-          select(bundle.id);
+        onClick={(e) => {
+          select(bundle.id, e);
         }}
       >
         <Icon className="overlay-icon" icon="search" />
@@ -122,6 +143,7 @@ const Bundle = ({
 Bundle.defaultProps = {
   handleRefresh: undefined,
   allowDelete: false,
+  isSelected: false,
 };
 
 export default Bundle;

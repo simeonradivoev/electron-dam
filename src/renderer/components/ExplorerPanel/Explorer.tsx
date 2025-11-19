@@ -4,6 +4,7 @@ import { useCallback, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppContext } from 'renderer/AppContext';
 import Split from 'react-split';
+import { AppToaster } from 'renderer/toaster';
 import FileInfoPanel from '../FileInfoPanel/FileInfoPanel';
 import ExplorerBar from './ExplorerBar';
 
@@ -45,6 +46,40 @@ const Explorer = () => {
     window.api.openPath(path);
   }, []);
 
+  const handleBundleMove = useCallback(
+    async (path: string) => {
+      try {
+        const newParentDir = await window.api.selectProjectDirectory();
+        if (!newParentDir) return;
+
+        const folderName = path.split(/[/\\]/).pop();
+        if (!folderName) return;
+
+        const separator = newParentDir.includes('\\') ? '\\' : '/';
+        const newPath = `${newParentDir}${separator}${folderName}`;
+
+        if (path === newPath) return;
+
+        await window.api.moveBundle(path, newPath);
+
+        // Select and navigate to the moved bundle
+        setSelected(newPath, true);
+        navigate(`/explorer/${encodeURIComponent(newPath)}?focus=${encodeURIComponent(newPath)}`);
+
+        // Refetch to update the tree (simpler for context menu moves)
+        queryClient.invalidateQueries(['files']);
+        queryClient.invalidateQueries(['bundles']);
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        AppToaster.show({
+          message: `Failed to move bundle: ${message}`,
+          intent: 'danger',
+        });
+      }
+    },
+    [queryClient, setSelected, navigate]
+  );
+
   const contextMenu = (
     path: string,
     bundlePath: string | undefined,
@@ -64,6 +99,11 @@ const Explorer = () => {
             icon="edit"
             text="Edit Bundle"
             onClick={() => handleBundleEdit(path)}
+          />
+          <MenuItem
+            icon="move"
+            text="Move to..."
+            onClick={() => handleBundleMove(path)}
           />
           <MenuItem
             icon="folder-open"

@@ -116,6 +116,12 @@ export const API = {
   getHomeBundles(): Promise<HomePageBundles | undefined> {
     return ipcRenderer.invoke(Channels.GetHomeBundle);
   },
+  convertBundleToLocal(id: string): Promise<boolean> {
+    return ipcRenderer.invoke(Channels.ConvertBundleToLocal, id);
+  },
+  moveBundle(oldPath: string, newPath: string): Promise<boolean> {
+    return ipcRenderer.invoke(Channels.MoveBundle, oldPath, newPath);
+  },
 };
 
 contextBridge.exposeInMainWorld('api', API);

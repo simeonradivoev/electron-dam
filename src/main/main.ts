@@ -119,10 +119,10 @@ const createWindow = async () => {
     }
   });
 
-  mainWindow.webContents.on('did-frame-finish-load', async () => {
-    if (isDebug) {
-      await installExtensions();
-    }
+  mainWindow.webContents.on('did-frame-finish-load', () => {
+    // if (isDebug) {
+    //   await installExtensions();
+    // }
   });
 
   mainWindow.on('closed', () => {
@@ -156,7 +156,10 @@ app.on('window-all-closed', () => {
 
 app
   .whenReady()
-  .then(() => {
+  .then(async () => {
+    if (isDebug) {
+      await installExtensions();
+    }
     createWindow();
     LoadDatabase(store);
     app.on('activate', () => {
