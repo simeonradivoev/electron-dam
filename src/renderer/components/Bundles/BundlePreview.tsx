@@ -11,7 +11,12 @@ type Props = {
 /**
  * This will be used in the explorer tab
  */
-const BundlePreview = ({ bundle, className, onSelect: select, showFiles = false }: Props) => {
+const BundlePreview = ({
+  bundle,
+  className,
+  onSelect: select,
+  showFiles = false,
+}: Props) => {
   return (
     <div className={`preview-bundle ${className}`}>
       {bundle?.previewUrl ? (

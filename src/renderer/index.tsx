@@ -19,6 +19,7 @@ import Explorer from './components/ExplorerPanel/Explorer';
 import Settings from './components/Settings/Settings';
 import BundlesLayout from './components/Bundles/BundlesLayout';
 import Home from './components/HomePanel/Home';
+import TasksPage from './components/TasksPanel/TasksPage';
 
 const container = document.getElementById('root')!;
 const root = createRoot(container);
@@ -46,8 +47,9 @@ const route = createHashRouter([
       },
       {
         path: 'explorer/*',
-        element: <Explorer />
+        element: <Explorer />,
       },
+      { path: 'tasks', element: <TasksPage /> },
       { path: 'settings', element: <Settings /> },
     ],
   },

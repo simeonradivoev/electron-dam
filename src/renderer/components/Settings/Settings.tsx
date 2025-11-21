@@ -23,10 +23,16 @@ const Settings = () => {
     <div>
       <form>
         <FormGroup inline>
-        <Switch alignIndicator="right" label='Dark Mode' large checked={darkMode} onChange={() => setDarkMode(!darkMode)} />
+          <Switch
+            alignIndicator="right"
+            label="Dark Mode"
+            large
+            checked={darkMode}
+            onChange={() => setDarkMode(!darkMode)}
+          />
 
           <ControlGroup>
-          <Label> Project Directory</Label>
+            <Label> Project Directory</Label>
             <InputGroup
               value={directory ?? 'No Project'}
               id="text-input"
@@ -43,7 +49,6 @@ const Settings = () => {
             >
               Choose Project Directory
             </Button>
-
           </ControlGroup>
         </FormGroup>
       </form>

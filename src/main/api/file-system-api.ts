@@ -43,7 +43,9 @@ export default function InitializeFileSystemApi(
     const tagsSet = new Set<string>();
     files
       .find({ tags: { $size: { $gt: 0 } } })
-      .forEach((file: FileMetadata) => file.tags.forEach((tag) => tagsSet.add(tag)));
+      .forEach((file: FileMetadata) =>
+        file.tags.forEach((tag) => tagsSet.add(tag))
+      );
     return Array.from(tagsSet);
   }
 
@@ -82,7 +84,7 @@ export default function InitializeFileSystemApi(
       parentStack.pop();
       const parentPath = parentStack.join(path.sep);
       const tags = files.findOne({ path: parentPath })?.tags;
-      tags?.forEach((tag:string) => parentTags.add(tag));
+      tags?.forEach((tag: string) => parentTags.add(tag));
     }
     return Array.from(parentTags);
   }

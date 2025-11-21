@@ -18,6 +18,8 @@ import ProjectSelection from './components/ProjectSelection';
 import SideMenu from './components/SideMenu';
 import TitleBar from './components/TitleBar';
 import { AppContext } from './AppContext';
+import { TasksProvider } from './contexts/tasks-context';
+import TasksPanel from './components/TasksPanel/TasksPanel';
 
 FocusStyleManager.onlyShowFocusOnTabs();
 
@@ -125,6 +127,7 @@ const App: React.FC = () => {
   };
 
   return (
+    <TasksProvider>
     <AppContext.Provider
       value={{
         files: nodes,
@@ -173,7 +176,9 @@ const App: React.FC = () => {
           />
         )}
       </div>
+      <TasksPanel />
     </AppContext.Provider>
+    </TasksProvider>
   );
 };
 

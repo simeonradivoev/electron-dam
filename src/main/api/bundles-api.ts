@@ -1,11 +1,20 @@
 import Loki from 'lokijs';
 import { ipcMain, IpcMainInvokeEvent, dialog } from 'electron';
-import { lstat, writeFile, unlink, readdir, readFile, stat, mkdir } from 'fs/promises';
+import {
+  lstat,
+  writeFile,
+  unlink,
+  readdir,
+  readFile,
+  stat,
+  mkdir,
+} from 'fs/promises';
 import { spawn } from 'child_process';
 import path from 'path';
 import Store from 'electron-store';
 import { Channels, previewTypes } from '../../shared/constants';
 import { getRandom } from '../util';
+import { taskManager } from '../managers/task-manager';
 
 async function createBundle(directory: string): Promise<boolean> {
   const directoryStat = await lstat(directory);
@@ -143,7 +152,7 @@ export default function InitializeBundlesApi(
         .slice(0, Math.min(5, bundles.length)),
       stats: {
         bundleCount: bundles.length,
-        virtualBundleCount: bundles.filter((b) => b.isVirtual).length
+        virtualBundleCount: bundles.filter((b) => b.isVirtual).length,
       },
     };
   }
@@ -217,48 +226,83 @@ export default function InitializeBundlesApi(
       return false;
     }
 
-    const sanitizedBundleName = virtualBundle.name.replace(/[<>:"/\\|?*]/g, '_');
+    const sanitizedBundleName = virtualBundle.name.replace(
+      /[<>:"/\\|?*]/g,
+      '_'
+    );
     const destinationPath = path.join(projectDir, sanitizedBundleName);
 
-    try {
-      await mkdir(destinationPath, { recursive: true });
+    return taskManager.addTask(
+      `Convert ${virtualBundle.name}`,
+      async (signal) => {
+        try {
+          await mkdir(destinationPath, { recursive: true });
 
-      // Use PowerShell to expand archive
-      const command = `Expand-Archive -Path "${zipPath}" -DestinationPath "${destinationPath}" -Force`;
-      const child = spawn('powershell.exe', [command]);
+          // Use PowerShell to expand archive
+          const command = `Expand-Archive -Path "${zipPath}" -DestinationPath "${destinationPath}" -Force`;
+          const child = spawn('powershell.exe', [command]);
 
-      await new Promise<void>((resolve, reject) => {
-        child.on('exit', (code) => {
-          if (code === 0) {
-            resolve();
-          } else {
-            reject(new Error(`PowerShell exited with code ${code}`));
+          const cleanup = () => {
+            try {
+              child.kill();
+            } catch (e) {
+              console.error('Failed to kill process', e);
+            }
+          };
+
+          signal.addEventListener('abort', cleanup);
+
+          await new Promise<void>((resolve, reject) => {
+            child.on('exit', (code) => {
+              signal.removeEventListener('abort', cleanup);
+              if (code === 0) {
+                resolve();
+              } else {
+                // If aborted, we might get a non-zero code or just killed.
+                if (signal.aborted) {
+                  reject(new Error('Aborted'));
+                } else {
+                  reject(new Error(`PowerShell exited with code ${code}`));
+                }
+              }
+            });
+            child.on('error', (err) => {
+              signal.removeEventListener('abort', cleanup);
+              reject(err);
+            });
+          });
+
+          if (signal.aborted) {
+            throw new Error('Aborted');
           }
-        });
-        child.on('error', reject);
-      });
 
-      // Create bundle.json
-      const bundle: Bundle = {
-        ...virtualBundle,
-      };
-      await writeFile(
-        path.join(destinationPath, 'bundle.json'),
-        JSON.stringify(bundle)
-      );
+          // Create bundle.json
+          const bundle: Bundle = {
+            ...virtualBundle,
+          };
+          await writeFile(
+            path.join(destinationPath, 'bundle.json'),
+            JSON.stringify(bundle)
+          );
 
-      // Remove virtual bundle
-      virtualBundles.findAndRemove({ id });
+          // Remove virtual bundle
+          virtualBundles.findAndRemove({ id });
 
-      return true;
-    } catch (error) {
-      console.error('Failed to convert bundle:', error);
-      // Cleanup if possible
-      throw error;
-    }
+          return true;
+        } catch (error) {
+          console.error('Failed to convert bundle:', error);
+          // Cleanup if possible (e.g. delete destinationPath)
+          // We might want to delete the folder if it was partially created
+          throw error;
+        }
+      }
+    );
   }
 
-  async function moveBundle(oldPath: string, newPath: string): Promise<boolean> {
+  async function moveBundle(
+    oldPath: string,
+    newPath: string
+  ): Promise<boolean> {
     // 1. Verify newPath doesn't exist
     if (await lstat(newPath).catch(() => false)) {
       throw new Error(`Destination already exists: ${newPath}`);
@@ -281,10 +325,14 @@ export default function InitializeBundlesApi(
       // The current file-system-api tracks files by path.
       // If we move a directory, all children paths change.
       // We should probably update all files that start with oldPath.
-      files.find({ path: { $regex: new RegExp(`^${oldPath.replace(/\\/g, '\\\\')}`) } }).forEach(file => {
-        file.path = file.path.replace(oldPath, newPath);
-        files.update(file);
-      });
+      files
+        .find({
+          path: { $regex: new RegExp(`^${oldPath.replace(/\\/g, '\\\\')}`) },
+        })
+        .forEach((file) => {
+          file.path = file.path.replace(oldPath, newPath);
+          files.update(file);
+        });
     }
 
     // 4. Update virtual bundles if applicable (though move is usually for local)
@@ -329,8 +377,11 @@ export default function InitializeBundlesApi(
   );
   ipcMain.handle(
     Channels.MoveBundle,
-    async (_event: IpcMainInvokeEvent, oldPath: string, newPath: string): Promise<boolean> =>
-      moveBundle(oldPath, newPath)
+    async (
+      _event: IpcMainInvokeEvent,
+      oldPath: string,
+      newPath: string
+    ): Promise<boolean> => moveBundle(oldPath, newPath)
   );
 }
 

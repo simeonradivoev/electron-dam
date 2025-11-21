@@ -1,11 +1,4 @@
-
-import {
-  Button,
-  Icon,
-  Menu,
-  Position,
-  Spinner
-} from '@blueprintjs/core';
+import { Button, Icon, Menu, Position, Spinner } from '@blueprintjs/core';
 import { ContextMenu2, IPopover2Props, MenuItem2 } from '@blueprintjs/popover2';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useContext } from 'react';

@@ -64,9 +64,9 @@ const ExplorerBarTree = ({
         setTimeout(() => {
           setSelected(newPath, true);
           navigate(
-            `/explorer/${encodeURIComponent(newPath)}?focus=${encodeURIComponent(
+            `/explorer/${encodeURIComponent(
               newPath
-            )}`
+            )}?focus=${encodeURIComponent(newPath)}`
           );
         }, 100);
       } catch (error: unknown) {

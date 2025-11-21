@@ -14,6 +14,7 @@ import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
 import Store from 'electron-store';
 import { resolveHtmlPath } from './util';
+import { taskManager } from './managers/task-manager'; // Initialize TaskManager
 import { InitializeBundlesApiGlobal } from './api/bundles-api';
 import InstallProjectDirectoryApi from './api/project-api';
 import InitializeMetadataApi from './api/import-metadata-api';
@@ -160,6 +161,7 @@ app
     if (isDebug) {
       await installExtensions();
     }
+    taskManager.initialize();
     createWindow();
     LoadDatabase(store);
     app.on('activate', () => {

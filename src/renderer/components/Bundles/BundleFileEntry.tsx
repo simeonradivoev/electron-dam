@@ -34,7 +34,12 @@ const BundleFileEntry = ({ node }: Props) => {
   };
 
   return (
-    <div title={node.nodeData?.name} ref={elementRef} className="asset" onClick={handleNavigation}>
+    <div
+      title={node.nodeData?.name}
+      ref={elementRef}
+      className="asset"
+      onClick={handleNavigation}
+    >
       {isInView && (
         <>
           {preview.data ? (

@@ -64,7 +64,11 @@ const Explorer = () => {
 
         // Select and navigate to the moved bundle
         setSelected(newPath, true);
-        navigate(`/explorer/${encodeURIComponent(newPath)}?focus=${encodeURIComponent(newPath)}`);
+        navigate(
+          `/explorer/${encodeURIComponent(newPath)}?focus=${encodeURIComponent(
+            newPath
+          )}`
+        );
 
         // Refetch to update the tree (simpler for context menu moves)
         queryClient.invalidateQueries(['files']);

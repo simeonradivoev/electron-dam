@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Move to... Context Menu**: Added context menu option to move bundles to a selected directory
 - **Auto-Focus After Move**: Moved bundles are automatically selected and focused in the explorer
 - **Bundle Name Sanitization**: Invalid file system characters are automatically replaced with underscores during bundle conversion
+- **Background Task Manager**: Implemented a system to manage and track long-running background tasks
+- **Tasks Tab**: Added a new sidebar tab to view and manage active background tasks
+- **Task Cancellation**: Added ability to cancel running tasks (e.g., bundle conversion)
 
 ### Changed
 
@@ -25,6 +28,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bundle conversion errors now properly displayed to the user via toast notifications
 - Bundle paths are correctly updated in the database after moving
 - Node matching in drag-and-drop now uses IDs to prevent targeting wrong folders when names are duplicated
+- **Build Issues**: Fixed `uuid` ESM/CJS compatibility and TypeScript errors in `TasksContext`
+- **Backend Crash**: Fixed `ipcMain` undefined error by deferring `TaskManager` initialization
 
 ## [0.0.1] - 2023-10-25
 

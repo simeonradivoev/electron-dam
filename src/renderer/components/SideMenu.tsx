@@ -37,6 +37,15 @@ const SideMenu = ({}: Props) => {
         icon="folder-open"
       />
       <Button
+        title="Tasks"
+        minimal
+        active={!!useMatch('tasks')}
+        onClick={() => {
+          navigate('/tasks');
+        }}
+        icon="list"
+      />
+      <Button
         title="Settings"
         minimal
         active={!!useMatch('settings')}

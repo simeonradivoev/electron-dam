@@ -20,7 +20,8 @@ import FolderFileGrid from '../FileInfoPanel/FolderFileGrid';
  * This is the bundle preview that is shown in the bundles tab not in the explorer
  */
 const BundleInfoPreview = () => {
-  const { bundle, viewInExplorer } = useOutletContext<BundleDetailsContextType>();
+  const { bundle, viewInExplorer } =
+    useOutletContext<BundleDetailsContextType>();
   const { files } = useContext(AppContext);
 
   const flatNodes = useQuery<TreeNodeInfo<FileTreeNode>[]>(

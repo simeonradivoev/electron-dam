@@ -77,7 +77,11 @@ const BundlesGrid = () => {
   };
 
   const handleMassDelete = async () => {
-    if (!confirm(`Are you sure you want to delete ${selectedBundles.length} bundles?`)) {
+    if (
+      !confirm(
+        `Are you sure you want to delete ${selectedBundles.length} bundles?`
+      )
+    ) {
       return;
     }
 
@@ -114,7 +118,7 @@ const BundlesGrid = () => {
             icon="add"
           />
           {selectedBundles.length > 0 && (
-             <Button
+            <Button
               onClick={handleMassDelete}
               title={`Delete ${selectedBundles.length} items`}
               minimal
