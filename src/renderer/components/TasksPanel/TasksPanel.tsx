@@ -1,8 +1,8 @@
-import React from 'react';
 import { Button, Card, H5, Intent, Spinner, Text } from '@blueprintjs/core';
-import { useTasks } from '../../contexts/tasks-context';
+import '../../App.scss';
+import { useTasks } from '../../contexts/TasksContext';
 
-const TasksPanel: React.FC = () => {
+function TasksPanel() {
   const { tasks, cancelTask } = useTasks();
 
   if (tasks.length === 0) {
@@ -10,53 +10,25 @@ const TasksPanel: React.FC = () => {
   }
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        bottom: '20px',
-        right: '20px',
-        width: '300px',
-        zIndex: 1000,
-        maxHeight: '400px',
-        overflowY: 'auto',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '10px',
-      }}
-    >
+    <div className="tasks-panel">
       {tasks.map((task) => (
-        <Card key={task.id} elevation={2} style={{ padding: '10px' }}>
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: '5px',
-            }}
-          >
-            <H5 style={{ margin: 0, fontSize: '14px' }}>{task.label}</H5>
-            {task.status === 'RUNNING' && <Spinner size={16} />}
-            {task.status === 'COMPLETED' && (
-              <span style={{ color: 'green' }}>✓</span>
+        <Card key={task.id} elevation={2} className="task-card">
+          <div className="task-header">
+            <H5>{task.label}</H5>
+            {task.status === 'RUNNING' && task.progress && (
+              <Spinner size={16} value={task.progress} />
             )}
-            {task.status === 'FAILED' && (
-              <span style={{ color: 'red' }}>✗</span>
-            )}
-            {task.status === 'CANCELED' && (
-              <span style={{ color: 'orange' }}>⊘</span>
-            )}
+            {task.status === 'RUNNING' && !task.progress && <Spinner size={16} />}
+            {task.status === 'COMPLETED' && <span className="task-status-icon completed">✓</span>}
+            {task.status === 'FAILED' && <span className="task-status-icon failed">✗</span>}
+            {task.status === 'CANCELED' && <span className="task-status-icon canceled">⊘</span>}
           </div>
 
           {task.error && (
-            <Text
-              className="bp4-text-small bp4-text-muted"
-              style={{ color: '#d9822b', marginBottom: '5px' }}
-            >
-              {task.error}
-            </Text>
+            <Text className="task-error bp4-text-small bp4-text-muted">{task.error}</Text>
           )}
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <div className="task-actions">
             {(task.status === 'PENDING' || task.status === 'RUNNING') && (
               <Button
                 small
@@ -71,6 +43,6 @@ const TasksPanel: React.FC = () => {
       ))}
     </div>
   );
-};
+}
 
 export default TasksPanel;

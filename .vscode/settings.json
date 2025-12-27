@@ -4,12 +4,14 @@
     ".prettierrc": "jsonc",
     ".eslintignore": "ignore"
   },
-
+  "eslint.nodePath": "node_modules",
+  "eslint.useESLintClass": true,
   "eslint.validate": [
     "javascript",
     "javascriptreact",
     "html",
-    "typescriptreact"
+    "typescriptreact",
+    "typescript"
   ],
 
   "javascript.validate.enable": false,
@@ -27,8 +29,15 @@
     "package-lock.json": true,
     "*.{css,sass,scss}.d.ts": true
   },
+  "files.autoSave": "onFocusChange", // optional but recommended
+  "vs-code-prettier-eslint.prettierLast": false, // set as "true" to run 'prettier' last not first
   "javascript.format.placeOpenBraceOnNewLineForFunctions": true,
   "javascript.format.placeOpenBraceOnNewLineForControlBlocks": true,
   "typescript.format.placeOpenBraceOnNewLineForControlBlocks": true,
-  "typescript.format.placeOpenBraceOnNewLineForFunctions": true
+  "typescript.format.placeOpenBraceOnNewLineForFunctions": true,
+  "cSpell.words": [
+    "Orama",
+    "wavesurfer"
+  ],
+  "typescript.tsdk": "node_modules\\typescript\\lib"
 }

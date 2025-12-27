@@ -1,58 +1,33 @@
-import { Icon, Spinner, TreeNodeInfo } from '@blueprintjs/core';
-import { useQuery } from '@tanstack/react-query';
-import { useContext, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { AppContext } from 'renderer/AppContext';
-import { useIntersection } from 'renderer/scripts/interactionObserver';
+import { Icon } from '@blueprintjs/core';
+import { useState } from 'react';
+import { useApp } from 'renderer/contexts/AppContext';
+import { getIcon } from 'renderer/scripts/file-tree';
 
 type Props = {
-  node: TreeNodeInfo<FileTreeNode>;
+  node: FileTreeNode;
+  ref?: React.MutableRefObject<HTMLDivElement | null>;
 };
 
-const BundleFileEntry = ({ node }: Props) => {
-  const [isInView, setIsInView] = useState(false);
-  const { viewInExplorer } = useContext(AppContext);
-
-  const preview = useQuery<string | null>(
-    [node.nodeData?.path],
-    async () => {
-      return (
-        (await window.api.getPreview(node.nodeData?.path ?? '', 128)) ?? null
-      );
-    },
-    { enabled: isInView }
-  );
-  const elementRef = useRef<HTMLDivElement | null>(null);
-  const navigate = useNavigate();
-
-  useIntersection(elementRef, () => {
-    setIsInView(true);
-  });
+function BundleFileEntry({ node, ref }: Props) {
+  const { viewInExplorer } = useApp();
 
   const handleNavigation = () => {
-    viewInExplorer(node.id);
+    viewInExplorer(node.path);
   };
 
-  return (
-    <div
-      title={node.nodeData?.name}
-      ref={elementRef}
-      className="asset"
-      onClick={handleNavigation}
-    >
-      {isInView && (
-        <>
-          {preview.data ? (
-            <img alt={node.nodeData?.name} src={preview.data} />
-          ) : (
-            <Icon icon={node.icon} />
-          )}
+  const [validPreview, setValidPreview] = useState(true);
 
-          {node.label}
-        </>
+  return (
+    <div title={node.name} ref={ref} className="asset" onClick={handleNavigation}>
+      {validPreview ? (
+        <img alt={node.name} src={`thumb://${node.path}`} onError={() => setValidPreview(false)} />
+      ) : (
+        <Icon icon={getIcon(node.path)} />
       )}
+
+      <p>{node.name}</p>
     </div>
   );
-};
+}
 
 export default BundleFileEntry;

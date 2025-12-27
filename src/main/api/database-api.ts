@@ -1,29 +1,17 @@
-import { BrowserWindow, dialog } from 'electron';
-import Store from 'electron-store';
 import { lstat } from 'fs/promises';
 import path from 'path';
+import Store from 'electron-store';
 import Loki from 'lokijs';
-import InitializeBundlesApi, { CleanupBundlesApi } from './bundles-api';
-import InitializeFileInfoApi, { CleanupFileInfoApi } from './file-info-api';
+import { MainIpcCallbacks, MainIpcGetter, StoreSchema } from '../../shared/constants';
+import { registerMainCallbacks, registerMainHandlers, unregisterMainHandlers } from '../util';
+import InitializeBundlesApi from './bundles-api';
+import InitializeFileInfoApi from './file-info-api';
 import InitializeFileSystemApi from './file-system-api';
+import { projectEvents } from './project-api';
+import { InitializeSearchApi } from './serach-api';
 
-let database: Loki;
-
-export function LoadDatabaseExact(
-  store: Store<StoreSchema>,
-  directory: string
-) {
-  database?.close((error) => {
-    if (error) {
-      console.error(error);
-      return;
-    }
-
-    CleanupFileInfoApi();
-    CleanupBundlesApi();
-  });
-
-  database = new Loki(path.join(directory, 'dam-database.db'), {
+export function LoadDatabaseExact(store: Store<StoreSchema>, directory: string): Promise<Loki> {
+  const database = new Loki(path.join(directory, 'dam-database.db'), {
     autosave: true,
     serializationMethod: 'pretty',
     persistenceMethod: 'fs',
@@ -33,21 +21,41 @@ export function LoadDatabaseExact(
     },
   });
 
-  database.loadDatabase(undefined, (error) => {
-    if (error) {
-      console.error(error);
-      return;
-    }
+  projectEvents.once('projectChange', (_) => {
+    database.close();
+  });
 
-    const { removeAllTags } = InitializeFileSystemApi(store, database);
-    InitializeFileInfoApi(store, database);
-    InitializeBundlesApi(store, database, removeAllTags);
+  return new Promise((resolve, reject) => {
+    database.loadDatabase(undefined, async (error) => {
+      if (error) {
+        reject(error);
+        return;
+      }
+
+      const api = {} as MainIpcGetter;
+      const apiCallback = {} as MainIpcCallbacks;
+      registerMainCallbacks(apiCallback);
+
+      const fileSystemApi = InitializeFileSystemApi(api, apiCallback, store, database);
+      InitializeFileInfoApi(api, store);
+      InitializeBundlesApi(api, store, database, fileSystemApi.removeAllTags);
+      InitializeSearchApi(api, store, database);
+      registerMainHandlers(api);
+
+      database.on('close', () => {
+        fileSystemApi.cleanup();
+        unregisterMainHandlers(api);
+      });
+
+      resolve(database);
+    });
   });
 }
 
-export async function LoadDatabase(store: Store<StoreSchema>) {
+export async function LoadDatabase(store: Store<StoreSchema>): Promise<Loki | undefined> {
   const projectDir = store.get('projectDirectory') as string;
   if (projectDir && !!(await lstat(projectDir).catch((e) => false))) {
-    LoadDatabaseExact(store, projectDir);
+    return LoadDatabaseExact(store, projectDir);
   }
+  return undefined;
 }

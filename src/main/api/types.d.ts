@@ -4,27 +4,40 @@ import { FileType } from 'shared/constants';
 declare global {
   interface FileTreeNode {
     isDirectory: boolean;
+    isEmpty: boolean;
+    bundlePath?: string;
     name: string;
     path: string;
-    children: FileTreeNode[];
-    tags: string[];
-    fileType?: FileType | undefined;
-    readmePath?: string;
-    previewPath?: string;
-    bundlePath?: string;
+    children?: FileTreeNode[];
+    fileType?: FileType;
     size: number;
+    isArchived: boolean;
   }
+
+  interface GlobalTagEntry {
+    tag: string;
+    count: number;
+  }
+
+  interface SearchTreeNode extends FileTreeNode {
+    score: number;
+    tags?: string[];
+  }
+
   interface FileInfo {
     size: number;
     name: string;
     path: string;
-    relativePathStart: number;
     fileExt: string;
+    fileType?: FileType;
     directory: string;
     hasMaterialLibrary: boolean;
+    duration?: number;
     modelData?: Uint8Array;
     isDirectory: boolean;
+    isZip?: boolean;
     previewPath?: string;
+    bundlePath?: string;
     bundle?: {
       name: string;
       isParentBundle: boolean;
@@ -32,8 +45,7 @@ declare global {
     };
     readme?: string;
   }
-  interface Bundle {
-    description?: string;
+  interface Bundle extends Tags, Description {
     sourceUrl?: string | undefined;
     licenseType?: string | undefined;
   }
@@ -41,9 +53,21 @@ declare global {
     info: FileInfo;
     contents: any;
   }
-  interface FileMetadata {
-    path: string;
-    tags: string[];
+  interface Tags {
+    tags?: string[];
+  }
+  interface Description {
+    description?: string;
+  }
+  interface VersionMetadata {
+    version: string;
+  }
+  interface FileMetadata extends Tags, Description {
+    embeddings?: {
+      model: string;
+      data: number[];
+      hash: string;
+    };
   }
   interface VirtualBundle extends Bundle {
     id: string;
@@ -62,6 +86,8 @@ declare global {
   interface HomePageStats {
     bundleCount: number;
     virtualBundleCount: number;
+    assetCount: number;
+    assetsSize: number;
   }
   interface HomePageBundles {
     random: BundleInfo[];
@@ -73,6 +99,18 @@ declare global {
     expanded: boolean | undefined;
     tags: string[] | undefined;
   };
+
+  interface QueryDatabase extends DBSchema {
+    queries: {
+      key: string;
+      value: string;
+    };
+  }
+
+  interface FilePath {
+    path: string;
+    projectDir: string;
+  }
 
   interface FilesDB extends DBSchema {
     selected: {
@@ -90,22 +128,34 @@ declare global {
     isFromParent: boolean;
   };
 
-  interface StoreSchema {
-    projectDirectory: string;
-    windowSize: {
-      width: number;
-      height: number;
-    };
-    windowPosition: {
-      x?: number;
-      y?: number;
-    };
-  }
-
   interface BundleMetadata {
     title?: string;
     description?: string;
-    keywords?: string[];
+    tags?: string[];
     preview?: string;
+  }
+
+  interface SearchEntrySchema {
+    id: string;
+    filename: string;
+    description: string;
+    path: string;
+    tags?: string[];
+    fileType?: FileType | undefined;
+    bundleId?: string;
+    embeddings?: number[];
+  }
+
+  export interface Task extends TaskMetadata {
+    abortController?: AbortController;
+    userData?: any;
+  }
+
+  export interface TaskMetadata {
+    id: string;
+    label: string;
+    status: 'PENDING' | 'RUNNING' | 'COMPLETED' | 'FAILED' | 'CANCELED';
+    progress?: number;
+    error?: string;
   }
 }

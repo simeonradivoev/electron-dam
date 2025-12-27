@@ -1,15 +1,13 @@
 import FramelessTitleBar from 'frameless-titlebar';
-import { UseQueryResult } from '@tanstack/react-query';
 import { TitleBarTheme } from 'frameless-titlebar/dist/title-bar/typings';
 import { useLocation } from 'react-router-dom';
 import icon from '../../../assets/icon.png';
 
 type Props = {
-  projectDirectory: UseQueryResult<string | null, unknown>;
   setSelectedProjectDirectory: (directory: string | null) => void;
 };
 
-const TitleBar = ({ projectDirectory, setSelectedProjectDirectory }: Props) => {
+function TitleBar({ setSelectedProjectDirectory }: Props) {
   const location = useLocation();
 
   return (
@@ -24,9 +22,7 @@ const TitleBar = ({ projectDirectory, setSelectedProjectDirectory }: Props) => {
             {
               label: 'Open Project',
               click: async () => {
-                setSelectedProjectDirectory(
-                  await window.api.selectProjectDirectory()
-                );
+                setSelectedProjectDirectory(await window.api.selectProjectDirectory());
               },
             },
             {
@@ -43,6 +39,6 @@ const TitleBar = ({ projectDirectory, setSelectedProjectDirectory }: Props) => {
       onMaximize={() => window.api.maximizeWindow()}
     />
   );
-};
+}
 
 export default TitleBar;

@@ -1,0 +1,106 @@
+{
+  "filename": "E:\\Apps\\dam-app-electron\\src\\__tests__\\assets\\dam-database.db",
+  "collections": [
+    {
+      "name": "bundles",
+      "data": [
+        {
+          "previewUrl": "https://picsum.photos/536/354",
+          "description": "This is a test virtual bundle",
+          "name": "Test Virtual Bundle",
+          "sourceUrl": "https://www.google.com/",
+          "id": "46f051b2-b198-4c8d-8fcf-579733c58983",
+          "date": "2025-12-05T22:02:11.470Z",
+          "meta": {
+            "revision": 0,
+            "created": 1764972131471,
+            "version": 0
+          },
+          "$loki": 1
+        }
+      ],
+      "idIndex": [
+        1
+      ],
+      "binaryIndices": {
+        "id": {
+          "name": "id",
+          "dirty": false,
+          "values": [
+            0
+          ]
+        }
+      },
+      "constraints": null,
+      "uniqueNames": [
+        "id"
+      ],
+      "transforms": {},
+      "objType": "bundles",
+      "dirty": false,
+      "cachedIndex": null,
+      "cachedBinaryIndex": null,
+      "cachedData": null,
+      "adaptiveBinaryIndices": true,
+      "transactional": false,
+      "cloneObjects": false,
+      "cloneMethod": "parse-stringify",
+      "asyncListeners": false,
+      "disableMeta": false,
+      "disableChangesApi": true,
+      "disableDeltaChangesApi": true,
+      "autoupdate": false,
+      "serializableIndices": true,
+      "disableFreeze": true,
+      "ttl": null,
+      "maxId": 2,
+      "DynamicViews": [],
+      "events": {
+        "insert": [],
+        "update": [],
+        "pre-insert": [],
+        "pre-update": [],
+        "close": [],
+        "flushbuffer": [],
+        "error": [],
+        "delete": [
+          null
+        ],
+        "warning": [
+          null
+        ]
+      },
+      "changes": [],
+      "dirtyIds": []
+    }
+  ],
+  "databaseVersion": 1.5,
+  "engineVersion": 1.5,
+  "autosave": true,
+  "autosaveInterval": 4000,
+  "autosaveHandle": null,
+  "throttledSaves": true,
+  "options": {
+    "autosave": true,
+    "serializationMethod": "pretty",
+    "persistenceMethod": "fs",
+    "autosaveInterval": 4000,
+    "destructureDelimiter": "$<\n"
+  },
+  "persistenceMethod": "fs",
+  "persistenceAdapter": null,
+  "verbose": false,
+  "events": {
+    "init": [
+      null
+    ],
+    "loaded": [],
+    "flushChanges": [],
+    "close": [
+      null
+    ],
+    "changes": [],
+    "warning": []
+  },
+  "ENV": "NODEJS"
+}

@@ -10,34 +10,37 @@ import {
   Tabs,
 } from '@blueprintjs/core';
 import { BreadcrumbProps, Breadcrumbs2 } from '@blueprintjs/popover2';
-import { useQuery, UseQueryResult } from '@tanstack/react-query';
-import { useContext, useEffect, useRef } from 'react';
+import { QueryObserverResult, useQuery } from '@tanstack/react-query';
+import { useEffect, useRef } from 'react';
 import { Outlet, useBlocker, useLocation, useNavigate } from 'react-router-dom';
-import { AppContext } from 'renderer/AppContext';
+import { useApp } from 'renderer/contexts/AppContext';
 
 export type BundleDetailsContextType = {
-  bundle: UseQueryResult<BundleInfo | undefined, unknown>;
+  bundle: BundleInfo;
   viewInExplorer: (id: string | number) => void;
+  refetchBundle: () => Promise<QueryObserverResult<BundleInfo | null, Error>>;
 };
 
-const BundleDetailsLayout = () => {
-  const { viewInExplorer } = useContext(AppContext);
+/** Layout for the bundles details and editor */
+function BundleDetailsLayout() {
+  const { viewInExplorer } = useApp();
   const previewRef = useRef<HTMLDivElement | null>(null);
   const bundleMatch = useLocation();
   const params = bundleMatch.pathname.substring('/bundles/'.length);
   const tabParamIndex = params.lastIndexOf('/');
-  const tabParam =
-    tabParamIndex >= 0 ? params.substring(tabParamIndex + 1) : undefined;
+  const tabParam = tabParamIndex >= 0 ? params.substring(tabParamIndex + 1) : undefined;
   const idParam =
-    tabParamIndex >= 0
-      ? decodeURIComponent(params.substring(0, tabParamIndex))
-      : undefined;
+    tabParamIndex >= 0 ? decodeURIComponent(params.substring(0, tabParamIndex)) : undefined;
 
-  const bundle = useQuery(
-    ['bundle', idParam],
-    async (queryKey) => window.api.getBundle(queryKey.queryKey[1]!),
-    { enabled: !!idParam }
-  );
+  const {
+    data: bundle,
+    isPending: isBundlePending,
+    refetch: refetchBundle,
+  } = useQuery({
+    enabled: !!idParam,
+    queryKey: ['bundle', idParam],
+    queryFn: () => window.api.getBundle(idParam!),
+  });
   const navigate = useNavigate();
 
   const handleReturn = () => {
@@ -48,35 +51,17 @@ const BundleDetailsLayout = () => {
     { onClick: handleReturn, icon: 'projects', text: 'Bundles' },
     {
       icon: 'box',
-      text: bundle.data ? bundle.data.name : <Spinner size={12} />,
+      text: isBundlePending ? <Spinner size={12} /> : bundle?.name,
     },
   ];
 
   const handleTabChange = (
     newTabId: TabId,
     prevTabId: TabId | undefined,
-    event: React.MouseEvent<HTMLElement, MouseEvent>
+    event: React.MouseEvent<HTMLElement, MouseEvent>,
   ) => {
-    navigate(`/bundles/${idParam}/${newTabId}`);
+    navigate(`/bundles/${encodeURIComponent(idParam ?? '')}/${newTabId}`);
   };
-
-  useEffect(() => {
-    previewRef.current?.scroll(
-      0,
-      Number.parseFloat(localStorage.getItem(`bundle-scroll-${idParam}`) ?? '0')
-    );
-  });
-
-  const blocker = useBlocker(() => {
-    if (previewRef.current) {
-      localStorage.setItem(
-        `bundle-scroll-${idParam}`,
-        previewRef.current?.scrollTop.toString() ?? '0'
-      );
-    }
-
-    return false;
-  });
 
   return (
     <div className="bundle-details-layout">
@@ -94,18 +79,18 @@ const BundleDetailsLayout = () => {
       <div className="bundle-info">
         <Tabs selectedTabId={tabParam} onChange={handleTabChange}>
           <Tab id="info" title="Info" />
-          <Tab id="edit" title="Edit" disabled={!bundle.data} />
+          <Tab id="edit" title="Edit" disabled={!bundle} />
         </Tabs>
-        <div
-          ref={previewRef}
-          id="preview-bundle-tab-panel"
-          className="y-scroll wide"
-        >
-          <Outlet context={{ bundle, viewInExplorer }} />
+        <div ref={previewRef} id="preview-bundle-tab-panel">
+          {isBundlePending ? (
+            <Spinner />
+          ) : (
+            bundle && <Outlet context={{ bundle, refetchBundle, viewInExplorer }} />
+          )}
         </div>
       </div>
     </div>
   );
-};
+}
 
 export default BundleDetailsLayout;

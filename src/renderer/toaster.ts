@@ -1,10 +1,10 @@
-import { Position, Toaster } from '@blueprintjs/core';
+import { OverlayToaster, Position } from '@blueprintjs/core';
 
 /**
  * Singleton toaster instance for the application.
  * Use this to show toast notifications from anywhere in the renderer process.
  */
-export const AppToaster = Toaster.create({
+export const AppToaster = OverlayToaster.create({
   className: 'recipe-toaster',
-  position: Position.TOP,
+  position: Position.BOTTOM_RIGHT,
 });

@@ -31,3 +31,8 @@ declare module '*.css' {
   const content: Styles;
   export default content;
 }
+
+declare module '*.py' {
+  const content: Styles;
+  export default content;
+}

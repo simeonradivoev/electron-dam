@@ -9,33 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Drag-and-Drop Bundle Move**: Move bundles by dragging them to different folders in the explorer tree
-- **Auto-Scroll on Drag**: Tree view automatically scrolls when dragging near top/bottom edges (50px threshold)
-- **Toaster Notifications**: Error notifications for bundle conversion failures using BlueprintJS Toaster
+- **Headless Tree**: Implemented headless tree for better performance of large libraries
+- **Virtualized Lists**: Made most grids and lists virtualized to improve performance by a large margin
+- **Orama**: Implemented dedicated asset searching with semantic support
+- **Semantic Generation**: Added ollama support as well as transformers.js for AI generating semantic descriptions and tags.
+- **More Feedback** Added more feedback on tasks and errors
 - **Move to... Context Menu**: Added context menu option to move bundles to a selected directory
-- **Auto-Focus After Move**: Moved bundles are automatically selected and focused in the explorer
-- **Bundle Name Sanitization**: Invalid file system characters are automatically replaced with underscores during bundle conversion
 - **Background Task Manager**: Implemented a system to manage and track long-running background tasks
 - **Tasks Tab**: Added a new sidebar tab to view and manage active background tasks
-- **Task Cancellation**: Added ability to cancel running tasks (e.g., bundle conversion)
+- **Compressed Support**: Added initial support for zip files and importing their contents
+- **Improved Thumbnail Caching**: Added caching support for thumbnails
+- **Improved UI**: Improved some aspects of the UI
+- **Semantic Import**: Added support for AI extraction of details from webpage description that is missing open metadata
+- **State Saving**: Added lots of users state saving, so they get back right to what they were doing before
 
 ### Changed
 
-- **BREAKING**: `convertBundleToLocal` now throws errors instead of returning false for better error propagation
-
-### Fixed
-
-- Bundle conversion errors now properly displayed to the user via toast notifications
-- Bundle paths are correctly updated in the database after moving
-- Node matching in drag-and-drop now uses IDs to prevent targeting wrong folders when names are duplicated
-- **Build Issues**: Fixed `uuid` ESM/CJS compatibility and TypeScript errors in `TasksContext`
-- **Backend Crash**: Fixed `ipcMain` undefined error by deferring `TaskManager` initialization
-
-## [0.0.1] - 2023-10-25
-
-### Added
-
-- Initial Release
+- **New Metadata**: Moved to file based metadata for more reliable storage and migration support.
 
 ## [0.1.0] - 2025-03-07
 
@@ -57,3 +47,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Changing the project directory should not crash the app
 - Breadcrumb navigation should now select and navigate to folders
+
+
+## [0.0.1] - 2023-10-25
+
+### Added
+
+- Initial Release

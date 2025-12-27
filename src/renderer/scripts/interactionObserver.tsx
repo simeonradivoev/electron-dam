@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { MutableRefObject, useEffect } from 'react';
 
 const listenerCallbacks = new WeakMap();
 
@@ -28,8 +28,9 @@ export const getIntersectionObserver = () => {
   return observer;
 };
 
-export const useIntersection = (elem: any, callback: any) => {
+export const useIntersection = (elem: MutableRefObject<Element | null>, callback: any) => {
   useEffect(() => {
+    if (!elem.current) return undefined;
     const target = elem.current;
     const o = getIntersectionObserver();
     listenerCallbacks.set(target, callback);

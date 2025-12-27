@@ -1,11 +1,11 @@
 import { Button, ButtonGroup } from '@blueprintjs/core';
-import React from 'react';
+import cn from 'classnames';
 import { useNavigate, useMatch } from 'react-router-dom';
+import { useApp } from 'renderer/contexts/AppContext';
 
-type Props = {};
-
-const SideMenu = ({}: Props) => {
+function SideMenu() {
   const navigate = useNavigate();
+  const { focusedItem } = useApp();
 
   return (
     <ButtonGroup onFocus={() => {}} large vertical className="side-menu">
@@ -30,9 +30,12 @@ const SideMenu = ({}: Props) => {
       <Button
         title="Explorer"
         minimal
+        className={cn({ active: focusedItem })}
         active={!!useMatch('explorer/*')}
         onClick={() => {
-          navigate({ pathname: 'explorer', search: '?' });
+          navigate({
+            pathname: focusedItem ? `explorer/${encodeURIComponent(focusedItem)}` : 'explorer',
+          });
         }}
         icon="folder-open"
       />
@@ -46,6 +49,15 @@ const SideMenu = ({}: Props) => {
         icon="list"
       />
       <Button
+        title="Search"
+        minimal
+        active={!!useMatch('search')}
+        onClick={() => {
+          navigate('/search');
+        }}
+        icon="search"
+      />
+      <Button
         title="Settings"
         minimal
         active={!!useMatch('settings')}
@@ -56,6 +68,6 @@ const SideMenu = ({}: Props) => {
       />
     </ButtonGroup>
   );
-};
+}
 
 export default SideMenu;

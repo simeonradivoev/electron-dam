@@ -1,14 +1,13 @@
 /**
  * Builds the DLL for development electron renderer process
  */
-
-import webpack from 'webpack';
 import path from 'path';
+import webpack from 'webpack';
 import { merge } from 'webpack-merge';
-import baseConfig from './webpack.config.base';
-import webpackPaths from './webpack.paths';
 import { dependencies } from '../../package.json';
 import checkNodeEnv from '../scripts/check-node-env';
+import baseConfig from './webpack.config.base';
+import webpackPaths from './webpack.paths';
 
 checkNodeEnv('development');
 
@@ -33,7 +32,13 @@ const configuration: webpack.Configuration = {
   entry: {
     renderer: Object.keys(dependencies || {}),
   },
-
+  resolve: {
+    fallback: {
+      'onnxruntime-node': false,
+      '@ffprobe-installer': false,
+      sharp: false,
+    },
+  },
   output: {
     path: dist,
     filename: '[name].dev.dll.js',

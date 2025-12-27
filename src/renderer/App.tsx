@@ -1,185 +1,81 @@
-import { Outlet, ScrollRestoration, useNavigate } from 'react-router-dom';
+import { FocusStyleManager, Spinner } from '@blueprintjs/core';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { IDBPDatabase } from 'idb/with-async-ittr';
+import { useCallback, useEffect, useState } from 'react';
+import { Outlet } from 'react-router-dom';
 import './App.scss';
-import { useEffect, useState } from 'react';
-import { IDBPDatabase, openDB } from 'idb/with-async-ittr';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FocusStyleManager } from '@blueprintjs/core';
-import { FileType } from 'shared/constants';
-import RegisterFileLoadFile from './scripts/loader';
-import {
-  ToggleTag,
-  LoadGlobalTags,
-  GetSelectedTags,
-  GetTypeFilter,
-  ToggleFileType,
-} from './scripts/filters';
-import { BuildNodeQueries, GetProjectDirectory } from './scripts/file-tree';
 import ProjectSelection from './components/ProjectSelection';
 import SideMenu from './components/SideMenu';
-import TitleBar from './components/TitleBar';
-import { AppContext } from './AppContext';
-import { TasksProvider } from './contexts/tasks-context';
 import TasksPanel from './components/TasksPanel/TasksPanel';
+import TitleBar from './components/TitleBar';
+import { AppContextProvider } from './contexts/AppContext';
+import { TasksProvider } from './contexts/TasksContext';
 
 FocusStyleManager.onlyShowFocusOnTabs();
 
-const App: React.FC = () => {
-  const queryClient = useQueryClient();
-
-  const { fileInfo, setFileInfo } = RegisterFileLoadFile();
-  const navigate = useNavigate();
-
-  const projectDirectory = useQuery<string | null>(
-    ['project-directory'],
-    GetProjectDirectory,
-    {
-      refetchOnWindowFocus: false,
-    }
-  );
-  const projectDirectoryMutation = useMutation(
-    ['project-directory'],
-    async ({ path }: { path: string | null }) => {
+function App({ database }: { database: Promise<IDBPDatabase<FilesDB>> }) {
+  const {
+    data: projectDirectory,
+    isPending: loadingProjectDir,
+    isPlaceholderData: placeholderProject,
+  } = useQuery({
+    refetchOnWindowFocus: false,
+    queryKey: ['project-directory'],
+    queryFn: () => window.api.getProjectDirectory(),
+  });
+  const { mutate: mutateProjectDir } = useMutation({
+    onSuccess: (result, _variables, _resultData, context) => {
+      context.client.setQueriesData({ queryKey: ['project-directory'] }, result);
+    },
+    mutationKey: ['project-directory'],
+    mutationFn: async (path: string | null) => {
       return path;
     },
-    {
-      onSuccess: (result: string | null) => {
-        queryClient.setQueriesData(['project-directory'], result);
-      },
-    }
+  });
+
+  const setSelectedProjectDirectory = useCallback(
+    (path: string | null) => mutateProjectDir(path),
+    [mutateProjectDir],
   );
 
-  useEffect(() => {
-    return window.api.onProjectDirectoryUpdate((path) => {
-      projectDirectoryMutation.mutate({ path });
-    });
-  }, [projectDirectoryMutation]);
-  const [selectedTags, setSelectedTags] = useState<string[]>(GetSelectedTags);
-  const [typeFilter, setTypeFilter] = useState<FileType[]>(GetTypeFilter);
-  const [database, setDatabase] = useState<IDBPDatabase<FilesDB> | undefined>();
-  const [darkMode, setDarkMode] = useState<boolean>(
-    sessionStorage.getItem('dark-mode') === 'true'
-  );
-  const [filter, setFilter] = useState<string | undefined>();
-
-  const { nodes, setSelected, setExpandedMutation } = BuildNodeQueries(
-    projectDirectory,
-    queryClient,
-    selectedTags,
-    typeFilter,
-    filter,
-    database,
-    setFileInfo
-  );
-
-  const [sideBarSize, setSideBarSize] = useState<number>(
-    Number(window.sessionStorage.getItem('sideBarSize') ?? 30)
-  );
-
-  const tags = useQuery<string[]>(
-    ['tags', database, projectDirectory],
-    LoadGlobalTags,
-    {
-      enabled: !!nodes.data && !!database && !!projectDirectory,
-      refetchOnWindowFocus: false,
-    }
-  );
-
-  const clearSelectedProjectDirectory = () =>
-    projectDirectoryMutation.mutate({ path: null });
-
-  const setSelectedProjectDirectory = (path: string | null) =>
-    projectDirectoryMutation.mutate({ path });
+  const [darkMode, setDarkMode] = useState<boolean>(sessionStorage.getItem('dark-mode') === 'true');
 
   useEffect(() => {
     sessionStorage.setItem('dark-mode', darkMode.toString());
   }, [darkMode]);
 
-  useEffect(() => {
-    const loadDatabase = async () => {
-      const db = await openDB<FilesDB>('selection database', 4, {
-        upgrade(udb, oldVersion, newVersion, transaction) {
-          if (!udb.objectStoreNames.contains('selected')) {
-            udb.createObjectStore('selected');
-          } else {
-            transaction.objectStore('selected');
-          }
-          if (!udb.objectStoreNames.contains('expanded')) {
-            udb.createObjectStore('expanded');
-          } else {
-            transaction.objectStore('expanded');
-          }
-          setDatabase(udb);
-        },
-      });
-
-      setDatabase(db);
-    };
-
-    loadDatabase();
-  }, [setDatabase]);
-
-  const viewInExplorer = (id: string | number) => {
-    setSelected(id, true);
-    navigate({
-      pathname: `/explorer/${encodeURIComponent(id)}`,
-      search: `?focus=${encodeURIComponent(id)}`,
-    });
-  };
-
-  return (
-    <TasksProvider>
-    <AppContext.Provider
-      value={{
-        files: nodes,
-        setSelected,
-        setExpanded: (path, expanded) =>
-          setExpandedMutation.mutate({
-            path,
-            expanded,
-          }),
-        tags,
-        typeFilter,
-        selectedTags,
-        toggleTag: (tag) =>
-          ToggleTag(queryClient, database, tag, selectedTags, setSelectedTags),
-        toggleType: (type) => ToggleFileType(type, typeFilter, setTypeFilter),
-        filter,
-        setFilter,
-        sideBarSize,
-        database,
-        darkMode,
-        setDarkMode,
-        setSideBarSize,
-        setFileInfo,
-        fileInfo,
-        projectDirectory,
-        clearSelectedProjectDirectory,
-        viewInExplorer,
-        setSelectedProjectDirectory,
-      }}
+  return projectDirectory ? (
+    <AppContextProvider
+      setDarkMode={setDarkMode}
+      darkMode={darkMode}
+      projectDir={projectDirectory}
+      database={database}
+      mutateProjectDir={mutateProjectDir}
+      setSelectedProjectDirectory={setSelectedProjectDirectory}
     >
-      <TitleBar
-        projectDirectory={projectDirectory}
-        setSelectedProjectDirectory={setSelectedProjectDirectory}
-      />
-      <div className={`theme-wrapper ${darkMode ? 'bp4-dark dark' : ''}`}>
-        {projectDirectory.data ? (
-          <>
-            <SideMenu />
-            <div className="viewport">
-              <Outlet />
-            </div>
-          </>
-        ) : (
-          <ProjectSelection
-            setSelectedProjectDirectory={setSelectedProjectDirectory}
-          />
-        )}
-      </div>
-      <TasksPanel />
-    </AppContext.Provider>
-    </TasksProvider>
+      <TasksProvider>
+        <TitleBar setSelectedProjectDirectory={setSelectedProjectDirectory} />
+        <div className={`theme-wrapper ${darkMode ? 'bp4-dark dark' : ''}`}>
+          {projectDirectory && (
+            <>
+              <SideMenu />
+              <div className="viewport">
+                <Outlet />
+              </div>
+            </>
+          )}
+        </div>
+        <TasksPanel />
+      </TasksProvider>
+    </AppContextProvider>
+  ) : (
+    <>
+      {!loadingProjectDir && !placeholderProject && !projectDirectory && (
+        <ProjectSelection setSelectedProjectDirectory={setSelectedProjectDirectory} />
+      )}
+      {(loadingProjectDir || placeholderProject) && <Spinner />}
+    </>
   );
-};
+}
 
 export default App;

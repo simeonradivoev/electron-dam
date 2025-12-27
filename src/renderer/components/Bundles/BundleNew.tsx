@@ -14,18 +14,17 @@ import {
   Toaster,
 } from '@blueprintjs/core';
 import { Breadcrumbs2 } from '@blueprintjs/popover2';
-
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { isValidHttpUrl } from 'renderer/scripts/utils';
+import { ImportType } from 'shared/constants';
 import { generateUUID } from 'three/src/math/MathUtils';
 
 type Props = {};
 
-const BundleNew = (props: Props) => {
+function BundleNew(props: Props) {
   const toasterRef = useRef<Toaster>(null);
-  const [isImportingMetadata, setIsImportingMetadata] =
-    useState<boolean>(false);
+  const [isImportingMetadata, setIsImportingMetadata] = useState<boolean>(false);
   const [isCreatingBundle, setIsCreatingBundle] = useState<boolean>(false);
   const [sourceUrl, setSourceUrl] = useState<string>('');
   const [bundleId] = useState<string>(generateUUID());
@@ -40,7 +39,7 @@ const BundleNew = (props: Props) => {
     navigate('/bundles');
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = useCallback(async () => {
     const virutalBundle: VirtualBundle = {
       previewUrl: bundlePreview,
       description: bundleDescription,
@@ -51,33 +50,36 @@ const BundleNew = (props: Props) => {
     };
     setIsCreatingBundle(true);
     await window.api.createVirtualBundle(virutalBundle);
-    await window.api.updateTags(bundleId, tags);
+    await window.api.addTags(bundleId, tags);
     navigate('/bundles');
     setIsCreatingBundle(false);
-  };
+  }, [bundleDescription, bundleId, bundleName, bundlePreview, navigate, sourceUrl, tags]);
 
-  const handleImport = async () => {
-    setIsImportingMetadata(true);
-    try {
-      const metadata = await window.api.importBundleMetadata(sourceUrl);
-      if (metadata.title) {
-        setBundleName(metadata.title);
+  const handleImport = useCallback(
+    async (type: ImportType) => {
+      setIsImportingMetadata(true);
+      try {
+        const metadata = await window.api.importBundleMetadata(sourceUrl, type);
+        if (metadata.title) {
+          setBundleName(metadata.title);
+        }
+        if (metadata.description) {
+          setBundleDescription(metadata.description);
+        }
+        if (metadata.preview) {
+          setBundlePreview(metadata.preview);
+        }
+        if (metadata.tags) {
+          setTags(metadata.tags);
+        }
+      } catch (error) {
+        toasterRef.current?.show({ message: `${error}`, intent: 'danger' });
+      } finally {
+        setIsImportingMetadata(false);
       }
-      if (metadata.description) {
-        setBundleDescription(metadata.description);
-      }
-      if (metadata.preview) {
-        setBundlePreview(metadata.preview);
-      }
-      if (metadata.keywords) {
-        setTags(metadata.keywords);
-      }
-    } catch (error) {
-      toasterRef.current?.show({ message: `${error}`, intent: 'danger' });
-    } finally {
-      setIsImportingMetadata(false);
-    }
-  };
+    },
+    [sourceUrl],
+  );
 
   const breadcrumbs: BreadcrumbProps[] = [
     { onClick: handleCancel, icon: 'projects', text: 'Bundles' },
@@ -108,13 +110,8 @@ const BundleNew = (props: Props) => {
                 onChange={(e) => setSourceUrl(e.target.value)}
               />
               <Button
-                disabled={
-                  !sourceUrl ||
-                  !bundleUrlValid ||
-                  isImportingMetadata ||
-                  isCreatingBundle
-                }
-                onClick={handleImport}
+                disabled={!sourceUrl || !bundleUrlValid || isImportingMetadata || isCreatingBundle}
+                onClick={() => handleImport(ImportType.OpenGraph)}
                 icon="import"
               >
                 Import
@@ -155,9 +152,7 @@ const BundleNew = (props: Props) => {
             <TagInput values={tags} />
           </FormGroup>
           <Button
-            disabled={
-              isImportingMetadata || isCreatingBundle || !bundleUrlValid
-            }
+            disabled={isImportingMetadata || isCreatingBundle || !bundleUrlValid}
             icon="floppy-disk"
             intent="success"
             type="submit"
@@ -176,6 +171,6 @@ const BundleNew = (props: Props) => {
       </div>
     </div>
   );
-};
+}
 
 export default BundleNew;

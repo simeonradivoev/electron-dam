@@ -1,45 +1,108 @@
-import { NonIdealState, Spinner, TreeNodeInfo } from '@blueprintjs/core';
+import { NonIdealState, ResizeSensor, Spinner } from '@blueprintjs/core';
 import { useQuery } from '@tanstack/react-query';
-import React, { useContext } from 'react';
-import { AppContext } from 'renderer/AppContext';
-import { flattenNodes } from 'renderer/scripts/file-tree';
+import { useVirtualizer } from '@tanstack/react-virtual';
+import { Key, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import BundleFileEntry from '../Bundles/BundleFileEntry';
 
 type Props = {
   path: string;
 };
 
-const FolderFileGrid = ({ path }: Props) => {
-  const { files } = useContext(AppContext);
+function FolderFileGrid({ path }: Props) {
+  const parentRef = useRef<HTMLDivElement>(null);
+  const [parentWidth, setParentWidth] = useState<number | undefined>(undefined);
 
-  const flatNodes = useQuery<TreeNodeInfo<FileTreeNode>[]>(
-    ['flat-nodes', path],
-    ({ queryKey }) => {
-      return flattenNodes(files.data)
-        .filter((node) => !node.nodeData?.isDirectory)
-        .filter((node) =>
-          node.nodeData?.path.startsWith(queryKey[1] as string)
-        );
-    }
-  );
+  const { data: files } = useQuery({
+    queryKey: ['grid-files', path],
+    queryFn: () => window.api.getAllFiles(path),
+    refetchOnWindowFocus: false,
+  });
 
-  return (
-    <>
-      {flatNodes.data ? (
-        <div className="asset-grid">
-          {flatNodes.data.map((node) => (
-            <BundleFileEntry node={node} key={node.id} />
-          ))}
+  const { size, gap, columns, count } = useMemo((): {
+    size: number;
+    gap: number;
+    columns: number;
+    count: number;
+  } => {
+    const emScale = Number(
+      window.getComputedStyle(document.body).getPropertyValue('font-size').match(/\d+/)?.[0],
+    );
+    const s = 8 * emScale;
+    const g = 0.5 * emScale;
+    const c = parentWidth ? Math.round(Math.max(1, parentWidth / (s + g))) : 1;
+    return {
+      size: s,
+      gap: g,
+      columns: c,
+      count: files?.length && parentWidth ? Math.ceil(files.length / c) : 0,
+    };
+  }, [files?.length, parentWidth]);
+
+  const rowVirtualizer = useVirtualizer({
+    count,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => size,
+    gap,
+  });
+
+  useLayoutEffect(() => {
+    setParentWidth(parentRef.current?.offsetWidth);
+  }, [count]);
+
+  return files ? (
+    <ResizeSensor onResize={(e) => setParentWidth(e[0].contentRect.width)}>
+      <div
+        ref={parentRef}
+        style={{
+          overflow: 'auto', // Make it scroll!
+        }}
+        className="asset-grid y-scroll wide"
+      >
+        <div
+          style={{
+            height: `${rowVirtualizer.getTotalSize()}px`,
+            width: '100%',
+            position: 'relative',
+          }}
+        >
+          {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+            const rowElements: (JSX.Element | undefined)[] = [];
+            for (let i = 0; i < columns; i += 1) {
+              const index = i + virtualRow.index * columns;
+              if (index < files.length) {
+                rowElements.push(
+                  files[index] && <BundleFileEntry key={files[index].path} node={files[index]} />,
+                );
+              }
+            }
+            return (
+              <div
+                className="row"
+                data-index={virtualRow.index}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  transform: `translateY(${virtualRow.start}px)`,
+                }}
+                ref={rowVirtualizer.measureElement}
+                key={virtualRow.key as Key}
+              >
+                {rowElements}
+              </div>
+            );
+          })}
         </div>
-      ) : (
-        <NonIdealState
-          icon={<Spinner />}
-          title="Loading..."
-          description="Please wait while we load a bundles..."
-        />
-      )}
-    </>
+      </div>
+    </ResizeSensor>
+  ) : (
+    <NonIdealState
+      icon={<Spinner />}
+      title="Loading..."
+      description="Please wait while we load a bundles..."
+    />
   );
-};
+}
 
 export default FolderFileGrid;
