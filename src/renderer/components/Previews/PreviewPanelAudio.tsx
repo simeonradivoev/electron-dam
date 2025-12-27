@@ -1,4 +1,5 @@
-import { Button, ControlGroup, Divider, Slider } from '@blueprintjs/core';
+import { Button, ButtonGroup, Classes, ControlGroup, Divider, Slider } from '@blueprintjs/core';
+import { IAudioMetadata } from 'music-metadata';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useEvent, useSavedState } from 'renderer/scripts/utils';
 import { AppToaster } from 'renderer/toaster';
@@ -10,9 +11,10 @@ type Props = {
   isZip: boolean;
   importedAudio: { url: string; duration?: number };
   autoPlay: boolean;
+  audioMetadata?: IAudioMetadata;
 };
 
-function PreviewPanelAudio({ importedAudio, autoPlay, isZip }: Props) {
+function PreviewPanelAudio({ importedAudio, audioMetadata, autoPlay, isZip }: Props) {
   const waveformRef = useRef<HTMLDivElement>(null);
   const wavesurferRef = useRef<WaveSurfer>();
   const [playing, setPlay] = useState(false);
@@ -116,7 +118,7 @@ function PreviewPanelAudio({ importedAudio, autoPlay, isZip }: Props) {
     } catch (error) {
       return undefined;
     }
-  }, [waveformRef, importedAudio, handleReady]);
+  }, [waveformRef, importedAudio, handleReady, isZip]);
 
   useEffect(() => wavesurferRef.current && updatePlay(wavesurferRef.current, playing), [playing]);
 
@@ -126,24 +128,26 @@ function PreviewPanelAudio({ importedAudio, autoPlay, isZip }: Props) {
       <Divider />
       <div className="controls">
         <ControlGroup>
-          <Button
-            icon={playing ? 'pause' : 'play'}
-            intent={playing ? 'primary' : 'none'}
-            onClick={handlePlay}
-          />
-          <Button
-            icon="stop"
-            onClick={() => {
-              wavesurferRef.current?.stop();
-              localStorage.removeItem('continuePlaying');
-            }}
-          />
-          <Button active={loop} onClick={() => setLoop(!loop)} icon="repeat" />
-          <Button
-            active={muted}
-            onClick={() => setMuted(!muted)}
-            icon={muted ? 'volume-off' : 'volume-up'}
-          />
+          <ButtonGroup>
+            <Button
+              icon={playing ? 'pause' : 'play'}
+              intent={playing ? 'primary' : 'none'}
+              onClick={handlePlay}
+            />
+            <Button
+              icon="stop"
+              onClick={() => {
+                wavesurferRef.current?.stop();
+                localStorage.removeItem('continuePlaying');
+              }}
+            />
+            <Button active={loop} onClick={() => setLoop(!loop)} icon="repeat" />
+            <Button
+              active={muted}
+              onClick={() => setMuted(!muted)}
+              icon={muted ? 'volume-off' : 'volume-up'}
+            />
+          </ButtonGroup>
           <Slider
             labelRenderer={false}
             className="volume-slider"

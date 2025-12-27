@@ -80,11 +80,20 @@ function SearchResultEntry({
       </div>
 
       <div className="search-result-content">
-        <div className="search-result-name" title={node.nodeData?.name}>
+        <div className={cn('search-result-name')} title={node.nodeData?.name}>
           {node.label}
         </div>
 
-        <div className="search-result-path">{node.nodeData?.path}</div>
+        <div
+          className={cn(
+            'search-result-path',
+            Classes.TEXT_MUTED,
+            Classes.TEXT_SMALL,
+            Classes.TEXT_OVERFLOW_ELLIPSIS,
+          )}
+        >
+          {node.nodeData?.path}
+        </div>
 
         {node.nodeData && (
           <div className="search-result-tags">

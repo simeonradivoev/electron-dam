@@ -14,6 +14,7 @@ import { MenuItem2, Popover2 } from '@blueprintjs/popover2';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { normalize } from 'pathe';
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { createSearchParams, useMatch, useNavigate, useSearchParams } from 'react-router-dom';
 import { ToggleFileType } from 'renderer/scripts/filters';
 import {
   FileTypeIcons,
@@ -67,11 +68,13 @@ async function fetchSearchResults(
 
 function SearchPage() {
   const { database, inspectBundle, viewInExplorer, projectDirectory } = useApp();
+  const searchMatch = useMatch('/search/:query/:page');
+  const search = searchMatch?.params.query;
+  const page = searchMatch?.params.page ? Number.parseInt(searchMatch.params.page, 10) : 0;
   const [query, setQuery] = useSavedStateRaw(SEARCH_QUERY_KEY);
-  const [submittedQuery, setSubmittedQuery] = useState(() => query);
-  const [page, setPage] = useState(0);
   const [typeFilter, setTypeFilter] = useSavedState<FileType[]>('searchTypeFilter', []);
   const selectedRef = useRef<HTMLLIElement | null>(null);
+  const navigate = useNavigate();
   const { mutate: selectedMutation } = useMutation<string[], Error, string[]>({
     mutationKey: ['selected'],
   });
@@ -83,16 +86,27 @@ function SearchPage() {
   const toggleType = useCallback(
     (type: FileType) => {
       setTypeFilter(toggleElementMutable(typeFilter, type));
+      navigate({ pathname: `/search/${search}/${0}` });
     },
     [setTypeFilter, typeFilter],
   );
 
-  const handleKeyDown = useCallback(async (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      setPage(0);
-      setSubmittedQuery((e.target as any).value);
-    }
-  }, []);
+  const handleKeyDown = useCallback(
+    async (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Enter') {
+        const { value } = e.target as any;
+        navigate({ pathname: `/search/${value}/0` });
+      }
+    },
+    [navigate],
+  );
+
+  const handleSetPage = useCallback(
+    (p: number) => {
+      navigate({ pathname: `/search/${searchMatch?.params.query}/${p}` });
+    },
+    [navigate, searchMatch?.params.query],
+  );
 
   const reIndex = useCallback(() => {
     window.api.reIndexDatabaseSearch();
@@ -109,10 +123,10 @@ function SearchPage() {
   }, [database, selectedRef]);
 
   const searchQuery = useQuery({
-    queryKey: [SEARCH_QUERY_KEY, projectDirectory, submittedQuery, typeFilter, page],
-    queryFn: () => fetchSearchResults(submittedQuery ?? '', typeFilter, page),
+    queryKey: [SEARCH_QUERY_KEY, projectDirectory, search, typeFilter, page],
+    queryFn: () => fetchSearchResults(search ?? '', typeFilter, page),
     refetchOnWindowFocus: false,
-    enabled: !!submittedQuery,
+    enabled: !!search,
   });
 
   const pageCount = useMemo(() => {
@@ -173,12 +187,12 @@ function SearchPage() {
       </div>
 
       <div className="search-results-container">
-        {searchQuery.isLoading && submittedQuery && (
+        {searchQuery.isLoading && search && (
           <div className="search-loading-state">
             <div className="search-loading-content">
               <Spinner size={40} />
               <div className="search-loading-text">
-                <p>Searching for &quot;{submittedQuery}&quot;...</p>
+                <p>Searching for &quot;{search}&quot;...</p>
                 <p className="search-status">Please wait</p>
               </div>
             </div>
@@ -243,7 +257,7 @@ function SearchPage() {
             </ul>
             <ButtonGroup className="pages">
               {Array.from({ length: pageCount }, (value, index) => index).map((p) => (
-                <Button intent={p === page ? 'primary' : 'none'} onClick={(e) => setPage(p)}>
+                <Button intent={p === page ? 'primary' : 'none'} onClick={(e) => handleSetPage(p)}>
                   {p + 1}
                 </Button>
               ))}
@@ -252,16 +266,16 @@ function SearchPage() {
         )}
         {!searchQuery.isLoading &&
           (!searchQuery.data || searchQuery.data.nodes.length === 0) &&
-          submittedQuery && (
+          search && (
             <div className="search-empty">
               <NonIdealState
                 icon="search"
                 title="No results found"
-                description={`No files matched "${submittedQuery}"`}
+                description={`No files matched "${search}"`}
               />
             </div>
           )}
-        {!searchQuery.isLoading && !submittedQuery && (
+        {!searchQuery.isLoading && !search && (
           <div className="search-empty">
             <NonIdealState
               icon="search"

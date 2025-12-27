@@ -122,6 +122,7 @@ const FileInfoPanel: React.FC<FileInfoPanelProps> = ({ item, contextMenu }) => {
     previewPanel = (
       <div className="preview-audio">
         <PreviewPanelAudio
+          audioMetadata={fileInfo?.audioMetadata}
           isZip={fileInfo?.isZip ?? false}
           importedAudio={importedAudio.data}
           autoPlay={searchParams.get('autoPlay') === 'true'}
@@ -322,11 +323,22 @@ const FileInfoPanel: React.FC<FileInfoPanelProps> = ({ item, contextMenu }) => {
           </Tag>
         )}
         {fileInfo?.isZip && <Tag style={{ maxWidth: 128 }} icon="compressed" minimal />}
-        {fileInfo?.duration && (
+        {fileInfo?.audioMetadata?.format.duration && (
           <Tag style={{ maxWidth: 128 }} icon="time" minimal title="Duration">
-            {formatDuration(Math.round(fileInfo?.duration!) * 1000)}
+            {formatDuration(Math.round(fileInfo?.audioMetadata?.format?.duration) * 1000)}
           </Tag>
         )}
+        {fileInfo?.audioMetadata?.format?.bitrate && (
+          <Tag icon="regression-chart" minimal title="Bitrate (kilobits per second)">
+            {Math.round((fileInfo?.audioMetadata?.format?.bitrate ?? 0) * 0.001)} kbps
+          </Tag>
+        )}
+        {fileInfo?.audioMetadata?.common.bpm && (
+          <Tag icon="one-to-one" minimal title="Beats per minute">
+            {fileInfo?.audioMetadata?.common.bpm} bpm
+          </Tag>
+        )}
+        {fileInfo?.audioMetadata?.format.lossless && <Tag icon="flame" minimal title="Lossless" />}
       </ul>
 
       <FileInfoTags

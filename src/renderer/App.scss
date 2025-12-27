@@ -67,7 +67,7 @@ div[class^="style_MenuList"] {
   background-color: $pt-dark-app-background-color !important;
 
   .bundle {
-    background: $pt-dark-code-background-color !important;
+    background: $pt-dark-app-background-color !important;
     color: $pt-dark-code-text-color !important;
 
     &.active {
@@ -85,11 +85,39 @@ div[class^="style_MenuList"] {
   }
 
   .bundles-grid .grid {
-    background-color: $pt-dark-app-background-color !important;
+    background-color: $dark-gray1 !important;
   }
 
   .tree {
     background-color: $dark-gray1 !important;
+  }
+
+    .gutter {
+    background-color: $dark-gray4;
+
+    &:hover {
+      background-color: $pt-dark-divider-white;
+    }
+  }
+
+  .side-menu {
+    border-right-color: $pt-dark-divider-white;
+  }
+
+  .search-results-list {
+    background-color: $dark-gray1;
+  }
+
+  .search-result-entry {
+    background-color: $pt-dark-app-background-color;
+
+    .search-result-preview {
+      background-color: $dark-gray1;
+    }
+  }
+
+  .tasks-page {
+    background: linear-gradient(135deg, $dark-gray1 0%, $dark-gray2 100%);
   }
 }
 
@@ -618,9 +646,16 @@ div[class^="style_MenuList"] {
     display: flex;
     flex-direction: column;
 
-    #waveform wave wave {
-      border-right-width: 0.2em !important;
-      border-color: $pt-code-text-color !important;
+    #waveform {
+      margin-top: 1em;
+      margin-bottom: 1em;
+      height: 170px;
+
+      wave wave {
+        border-right-width: 0.2em !important;
+        border-color: $pt-code-text-color !important;
+      }
+
     }
   }
 
@@ -760,6 +795,10 @@ div[class^="style_MenuList"] {
   display: flex;
   flex-direction: row;
 
+  .gutter {
+    background-color: $light-gray5;
+  }
+
   .gutter-horizontal {
     &:hover {
       background-color: $pt-intent-primary;
@@ -768,20 +807,6 @@ div[class^="style_MenuList"] {
       transition-delay: 0.5s;
     }
 
-  }
-}
-
-.bp4-dark {
-  .gutter {
-    border-left-color: $pt-dark-divider-white;
-
-    &:hover {
-      background-color: $pt-dark-divider-white;
-    }
-  }
-
-  .side-menu {
-    border-right-color: $pt-dark-divider-white;
   }
 }
 
@@ -857,7 +882,7 @@ div[class^="style_MenuList"] {
   padding: 30px;
   height: 100%;
   overflow-y: auto;
-  background: linear-gradient(135deg, #f5f8fa 0%, #e1e8ed 100%);
+  background: linear-gradient(135deg, $light-gray4 0%, $light-gray5 100%);
   display: flex;
   flex-grow: 1;
   flex-direction: column;
@@ -865,7 +890,6 @@ div[class^="style_MenuList"] {
   .tasks-header {
     margin-top: 0;
     margin-bottom: 30px;
-    color: #1c2127;
   }
 
   .tasks-empty {
@@ -875,10 +899,6 @@ div[class^="style_MenuList"] {
     .bp4-icon {
       opacity: 0.5;
       margin-bottom: 20px;
-    }
-
-    .bp4-text {
-      color: #7a8896;
     }
   }
 
@@ -911,7 +931,6 @@ div[class^="style_MenuList"] {
           .bp4-heading {
             margin: 0;
             font-size: 16px;
-            color: #1c2127;
           }
         }
 
@@ -1240,11 +1259,11 @@ div[class^="style_MenuList"] {
 .search-result-entry {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px;
+  gap: 0.5em;
+  padding: 0.7em;
   border: 1px solid $pt-divider-black;
   border-radius: $pt-border-radius;
-  background-color: rgba($color: $pt-icon-color, $alpha: 0.02);
+  background-color: $pt-app-background-color;
   cursor: pointer;
   transition: all 0.2s ease;
   width: 32em;
@@ -1267,7 +1286,7 @@ div[class^="style_MenuList"] {
     width: 56px;
     height: 56px;
     border-radius: $pt-border-radius;
-    background-color: rgba($color: $pt-icon-color, $alpha: 0.1);
+    background-color: $white;
     flex-shrink: 0;
     overflow: hidden;
 
@@ -1289,21 +1308,11 @@ div[class^="style_MenuList"] {
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
-      color: $pt-text-color;
-    }
-
-    .search-result-path {
-      font-size: 12px;
-      color: $pt-text-color-muted;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      margin-bottom: 4px;
     }
 
     .search-result-tags {
+      margin-top: 0.2em;
       font-size: 11px;
-      color: $pt-text-color-muted;
       display: flex;
       align-items: center;
       gap: 4px;

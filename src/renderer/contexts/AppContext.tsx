@@ -8,7 +8,7 @@ import {
   useMemo,
   useState,
 } from 'react';
-import { useMatch, useNavigate } from 'react-router-dom';
+import { useMatch, useNavigate, useSearchParams } from 'react-router-dom';
 import { BuildNodeQueries } from 'renderer/scripts/file-tree';
 import {
   GetSelectedTags,
@@ -55,7 +55,6 @@ interface AppContextProviderParams {
 
 const AppContext = createContext<AppContextSchema | undefined>(undefined);
 const focusedItemKey = 'focused-item';
-const focusedScrollKey = 'focused-scroll';
 
 export function AppContextProvider({
   children,
@@ -71,7 +70,7 @@ export function AppContextProvider({
   const [selectedTags, setSelectedTags] = useState<string[]>(GetSelectedTags);
   const [typeFilter, setTypeFilter] = useState<FileType[]>(GetTypeFilter);
   const [filter, setFilter] = useState<string | null>(null);
-  const focusedMatch = useMatch('/explorer/:focusedId');
+  const focusedMatch = useMatch('explorer/:focusedId');
   const [focusedItem, setFocusedItem] = useSavedStateRaw(focusedItemKey);
 
   BuildNodeQueries(projectDir, database);
@@ -145,6 +144,7 @@ export function AppContextProvider({
       }) satisfies AppContextSchema,
     [
       focusedItem,
+      setFocusedItem,
       typeFilter,
       selectedTags,
       toggleTag,

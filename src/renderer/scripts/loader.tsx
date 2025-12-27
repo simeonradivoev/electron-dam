@@ -145,7 +145,10 @@ function loadImage(info: FileInfo): Promise<string> {
 }
 
 function loadAudio(info: FileInfo): Promise<{ url: string; duration?: number }> {
-  return Promise.resolve({ url: `app://${normalize(info.path)}`, duration: info.duration });
+  return Promise.resolve({
+    url: `app://${normalize(info.path)}`,
+    duration: info.audioMetadata?.format.duration,
+  });
 }
 
 type ExtensionLoaderSetter = (fileInfo: FileInfo) => Promise<any>;

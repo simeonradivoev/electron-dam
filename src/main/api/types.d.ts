@@ -1,4 +1,5 @@
 import { DBSchema } from 'idb';
+import { IAudioMetadata } from 'music-metadata';
 import { FileType } from 'shared/constants';
 
 declare global {
@@ -32,7 +33,7 @@ declare global {
     fileType?: FileType;
     directory: string;
     hasMaterialLibrary: boolean;
-    duration?: number;
+    audioMetadata?: IAudioMetadata;
     modelData?: Uint8Array;
     isDirectory: boolean;
     isZip?: boolean;

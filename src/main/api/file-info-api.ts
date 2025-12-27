@@ -162,7 +162,7 @@ async function buildFileInfo(store: Store<StoreSchema>, filePath: FilePath): Pro
         .catch((e: any) => e);
     } else if (mediaFormatsMatch(filePath.path)) {
       const metadata = await mm.parseFile(path.join(filePath.projectDir, filePath.path));
-      info.duration = metadata.format.duration;
+      info.audioMetadata = metadata;
     }
   }
 
