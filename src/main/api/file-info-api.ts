@@ -7,9 +7,16 @@ import * as mm from 'music-metadata';
 import StreamZip from 'node-stream-zip';
 import picomatch from 'picomatch';
 import { StoreSchema, MainIpcGetter, previewTypes, zipDelimiter } from '../../shared/constants';
-import { mediaFormatsMatch, mkdirs } from '../util';
+import { audioMediaFormatsMatch, decompressBase64ToString, mkdirs } from '../util';
 import { loadDirectoryBundle, loadZipBundle, searchParentBundle } from './bundles-api';
-import { findBundlePath, pathExistsSync, pathJoin, pathLstat } from './file-system-api';
+import {
+  findBundlePath,
+  getMetadata,
+  pathExistsSync,
+  pathJoin,
+  pathLstat,
+} from './file-system-api';
+import { GetAbsoluteThumbnailPath } from './protocols';
 
 const modelsToCovertMatch = picomatch(['**/*.obj', '**/*.glb', '**/*.stl', '**/*.fbx'], {
   nocase: true,
@@ -42,20 +49,10 @@ async function buildFileInfo(store: Store<StoreSchema>, filePath: FilePath): Pro
         hasMaterialLibrary: false,
         isDirectory: zipEntry.isDirectory,
         isZip: true,
+        hasThumbnail: false,
       };
 
-      const tmpExtractionFolder = path.join('.cache', 'zipExtracts');
-      const tmpExtractionPath = path.join(
-        tmpExtractionFolder,
-        filePath.path.replaceAll(path.sep, '-'),
-      );
-      if (existsSync(path.join(projectDir, tmpExtractionPath))) {
-      } else {
-        mkdirs({ projectDir, path: tmpExtractionFolder });
-        await zip.extract(localPath, path.join(projectDir, tmpExtractionPath));
-      }
-
-      info.previewPath = tmpExtractionPath;
+      info.previewPath = zipPath;
     } else {
       // this is the zip bundle file itself
       const stat = await lstat(path.join(projectDir, zipPath));
@@ -68,6 +65,7 @@ async function buildFileInfo(store: Store<StoreSchema>, filePath: FilePath): Pro
         hasMaterialLibrary: false,
         isDirectory: true,
         isZip: true,
+        hasThumbnail: false,
       };
 
       const bundle = await loadZipBundle({ projectDir, path: zipPath });
@@ -95,6 +93,7 @@ async function buildFileInfo(store: Store<StoreSchema>, filePath: FilePath): Pro
       hasMaterialLibrary: matExists,
       isDirectory: fileStat.isDirectory(),
       bundlePath: (await findBundlePath(filePath))?.path,
+      hasThumbnail: existsSync(await GetAbsoluteThumbnailPath(filePath, fileStat)),
     };
 
     if (info.isDirectory) {
@@ -160,9 +159,19 @@ async function buildFileInfo(store: Store<StoreSchema>, filePath: FilePath): Pro
           return resultFile.GetContent();
         })
         .catch((e: any) => e);
-    } else if (mediaFormatsMatch(filePath.path)) {
+    } else if (audioMediaFormatsMatch(filePath.path)) {
+      // Load audio metadata
       const metadata = await mm.parseFile(path.join(filePath.projectDir, filePath.path));
       info.audioMetadata = metadata;
+      const fileMetadata = await getMetadata<AudioMetadata>(filePath);
+      // Regenerate peaks if they are stale
+      if (
+        fileMetadata?.peaks &&
+        fileMetadata.lastModified &&
+        fileMetadata.lastModified >= fileStat.mtimeMs
+      ) {
+        info.audioMetadata.peaks = await decompressBase64ToString(fileMetadata.peaks);
+      }
     }
   }
 

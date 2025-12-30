@@ -1,6 +1,6 @@
 /* eslint-disable prettier/prettier */
 // src/renderer/components/HomePanel/Home.tsx
-import { Card, Icon, NonIdealState, Spinner, Tag } from '@blueprintjs/core';
+import { Card, Classes, Icon, NonIdealState, Spinner, Tag } from '@blueprintjs/core';
 import { useQuery } from '@tanstack/react-query';
 import { useCallback, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -77,6 +77,12 @@ function Home(props: Props) {
             <Icon icon="document" /> File Count
           </p>
           <h1>{stats?.data?.stats.assetCount}</h1>
+          <p className={Classes.TEXT_MUTED}>
+            No Metadata: {stats?.data?.stats.missingMetadataCount}
+          </p>
+          <p className={Classes.TEXT_MUTED}>
+            No Embeddings: {stats?.data?.stats.missingEmbeddingsCount}
+          </p>
         </Card>
         <Card elevation={elevation}>
           <p>

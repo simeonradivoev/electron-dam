@@ -104,6 +104,7 @@
     "@orama/plugin-data-persistence": "^3.1.16",
     "@react-three/drei": "^9.122.0",
     "@react-three/fiber": "^8.18.0",
+    "@tanstack/react-form": "^1.27.6",
     "@tanstack/react-query": "^5.90.12",
     "@tanstack/react-query-devtools": "^5.91.1",
     "@tanstack/react-virtual": "^3.13.13",
@@ -117,7 +118,6 @@
     "electron-log": "^4.4.8",
     "electron-store": "^8.1.0",
     "electron-updater": "^5.2.2",
-    "frameless-titlebar": "^2.1.4",
     "idb": "^7.1.0",
     "lodash-es": "^4.17.21",
     "lokijs": "^1.5.12",
@@ -140,6 +140,7 @@
     "three": "^0.182.0",
     "turndown": "^7.2.2",
     "use-debounce": "^10.0.6",
+    "usehooks-ts": "^3.1.1",
     "uuid": "^8.3.2",
     "wavesurfer.js": "^7.12.1",
     "web-streams-polyfill": "^4.2.0",
@@ -228,8 +229,8 @@
     "ts-jest": "^28.0.8",
     "ts-loader": "^9.3.1",
     "ts-node": "^10.9.2",
-    "typescript": "^4.9.5",
-    "typescript-eslint": "^8.49.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.50.1",
     "url-loader": "^4.1.1",
     "webpack": "^5.74.0",
     "webpack-bundle-analyzer": "^4.5.0",
@@ -325,10 +326,6 @@
     "logLevel": "quiet"
   },
   "overrides": {
-    "frameless-titlebar": {
-      "react": "$react",
-      "react-dom": "$react-dom"
-    },
     "react-popper": {
       "react": "$react",
       "react-dom": "$react-dom"

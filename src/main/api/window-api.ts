@@ -1,18 +1,18 @@
 import { BrowserWindow, ipcMain } from 'electron';
-import { Channels, MainIpcGetter } from '../../shared/constants';
+import { MainIpcGetter } from '../../shared/constants';
 
 export default function InitializeWindowApi(api: MainIpcGetter) {
-  ipcMain.on(Channels.MinimizeWindow, (e) => {
-    const window = BrowserWindow.fromWebContents(e.sender);
+  api.minimizeWindow = async () => {
+    const window = BrowserWindow.getAllWindows()[0];
     window?.minimize();
-  });
+  };
 
-  ipcMain.on(Channels.MaximizeWindow, (e) => {
-    const window = BrowserWindow.fromWebContents(e.sender);
+  api.maximizeWindow = async () => {
+    const window = BrowserWindow.getAllWindows()[0];
     if (window?.isMaximized()) {
       window?.unmaximize();
     } else {
       window?.maximize();
     }
-  });
+  };
 }

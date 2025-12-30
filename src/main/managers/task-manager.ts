@@ -1,7 +1,7 @@
 import { BrowserWindow, ipcMain } from 'electron';
 import PQueue from 'p-queue';
 import { v4 } from 'uuid';
-import { Channels, MainIpcCallbacks, MainIpcGetter } from '../../shared/constants';
+import { MainIpcCallbacks, MainIpcGetter } from '../../shared/constants';
 
 let window: BrowserWindow | undefined;
 let queue: PQueue;

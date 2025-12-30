@@ -166,7 +166,6 @@ function ExplorerBar({
         hotkey: 'KeyQ',
         handler: (e, tree) => {
           quickAction?.(e);
-          console.log('Quick Action');
         },
       },
     },
@@ -283,7 +282,6 @@ function ExplorerBar({
         tree={tree}
         contextMenu={contextMenu}
         onClick={handleClick}
-        ref={virtualizer}
       />
     </div>
   );

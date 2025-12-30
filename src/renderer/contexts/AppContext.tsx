@@ -17,8 +17,8 @@ import {
   ToggleFileType,
 } from 'renderer/scripts/filters';
 import RegisterFileLoadFile from 'renderer/scripts/loader';
-import { useSavedState, useSavedStateRaw } from 'renderer/scripts/utils';
 import { FileType } from 'shared/constants';
+import { useSessionStorage } from 'usehooks-ts';
 
 export interface AppContextSchema {
   focusedItem: string | undefined;
@@ -31,8 +31,6 @@ export interface AppContextSchema {
   setFilter: React.Dispatch<React.SetStateAction<string | null>>;
   sideBarSize: number;
   database: Promise<IDBPDatabase<FilesDB>>;
-  darkMode: boolean;
-  setDarkMode: (darkMode: boolean) => void;
   setSideBarSize: (size: number) => void;
   setFileInfo: (fileInfo: FileInfo | null) => void;
   fileInfo: FileInfo | null;
@@ -48,8 +46,6 @@ interface AppContextProviderParams {
   database: Promise<IDBPDatabase<FilesDB>>;
   children: ReactNode | ReactNode[];
   mutateProjectDir: (path: string | null) => void;
-  darkMode: boolean;
-  setDarkMode: (value: boolean) => void;
   setSelectedProjectDirectory: (path: string | null) => void;
 }
 
@@ -61,8 +57,6 @@ export function AppContextProvider({
   projectDir,
   database,
   mutateProjectDir,
-  darkMode,
-  setDarkMode,
   setSelectedProjectDirectory,
 }: AppContextProviderParams) {
   const { fileInfo, setFileInfo } = RegisterFileLoadFile();
@@ -71,12 +65,15 @@ export function AppContextProvider({
   const [typeFilter, setTypeFilter] = useState<FileType[]>(GetTypeFilter);
   const [filter, setFilter] = useState<string | null>(null);
   const focusedMatch = useMatch('explorer/:focusedId');
-  const [focusedItem, setFocusedItem] = useSavedStateRaw(focusedItemKey);
+  const [focusedItem, setFocusedItem] = useSessionStorage<string | undefined>(
+    focusedItemKey,
+    undefined,
+  );
 
   BuildNodeQueries(projectDir, database);
 
   const [sideBarSize, setSideBarSize] = useState<number>(
-    Number(window.sessionStorage.getItem('sideBarSize') ?? 30),
+    Number(window.localStorage.getItem('sideBarSize') ?? 30),
   );
 
   const clearSelectedProjectDirectory = useCallback(
@@ -131,8 +128,6 @@ export function AppContextProvider({
         setFilter,
         sideBarSize,
         database,
-        darkMode,
-        setDarkMode,
         setSideBarSize,
         setFileInfo,
         fileInfo,
@@ -152,8 +147,6 @@ export function AppContextProvider({
       filter,
       sideBarSize,
       database,
-      darkMode,
-      setDarkMode,
       setFileInfo,
       fileInfo,
       projectDir,

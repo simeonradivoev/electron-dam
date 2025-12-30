@@ -122,6 +122,8 @@ const FileInfoPanel: React.FC<FileInfoPanelProps> = ({ item, contextMenu }) => {
     previewPanel = (
       <div className="preview-audio">
         <PreviewPanelAudio
+          path={fileInfo?.path}
+          hasThumbnail={fileInfo?.hasThumbnail ?? false}
           audioMetadata={fileInfo?.audioMetadata}
           isZip={fileInfo?.isZip ?? false}
           importedAudio={importedAudio.data}

@@ -3,11 +3,11 @@ import { useQueryClient } from '@tanstack/react-query';
 import { IDBPDatabase } from 'idb/with-async-ittr';
 import { extname } from 'pathe';
 import { useEffect } from 'react';
-import { AudioFileFormat, ModelFormat, TextureFormat } from 'shared/constants';
+import { AudioFileFormat, ModelFormat, ImageFormat } from 'shared/constants';
 
 const iconMap = new Map<string, IconName>([
   ...Object.values(AudioFileFormat).map((f) => [f, 'music'] as [string, IconName]),
-  ...Object.values(TextureFormat).map((f) => [f, 'media'] as [string, IconName]),
+  ...Object.values(ImageFormat).map((f) => [f, 'media'] as [string, IconName]),
   ...Object.values(ModelFormat).map((f) => [f, 'cube'] as [string, IconName]),
   ['.zip', 'compressed'],
 ]);

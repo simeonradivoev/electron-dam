@@ -1,5 +1,6 @@
 import { Icon } from '@blueprintjs/core';
-import { useState } from 'react';
+import { normalize } from 'pathe';
+import { memo, useMemo, useState } from 'react';
 import { useApp } from 'renderer/contexts/AppContext';
 import { getIcon } from 'renderer/scripts/file-tree';
 
@@ -8,7 +9,7 @@ type Props = {
   ref?: React.MutableRefObject<HTMLDivElement | null>;
 };
 
-function BundleFileEntry({ node, ref }: Props) {
+const BundleFileEntry = memo(({ node, ref }: Props) => {
   const { viewInExplorer } = useApp();
 
   const handleNavigation = () => {
@@ -16,18 +17,26 @@ function BundleFileEntry({ node, ref }: Props) {
   };
 
   const [validPreview, setValidPreview] = useState(true);
+  const iconName = getIcon(node.path);
+  const icon = useMemo(() => <Icon icon={iconName} />, [iconName]);
+  const preview = useMemo(
+    () => (
+      <img
+        alt=""
+        src={`thumb://${escape(normalize(node.path))}`}
+        onError={() => setValidPreview(false)}
+      />
+    ),
+    [node.path],
+  );
 
   return (
     <div title={node.name} ref={ref} className="asset" onClick={handleNavigation}>
-      {validPreview ? (
-        <img alt={node.name} src={`thumb://${node.path}`} onError={() => setValidPreview(false)} />
-      ) : (
-        <Icon icon={getIcon(node.path)} />
-      )}
+      {validPreview ? preview : icon}
 
       <p>{node.name}</p>
     </div>
   );
-}
+});
 
 export default BundleFileEntry;

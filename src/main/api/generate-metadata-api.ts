@@ -5,9 +5,9 @@ import {
   ImageClassificationOutput,
   pipeline,
 } from '@huggingface/transformers';
-import { ipcMain } from 'electron';
 import Store from 'electron-store';
-import ollama from 'ollama';
+import { Ollama } from 'ollama';
+import sharp from 'sharp';
 import zodToJsonSchema from 'zod-to-json-schema';
 import { z } from 'zod/v3';
 import {
@@ -18,10 +18,13 @@ import {
   MainIpcGetter,
 } from '../../shared/constants';
 import { addTask } from '../managers/task-manager';
-import { findBundleInfoForFile } from './bundles-api';
-import { getAllAssets, getAllAssetsIn, getMetadata, operateOnMetadata } from './file-system-api';
+import { compressStringToBase64, dataUrlToBuffer } from '../util';
+import { checkMetadataIssues, findBundleInfoForFile } from './bundles-api';
+import { getAllAssetsIn, getMetadata, operateOnMetadata } from './file-system-api';
+import { GetAbsoluteThumbnailPath, GetAbsoluteThumbnailPathForFile } from './protocols';
 
 let audioDecode: (buf: ArrayBuffer | Uint8Array) => Promise<AudioBuffer>;
+let ollama: Ollama;
 
 async function autoFileMetadata(
   filePath: FilePath,
@@ -186,9 +189,21 @@ async function autoFileMetadata(
   return getMetadata<FileMetadata>(filePath).then((m) => m ?? {});
 }
 
-async function autoFolderMetadata(folderPath: FilePath, type: AutoTagType, a: AbortSignal) {
+async function getMissingMetadataFiles(folderPath: FilePath) {
   const allAssets = await getAllAssetsIn(folderPath);
-  for (const asset of allAssets.filter((a) => a.bundlePath)) {
+  const metadatas = await Promise.all(
+    allAssets.map((asset) =>
+      checkMetadataIssues(folderPath.projectDir, asset).then((assetStat) => ({ asset, assetStat })),
+    ),
+  );
+  return metadatas
+    .filter(({ assetStat }) => assetStat.missingDescription && assetStat.hasBundle)
+    .map(({ asset }) => asset);
+}
+
+async function autoFolderMetadata(folderPath: FilePath, type: AutoTagType, a: AbortSignal) {
+  const assets = await getMissingMetadataFiles(folderPath);
+  for (const asset of assets) {
     await autoFileMetadata({ projectDir: folderPath.projectDir, path: asset.path }, type, a);
   }
 }
@@ -207,10 +222,34 @@ export default async function InitializeGenerateMetadataApi(
   api: MainIpcGetter,
   store: Store<StoreSchema>,
 ) {
+  ollama = new Ollama({ host: store.get('ollamaHost') });
+
+  store.onDidChange('ollamaHost', (val) => {
+    ollama = new Ollama({ host: val });
+  });
+
   // hack to load it, issue with typescript loading
   const module = await (eval(`import('audio-decode')`) as Promise<any>);
   audioDecode = module.default;
 
+  api.saveAudioPeaks = async (localPath, peaks) => {
+    const filePath = { projectDir: store.get('projectDirectory'), path: localPath };
+    const asolutePath = path.join(filePath.projectDir, filePath.path);
+    const stats = await stat(asolutePath);
+    await operateOnMetadata<AudioMetadata>(filePath, async (meta) => {
+      meta.peaks = await compressStringToBase64(peaks);
+      meta.lastModified = stats.mtimeMs;
+      return true;
+    });
+  };
+  api.saveAudioPreview = async (localPath, data) => {
+    sharp(dataUrlToBuffer(data)).toFile(
+      await GetAbsoluteThumbnailPathForFile({
+        projectDir: store.get('projectDirectory'),
+        path: localPath,
+      }),
+    );
+  };
   api.autoMetadata = (pt, t) =>
     addTask('Auto Metadata ', (a, p) =>
       autoMetadata({ projectDir: store.get('projectDirectory'), path: pt }, t, a),

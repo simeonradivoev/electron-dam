@@ -19,7 +19,7 @@ function loadAssimpModel(info: FileInfo, setImportedMesh: (mesh: any) => void): 
   }
 
   gltfLoader
-    .parseAsync(info.modelData.buffer, info.directory)
+    .parseAsync(info.modelData.buffer as ArrayBuffer, info.directory)
     .then((value) => {
       setImportedMesh(<primitive object={value.scene} />);
       return true;
@@ -130,7 +130,10 @@ async function loadGltfModel(info: FileInfo): Promise<any | undefined> {
 async function loadModel(info: FileInfo): Promise<any | undefined> {
   if (info.modelData) {
     try {
-      const gltf = await gltfLoader.parseAsync(info.modelData.buffer, info.directory);
+      const gltf = await gltfLoader.parseAsync(
+        info.modelData.buffer as ArrayBuffer,
+        info.directory,
+      );
       return gltf.scene;
     } catch (error) {
       return Promise.reject(error);

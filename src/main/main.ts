@@ -14,7 +14,8 @@ import { installExtension, REACT_DEVELOPER_TOOLS } from 'electron-extension-inst
 import log from 'electron-log';
 import Store from 'electron-store';
 import { autoUpdater } from 'electron-updater';
-import { StoreSchema, MainIpcCallbacks, MainIpcGetter } from 'shared/constants';
+import zodToJsonSchema from 'zod-to-json-schema';
+import { StoreSchema, MainIpcCallbacks, MainIpcGetter, StoreSchemaZod } from '../shared/constants';
 import InitializeCallbacks from './api/callbacks';
 import { LoadDatabase } from './api/database-api';
 import InitializeGenerateMetadataApi from './api/generate-metadata-api';
@@ -139,7 +140,11 @@ app
   .whenReady()
   .then(async () => {
     // Initialization
-    const store = new Store<StoreSchema>();
+    console.log(app.getPath('userData'));
+    const store = new Store<StoreSchema>({
+      deserialize: (s) => StoreSchemaZod.parse(JSON.parse(s)),
+      defaults: StoreSchemaZod.parse({}),
+    });
     const apiGetters = {} as MainIpcGetter;
     const apiCallbacks = {} as MainIpcCallbacks;
     registerMainCallbacks(apiCallbacks);

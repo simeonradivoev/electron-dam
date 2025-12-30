@@ -1,43 +1,27 @@
-import FramelessTitleBar from 'frameless-titlebar';
-import { TitleBarTheme } from 'frameless-titlebar/dist/title-bar/typings';
+import { Button, Classes } from '@blueprintjs/core';
 import { useLocation } from 'react-router-dom';
 import icon from '../../../assets/icon.png';
 
-type Props = {
-  setSelectedProjectDirectory: (directory: string | null) => void;
-};
-
-function TitleBar({ setSelectedProjectDirectory }: Props) {
+function TitleBar() {
   const location = useLocation();
 
   return (
-    <FramelessTitleBar
-      iconSrc={icon}
-      title={location.pathname}
-      theme={{ bar: { borderBottom: '' } } as TitleBarTheme}
-      menu={[
-        {
-          label: 'File',
-          submenu: [
-            {
-              label: 'Open Project',
-              click: async () => {
-                setSelectedProjectDirectory(await window.api.selectProjectDirectory());
-              },
-            },
-            {
-              label: 'Quit',
-              click: () => {
-                window.close();
-              },
-            },
-          ],
-        },
-      ]}
-      onClose={() => window.close()}
-      onMinimize={() => window.api.minimizeWindow()}
-      onMaximize={() => window.api.maximizeWindow()}
-    />
+    <div className="titlebar">
+      {/* Left side */}
+      <div className="left">
+        <img src={icon} className="icon" />
+        <span className="titlebar-title">{document.title}</span>
+      </div>
+
+      <div className={Classes.TEXT_MUTED}>{location.pathname}</div>
+
+      {/* Right side */}
+      <div className="controls">
+        <Button minimal icon="minus" onClick={() => window.api.minimizeWindow()} />
+        <Button minimal icon="maximize" onClick={() => window.api.maximizeWindow()} />
+        <Button minimal id="close" icon="cross" onClick={() => window.close()} />
+      </div>
+    </div>
   );
 }
 

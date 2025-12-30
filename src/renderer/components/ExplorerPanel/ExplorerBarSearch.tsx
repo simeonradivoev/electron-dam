@@ -23,11 +23,11 @@ function ExplorerBarSearch({ tree, refresh }: Props) {
   const { toggleType, filter, setFilter, typeFilter } = useApp();
 
   const [filteringExpanded, setFilteringExpanded] = useState(
-    (sessionStorage.getItem('filter-expanded') ?? 'false') === 'true',
+    (localStorage.getItem('filter-expanded') ?? 'false') === 'true',
   );
 
   const toggleExpanded = () => {
-    sessionStorage.setItem('filter-expanded', (!filteringExpanded).toString());
+    localStorage.setItem('filter-expanded', (!filteringExpanded).toString());
     setFilteringExpanded(!filteringExpanded);
   };
 

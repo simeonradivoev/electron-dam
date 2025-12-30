@@ -1,6 +1,6 @@
 import { IconName } from '@blueprintjs/core';
 import { hashKey, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import { FileType } from 'shared/constants';
 import { string } from 'zod/v3';
 
@@ -38,67 +38,6 @@ export function toggleElementMutable(array: any[], element: any) {
     newArray.push(element);
   }
   return newArray;
-}
-
-export function useSavedStateRaw(
-  key: string,
-  initialValue?: string,
-): [data: string | undefined, setter: React.Dispatch<React.SetStateAction<string | undefined>>] {
-  return useSavedState(
-    key,
-    initialValue,
-    (v) => v,
-    (v) => v,
-  );
-}
-
-export function useSavedState<T>(
-  key: string,
-  initialValue: T,
-  serializer?: (value: T) => string | undefined,
-  deserializer?: (data: string) => T,
-): [data: T, setter: React.Dispatch<React.SetStateAction<T>>] {
-  const stateData = useState<T>(() => {
-    const savedValue = localStorage.getItem(key);
-    if (savedValue) {
-      return deserializer ? deserializer(savedValue) : (JSON.parse(savedValue) as T);
-    } else {
-      return initialValue;
-    }
-  });
-
-  return [
-    stateData[0],
-    (updated) => {
-      if (updated instanceof Function) {
-        const newData = updated(stateData[0]);
-        if (serializer) {
-          const serialized = serializer(newData);
-          if (serialized === undefined) {
-            localStorage.removeItem(key);
-          } else {
-            localStorage.setItem(key, serialized);
-          }
-        } else {
-          localStorage.setItem(key, JSON.stringify(newData));
-        }
-
-        stateData[1](newData);
-      } else {
-        if (serializer) {
-          const serialized = serializer(updated);
-          if (serialized === undefined) {
-            localStorage.removeItem(key);
-          } else {
-            localStorage.setItem(key, serialized);
-          }
-        } else {
-          localStorage.setItem(key, JSON.stringify(updated));
-        }
-        stateData[1](updated);
-      }
-    },
-  ];
 }
 
 export const FileTypeIcons = {
@@ -177,13 +116,78 @@ export function useQueryData<T>(queryKey: readonly unknown[]): T | undefined {
   );
 }
 
-export function useEvent(
-  element: DocumentAndElementEventHandlers,
-  channel: string,
-  callback: (e: any) => void,
-) {
+export function useEvent(element: Document, channel: string, callback: (e: any) => void) {
   useEffect(() => {
     element.addEventListener(channel, callback);
     return () => element.removeEventListener(channel, callback as any);
   });
+}
+
+function uint8ToBase64(bytes: Uint8Array): string {
+  let binary = '';
+  const chunk = 0x8000; // prevent stack overflow
+
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+
+  return btoa(binary);
+}
+
+function base64ToUint8(base64: string): Uint8Array {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+
+  return bytes;
+}
+
+export function encodePeaks(peaks: number[][]): string {
+  const channels = peaks.length;
+  const length = peaks[0].length;
+
+  // Header: [channels (1 byte), length (4 bytes)]
+  const header = new Uint8Array(5);
+  header[0] = channels;
+  new DataView(header.buffer).setUint32(1, length, false);
+
+  // Quantize + flatten
+  const data = new Uint8Array(channels * length);
+  let offset = 0;
+
+  for (const channel of peaks) {
+    for (const v of channel) {
+      data[offset++] = Math.round(v * 127 + 128);
+    }
+  }
+
+  // Combine
+  const combined = new Uint8Array(header.length + data.length);
+  combined.set(header, 0);
+  combined.set(data, header.length);
+
+  return uint8ToBase64(combined);
+}
+
+export function decodePeaks(encoded: string): number[][] {
+  const bytes = base64ToUint8(encoded);
+
+  const channels = bytes[0];
+  const length = new DataView(bytes.buffer).getUint32(1, false);
+
+  let offset = 5;
+  const peaks: number[][] = [];
+
+  for (let c = 0; c < channels; c++) {
+    const channel = new Array<number>(length);
+    for (let i = 0; i < length; i++) {
+      channel[i] = (bytes[offset++] - 128) / 127;
+    }
+    peaks.push(channel);
+  }
+
+  return peaks;
 }

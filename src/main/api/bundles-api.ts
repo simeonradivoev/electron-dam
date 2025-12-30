@@ -1,16 +1,15 @@
 import { spawn } from 'child_process';
-import { createWriteStream, readFileSync } from 'fs';
-import { lstat, writeFile, unlink, readdir, readFile, mkdir, rename } from 'fs/promises';
-import path, { dirname, normalize } from 'path';
-import { createGzip } from 'zlib';
-import { ipcMain, dialog, BrowserWindow, shell, Notification } from 'electron';
+import { createWriteStream } from 'fs';
+import { lstat, writeFile, unlink, readFile, mkdir, rename } from 'fs/promises';
+import path, { normalize } from 'path';
+import { dialog, BrowserWindow, shell, Notification } from 'electron';
 import Store from 'electron-store';
 import JSZip from 'jszip';
 import Loki from 'lokijs';
 import StreamZip from 'node-stream-zip';
 import { BundleMetaFile, StoreSchema, MainIpcGetter, previewTypes } from '../../shared/constants';
 import { addTask } from '../managers/task-manager';
-import { getRandom } from '../util';
+import { getRandom, mapAsync } from '../util';
 import {
   findBundlePath,
   getAllAssets,
@@ -23,6 +22,16 @@ import {
   pathReaddir,
   resolveAssetPath,
 } from './file-system-api';
+
+export async function checkMetadataIssues(projectDir: string, node: FileTreeNode) {
+  const metadata = await getMetadata<FileMetadata>({ projectDir, path: node.path });
+  return {
+    missingDescription: !metadata?.description,
+    canGenerateEmbeddings: !!metadata?.description,
+    missingEmbeddings: !metadata?.embeddings,
+    hasBundle: !node.bundlePath,
+  };
+}
 
 async function searchParents<T>(
   searchPath: FilePath,
@@ -358,7 +367,7 @@ async function exportBundle(
     const bundleFiles = await getAllAssetsIn(p);
     const zip = new JSZip();
     bundleFiles.forEach((file, i) => {
-      zip.file(file.path.substring(p.path.length + 1), readFile(file.path));
+      zip.file(file.path.substring(p.path.length + 1), readFile(file.path) as any);
       abort.throwIfAborted();
       progress(i / bundleFiles.length);
     });
@@ -394,6 +403,14 @@ export default function InitializeBundlesApi(
 
   async function getHomeBundles(): Promise<HomePageBundles | undefined> {
     const allFiles = await getAllAssets(store);
+    const projectDir = store.get('projectDirectory');
+    const issues = await mapAsync(allFiles, (f) => checkMetadataIssues(projectDir, f));
+    const missingMetadataCount = issues.filter(
+      (stats) => stats.missingDescription && stats.hasBundle,
+    ).length;
+    const missingEmbeddingsCount = issues.filter(
+      (stats) => stats.missingEmbeddings && stats.canGenerateEmbeddings,
+    ).length;
     const assetCount = allFiles.length;
     const assetsSize = allFiles
       .filter((f) => !f.isDirectory)
@@ -422,6 +439,8 @@ export default function InitializeBundlesApi(
         virtualBundleCount: bundles.filter((b) => b.isVirtual).length,
         assetCount,
         assetsSize,
+        missingMetadataCount,
+        missingEmbeddingsCount,
       },
     };
   }

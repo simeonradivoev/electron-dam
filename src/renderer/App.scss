@@ -57,18 +57,35 @@ div[class^="style_MenuList"] {
   flex-direction: column;
 }
 
-.changed {
-  border-left-width: 0.5em;
-  border-left-color: $pt-intent-primary;
-  border-left-style: solid;
+.setting-group input {
+    margin-left: 0.25em;
 }
+
+.bp4-form-group.changed {
+  color: $pt-intent-primary;
+}
+
+input.changed {
+    border-left-width: 0.5em;
+    border-left-color: $pt-intent-primary;
+    border-left-style: solid;
+    margin-left: -0.2em;
+  }
 
 .dark {
   background-color: $pt-dark-app-background-color !important;
 
   .bundle {
-    background: $pt-dark-app-background-color !important;
+    background: $dark-gray3 !important;
     color: $pt-dark-code-text-color !important;
+
+    &:hover {
+      background-color: $dark-gray4  !important;
+
+      .preview {
+        background: transparent !important;
+      }
+    }
 
     &.active {
       background-color: $pt-intent-primary !important;
@@ -85,11 +102,11 @@ div[class^="style_MenuList"] {
   }
 
   .bundles-grid .grid {
-    background-color: $dark-gray1 !important;
+    background: linear-gradient(135deg, $dark-gray1 0%, $dark-gray2 100%) !important;
   }
 
   .tree {
-    background-color: $dark-gray1 !important;
+    background: linear-gradient(135deg, $dark-gray1 0%, $dark-gray2 100%) !important;
   }
 
     .gutter {
@@ -105,11 +122,19 @@ div[class^="style_MenuList"] {
   }
 
   .search-results-list {
-    background-color: $dark-gray1;
+    background: linear-gradient(135deg, $dark-gray1 0%, $dark-gray2 100%) !important;
+
+    .pages .active {
+      background-color: $dark-gray4 !important;
+    }
   }
 
   .search-result-entry {
-    background-color: $pt-dark-app-background-color;
+    background-color: $dark-gray3;
+
+    &:hover {
+      background-color: $dark-gray4;
+    }
 
     .search-result-preview {
       background-color: $dark-gray1;
@@ -177,6 +202,7 @@ div[class^="style_MenuList"] {
     border-style: solid;
     border-radius: $pt-border-radius;
     background-color: $white;
+    cursor: pointer;
 
     &.active {
       background-color: $pt-intent-primary;
@@ -191,6 +217,23 @@ div[class^="style_MenuList"] {
     &:hover {
       background-color: $light-gray3;
       color: $pt-text-color;
+      user-select: none;
+
+      .preview {
+        background: black;
+
+        img {
+          opacity: 0.4;
+        }
+
+        .overlay-icon {
+          opacity: 0.8;
+        }
+
+        #properties span {
+          background-color: transparent;
+        }
+      }
     }
 
     p {
@@ -211,7 +254,6 @@ div[class^="style_MenuList"] {
       border-radius: calc($pt-border-radius * 2);
       overflow: hidden;
       padding: 0;
-      cursor: pointer;
 
       .bp4-button-text {
         display: flex;
@@ -224,22 +266,6 @@ div[class^="style_MenuList"] {
 
       &.virtual {
         border-radius: 2em;
-      }
-
-      &:hover {
-        background: black;
-
-        img {
-          opacity: 0.4;
-        }
-
-        .overlay-icon {
-          opacity: 0.8;
-        }
-
-        #properties span {
-          background-color: transparent;
-        }
       }
 
       #properties {
@@ -481,6 +507,11 @@ div[class^="style_MenuList"] {
   border-right-width: 1px;
   border-right-style: solid;
   width: 3em;
+
+  .loading {
+    margin-top: auto;
+    margin-bottom: 1em;
+  }
 
   .active {
     border-left-width: 0.2em;
@@ -1181,6 +1212,7 @@ div[class^="style_MenuList"] {
       margin: 0 auto;
       width: 100%;
       align-items: center;
+      background: linear-gradient(135deg, $light-gray3 0%, $light-gray5 100%);
 
       ul {
         display: flex;
@@ -1199,6 +1231,10 @@ div[class^="style_MenuList"] {
         flex-wrap: wrap;
         justify-content: center;
         row-gap: 0.5em;
+
+        .active {
+          background-color: $light-gray1;
+        }
       }
     }
 
@@ -1263,13 +1299,13 @@ div[class^="style_MenuList"] {
   padding: 0.7em;
   border: 1px solid $pt-divider-black;
   border-radius: $pt-border-radius;
-  background-color: $pt-app-background-color;
+  background-color: $light-gray5;
   cursor: pointer;
   transition: all 0.2s ease;
   width: 32em;
 
   &:hover {
-    background-color: rgba($color: $pt-icon-color, $alpha: 0.08);
+    background-color: $light-gray2;
     border-color: $pt-divider-black;
   }
 
@@ -1277,6 +1313,10 @@ div[class^="style_MenuList"] {
     background-color: rgba($color: $pt-intent-primary, $alpha: 0.1);
     border-color: $pt-intent-primary;
     border-width: 1px;
+
+    &:hover {
+      background-color: rgba($color: $pt-intent-primary, $alpha: 0.2);
+    }
   }
 
   .search-result-preview {
@@ -1352,13 +1392,110 @@ div[class^="style_MenuList"] {
 
 .settings {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   width: 100%;
+
+  .bp4-tab-list {
+    padding-top: 1em;
+  }
+
+  .settings-content-tabs {
+    .bp4-tab-list {
+      display: none;
+    }
+  }
 
   .settings-content {
     padding: 1em;
     padding-top: 0;
   }
+}
+
+$titlebar-height: 36px;
+$titlebar-bg: $dark-gray2;
+$titlebar-fg: #f5f8fa;
+$titlebar-hover: rgba(255, 255, 255, 0.08);
+
+$control-width: 46px;
+$icon-size: 16px;
+
+// ================================
+// Titlebar Root
+// ================================
+.titlebar {
+    height: $titlebar-height;
+    min-height: $titlebar-height;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    background: $titlebar-bg;
+    color: $titlebar-fg;
+
+    user-select: none;
+    -webkit-app-region: drag;
+
+    // ----------------------------
+    // Left section
+    // ----------------------------
+    .left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding-left: 10px;
+    }
+
+    .icon {
+      width: $icon-size;
+      height: $icon-size;
+      flex-shrink: 0;
+    }
+
+    .title {
+      font-size: 13px;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    // ----------------------------
+    // Window controls
+    // ----------------------------
+    .controls {
+      display: flex;
+      height: 100%;
+
+      -webkit-app-region: no-drag;
+
+      .bp4-button {
+        width: $control-width;
+        height: 100%;
+        border-radius: 0;
+
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        transition: background-color 120ms ease;
+
+        &:hover {
+          background-color: $titlebar-hover;
+        }
+
+        &:active {
+          background-color: rgba(255, 255, 255, 0.15);
+        }
+
+        &#close:hover {
+          background-color: $pt-intent-danger;
+          span {
+            color: $pt-dark-text-color;
+          }
+        }
+      }
+    }
 }
 
 /* Notification badge for Blueprint.js v4 buttons - just add class to button */

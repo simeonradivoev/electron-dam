@@ -1,21 +1,27 @@
 import { createHash } from 'crypto';
 import { stat } from 'fs/promises';
 import path from 'path';
-import { ipcMain } from 'electron';
 import Store from 'electron-store';
 import Loki from 'lokijs';
-import { async } from 'node-stream-zip';
 import {
   StoreSchema,
   FileFormatsToFileTypes,
   FileType,
   MainIpcGetter,
 } from '../../shared/constants';
-import { embeddingsService } from '../managers/search/EmbeddingsService';
-import { IndexSchema, oramaManager } from '../managers/search/OramaManager';
 import { addTask, cancelTasks } from '../managers/task-manager';
-import { findBundleInfoForFile, getBundles } from './bundles-api';
+import { getBundles } from './bundles-api';
 import { getAllAssets, getMetadata, operateOnMetadata } from './file-system-api';
+import { embeddingsService } from './search/EmbeddingsService';
+import {
+  clearDatabase,
+  IndexSchema,
+  search,
+  initialize as initializeOrama,
+  removeFile,
+  indexFile,
+} from './search/Orama';
+import { getSetting } from './settings';
 
 export async function generateEmbeddings(filePath: FilePath) {
   const metadata = await operateOnMetadata<FileMetadata>(filePath, async (meta) => {
@@ -49,7 +55,7 @@ export function generateMissingEmbeddings(store: Store<StoreSchema>) {
 }
 
 export async function removeIndex(filePath: FilePath) {
-  await oramaManager.removeFile(filePath);
+  await removeFile(filePath);
 }
 
 /**
@@ -70,6 +76,7 @@ export async function updateFileFromPath(filePath: FilePath, bundle?: BundleInfo
     directory: path.dirname(filePath.path),
     hasMaterialLibrary: false,
     isDirectory: false,
+    hasThumbnail: false,
   };
   if (bundle) {
     info.bundle = {
@@ -81,7 +88,7 @@ export async function updateFileFromPath(filePath: FilePath, bundle?: BundleInfo
       info.fileType = FileType.Bundle;
     }
   }
-  await oramaManager.indexFile(info, meta);
+  await indexFile(info, meta);
 }
 
 /**
@@ -100,7 +107,7 @@ export async function LoadVectorDatabase(
   abort?: AbortSignal,
   report?: (p: number) => void,
 ): Promise<void> {
-  oramaManager.clearDatabase();
+  clearDatabase();
 
   const files: FileTreeNode[] = await getAllAssets(store);
 
@@ -135,13 +142,13 @@ export async function LoadVectorDatabase(
 }
 
 export async function InitializeGlobalSearchApi(api: MainIpcGetter) {
-  await oramaManager.initialize();
+  await initializeOrama();
 }
 
 export function InitializeSearchApi(api: MainIpcGetter, store: Store<StoreSchema>, db: Loki) {
   // Orama IPC Handlers
   api.reIndexDatabaseSearch = async () => {
-    await oramaManager.initialize();
+    await initializeOrama();
     cancelTasks((t) => t.label == 'Indexing Files');
     addTask('Indexing Files', (a, p) => LoadVectorDatabase(store, db, a, p));
   };
@@ -149,7 +156,7 @@ export function InitializeSearchApi(api: MainIpcGetter, store: Store<StoreSchema
     generateEmbeddings({ projectDir: store.get('projectDirectory'), path: p });
   api.generateMissingEmbeddings = () => generateMissingEmbeddings(store);
   api.search = async (query: string, typeFilter: FileType[], page: number) => {
-    const results = await oramaManager.search(query, typeFilter, page);
+    const results = await search(store, query, typeFilter, page);
     const projectDir = store.get('projectDirectory');
     return {
       nodes: await Promise.all(
@@ -172,6 +179,7 @@ export function InitializeSearchApi(api: MainIpcGetter, store: Store<StoreSchema
         }),
       ),
       count: results.count,
+      pageSize: getSetting(store, 'searchResultsPerPage'),
     };
   };
 }

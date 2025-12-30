@@ -12,31 +12,65 @@ import {
 } from '@blueprintjs/core';
 import { MenuItem2, Popover2 } from '@blueprintjs/popover2';
 import { useMutation, useQuery } from '@tanstack/react-query';
+import cn from 'classnames';
 import { normalize } from 'pathe';
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { createSearchParams, useMatch, useNavigate, useSearchParams } from 'react-router-dom';
-import { ToggleFileType } from 'renderer/scripts/filters';
-import {
-  FileTypeIcons,
-  toggleElementMutable,
-  useSavedState,
-  useSavedStateRaw,
-} from 'renderer/scripts/utils';
+import React, { useEffect, useRef, useCallback, useMemo } from 'react';
+import { useMatch, useNavigate } from 'react-router-dom';
+import { FileTypeIcons, toggleElementMutable } from 'renderer/scripts/utils';
 import scrollIntoView from 'scroll-into-view-if-needed';
 import { FileType } from 'shared/constants';
+import { useLocalStorage } from 'usehooks-ts';
 import '../../App.scss';
 import { useApp } from '../../contexts/AppContext';
 import SearchResultEntry from './SearchResultEntry';
 
 const SEARCH_QUERY_KEY = 'search-page-query';
 
+type PaginationItem = number | 'ellipsis';
+
+export function getPaginationRange(current: number, total: number, siblings = 1): PaginationItem[] {
+  const range: PaginationItem[] = [];
+
+  const start = Math.max(2, current - siblings);
+  const end = Math.min(total - 1, current + siblings);
+
+  // First page
+  range.push(1);
+
+  // Left ellipsis
+  if (start > 2) {
+    range.push('ellipsis');
+  }
+
+  // Middle pages
+  for (let i = start; i <= end; i++) {
+    range.push(i);
+  }
+
+  // Right ellipsis
+  if (end < total - 1) {
+    range.push('ellipsis');
+  }
+
+  // Last page
+  if (total > 1) {
+    range.push(total);
+  }
+
+  return range;
+}
+
 async function fetchSearchResults(
   query: string,
   typeFilter: FileType[],
   page: number,
-): Promise<{ nodes: TreeNodeInfo<SearchTreeNode>[]; count: number | undefined }> {
+): Promise<{
+  nodes: TreeNodeInfo<SearchTreeNode>[];
+  count: number | undefined;
+  pageSize: number | undefined;
+}> {
   if (!query) {
-    return { nodes: [], count: undefined };
+    return { nodes: [], count: undefined, pageSize: undefined };
   }
 
   try {
@@ -57,12 +91,12 @@ async function fetchSearchResults(
               icon: node.fileType ? FileTypeIcons[node.fileType] : 'document',
             }) satisfies TreeNodeInfo<SearchTreeNode>,
         );
-      return { nodes: treeNodes, count: searchResults.count };
+      return { nodes: treeNodes, count: searchResults.count, pageSize: searchResults.pageSize };
     }
-    return { nodes: [], count: undefined };
+    return { nodes: [], count: undefined, pageSize: undefined };
   } catch (error) {
     console.error('Search failed:', error);
-    return { nodes: [], count: undefined };
+    return { nodes: [], count: undefined, pageSize: undefined };
   }
 }
 
@@ -71,8 +105,8 @@ function SearchPage() {
   const searchMatch = useMatch('/search/:query/:page');
   const search = searchMatch?.params.query;
   const page = searchMatch?.params.page ? Number.parseInt(searchMatch.params.page, 10) : 0;
-  const [query, setQuery] = useSavedStateRaw(SEARCH_QUERY_KEY);
-  const [typeFilter, setTypeFilter] = useSavedState<FileType[]>('searchTypeFilter', []);
+  const [query, setQuery] = useLocalStorage<string | undefined>(SEARCH_QUERY_KEY, undefined);
+  const [typeFilter, setTypeFilter] = useLocalStorage<FileType[]>('searchTypeFilter', []);
   const selectedRef = useRef<HTMLLIElement | null>(null);
   const navigate = useNavigate();
   const { mutate: selectedMutation } = useMutation<string[], Error, string[]>({
@@ -130,11 +164,11 @@ function SearchPage() {
   });
 
   const pageCount = useMemo(() => {
-    if (searchQuery.data?.count) {
-      return Math.ceil(searchQuery.data.count / 20);
+    if (searchQuery.data?.count && searchQuery.data?.pageSize) {
+      return Math.ceil(searchQuery.data.count / searchQuery.data.pageSize);
     }
     return 0;
-  }, [searchQuery.data?.count]);
+  }, [searchQuery.data?.count, searchQuery.data?.pageSize]);
 
   const contextMenu = (node: TreeNodeInfo<SearchTreeNode>): JSX.Element => {
     return (
@@ -255,12 +289,16 @@ function SearchPage() {
                 />
               ))}
             </ul>
-            <ButtonGroup className="pages">
-              {Array.from({ length: pageCount }, (value, index) => index).map((p) => (
-                <Button intent={p === page ? 'primary' : 'none'} onClick={(e) => handleSetPage(p)}>
-                  {p + 1}
-                </Button>
-              ))}
+            <ButtonGroup minimal className="pages">
+              {getPaginationRange(page, pageCount - 1, 10).map((p) =>
+                p === 'ellipsis' ? (
+                  <Button>...</Button>
+                ) : (
+                  <Button className={cn({ active: p === page })} onClick={(e) => handleSetPage(p)}>
+                    {p}
+                  </Button>
+                ),
+              )}
             </ButtonGroup>
           </div>
         )}

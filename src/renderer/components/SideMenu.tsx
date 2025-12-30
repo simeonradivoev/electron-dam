@@ -1,9 +1,10 @@
-import { Button, ButtonGroup } from '@blueprintjs/core';
+import { Button, ButtonGroup, Spinner, SpinnerSize } from '@blueprintjs/core';
+import { useIsFetching } from '@tanstack/react-query';
 import cn from 'classnames';
 import { useEffect } from 'react';
-import { useNavigate, useMatch, useSearchParams } from 'react-router-dom';
+import { useNavigate, useMatch } from 'react-router-dom';
 import { useApp } from 'renderer/contexts/AppContext';
-import { useSavedState, useSavedStateRaw } from 'renderer/scripts/utils';
+import { useLocalStorage } from 'usehooks-ts';
 
 const searchQueryKey = 'search-query';
 const searchPageKey = 'search-page';
@@ -12,11 +13,18 @@ const focusedBundleKey = 'focused-bundle-key';
 function SideMenu() {
   const navigate = useNavigate();
   const { focusedItem } = useApp();
-  const [searchQuery, setSearchQuery] = useSavedStateRaw(searchQueryKey);
-  const [searchPage, setSearchPage] = useSavedState<number>(searchPageKey, 0);
-  const [focusedBundle, setFocusedBundle] = useSavedStateRaw(focusedBundleKey);
+  const [searchQuery, setSearchQuery] = useLocalStorage<string | undefined>(
+    searchQueryKey,
+    undefined,
+  );
+  const [searchPage, setSearchPage] = useLocalStorage(searchPageKey, 0);
+  const [focusedBundle, setFocusedBundle] = useLocalStorage<string | undefined>(
+    focusedBundleKey,
+    undefined,
+  );
   const searchMatch = useMatch('search/:query/:page');
   const bundleMatch = useMatch('/bundles/:focusId');
+  const isFetching = useIsFetching();
 
   useEffect(() => {
     if (searchMatch?.params.query) {
@@ -95,6 +103,7 @@ function SideMenu() {
         }}
         icon="cog"
       />
+      {isFetching > 0 && <Spinner className="loading" size={SpinnerSize.SMALL} />}
     </ButtonGroup>
   );
 }

@@ -1,7 +1,6 @@
 import path from 'path';
 import { test, expect, _electron as electron, Page, ElectronApplication } from '@playwright/test';
-import { ipcMainInvokeHandler, ipcRendererSend } from 'electron-playwright-helpers';
-import { Channels } from 'shared/constants';
+import ipcMainApiInvokeHandler from './utils';
 
 /**
  * For Getting started with Playwright, see here:
@@ -28,7 +27,7 @@ test.describe.serial(() => {
   });
 
   test('Check Bundles Load', async () => {
-    expect(await ipcMainInvokeHandler(electronApp, Channels.GetBundles)).toHaveLength(2);
+    expect(await ipcMainApiInvokeHandler(electronApp, 'getBundles')).toHaveLength(2);
   });
 
   test('Check Create/Delete Virtual Bundle', async () => {
@@ -37,15 +36,15 @@ test.describe.serial(() => {
       name: 'Test',
       date: new Date(),
     };
-    await ipcMainInvokeHandler(electronApp, Channels.CreateVirtualBundle, bundle);
+    await ipcMainApiInvokeHandler(electronApp, 'createVirtualBundle', bundle);
     expect(
-      ((await ipcMainInvokeHandler(electronApp, Channels.GetBundles)) as VirtualBundle[]).filter(
+      ((await ipcMainApiInvokeHandler(electronApp, 'getBundles')) as VirtualBundle[]).filter(
         (b) => b.id == bundle.id,
       ),
     ).toHaveLength(1);
-    await ipcMainInvokeHandler(electronApp, Channels.DeleteBundle, bundle.id);
+    await ipcMainApiInvokeHandler(electronApp, 'deleteBundle', bundle.id);
     expect(
-      ((await ipcMainInvokeHandler(electronApp, Channels.GetBundles)) as VirtualBundle[]).filter(
+      ((await ipcMainApiInvokeHandler(electronApp, 'getBundles')) as VirtualBundle[]).filter(
         (b) => b.id == bundle.id,
       ),
     ).toHaveLength(0);

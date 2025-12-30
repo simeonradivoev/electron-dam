@@ -136,7 +136,7 @@ function Explorer() {
       sizes={[sideBarSize, 100 - sideBarSize]}
       onDragEnd={(size) => {
         setSideBarSize(size[0]);
-        window.sessionStorage.setItem('sideBarSize', String(size[0]));
+        window.localStorage.setItem('sideBarSize', String(size[0]));
       }}
     >
       <ExplorerBar

@@ -33,7 +33,8 @@ declare global {
     fileType?: FileType;
     directory: string;
     hasMaterialLibrary: boolean;
-    audioMetadata?: IAudioMetadata;
+    hasThumbnail: boolean;
+    audioMetadata?: { peaks?: string } & IAudioMetadata;
     modelData?: Uint8Array;
     isDirectory: boolean;
     isZip?: boolean;
@@ -70,6 +71,10 @@ declare global {
       hash: string;
     };
   }
+  interface AudioMetadata extends FileMetadata {
+    lastModified?: number;
+    peaks?: string;
+  }
   interface VirtualBundle extends Bundle {
     id: string;
     previewUrl?: string | undefined;
@@ -89,6 +94,8 @@ declare global {
     virtualBundleCount: number;
     assetCount: number;
     assetsSize: number;
+    missingMetadataCount: number;
+    missingEmbeddingsCount: number;
   }
   interface HomePageBundles {
     random: BundleInfo[];

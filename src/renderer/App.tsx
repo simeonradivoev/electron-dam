@@ -1,8 +1,11 @@
 import { FocusStyleManager, Spinner } from '@blueprintjs/core';
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { ReactQueryDevtoolsPanel } from '@tanstack/react-query-devtools';
 import { IDBPDatabase } from 'idb/with-async-ittr';
 import { useCallback, useEffect, useState } from 'react';
 import { Outlet } from 'react-router-dom';
+import { Options } from 'shared/constants';
+import { useLocalStorage, useSessionStorage } from 'usehooks-ts';
 import './App.scss';
 import ProjectSelection from './components/ProjectSelection';
 import SideMenu from './components/SideMenu';
@@ -38,42 +41,51 @@ function App({ database }: { database: Promise<IDBPDatabase<FilesDB>> }) {
     [mutateProjectDir],
   );
 
-  const [darkMode, setDarkMode] = useState<boolean>(sessionStorage.getItem('dark-mode') === 'true');
+  const [darkMode] = useLocalStorage(
+    'darkMode',
+    Options.darkMode.schema.safeParse(undefined).data ?? false,
+  );
+  const [queryDebugToolsVisible, setQueryDebugToolsVisible] = useSessionStorage(
+    'queryDebugTools',
+    false,
+  );
 
-  useEffect(() => {
-    sessionStorage.setItem('dark-mode', darkMode.toString());
-  }, [darkMode]);
-
-  return projectDirectory ? (
-    <AppContextProvider
-      setDarkMode={setDarkMode}
-      darkMode={darkMode}
-      projectDir={projectDirectory}
-      database={database}
-      mutateProjectDir={mutateProjectDir}
-      setSelectedProjectDirectory={setSelectedProjectDirectory}
-    >
-      <TasksProvider>
-        <TitleBar setSelectedProjectDirectory={setSelectedProjectDirectory} />
-        <div className={`theme-wrapper ${darkMode ? 'bp4-dark dark' : ''}`}>
-          {projectDirectory && (
-            <>
-              <SideMenu />
-              <div className="viewport">
-                <Outlet />
-              </div>
-            </>
-          )}
-        </div>
-        <TasksPanel />
-      </TasksProvider>
-    </AppContextProvider>
-  ) : (
+  return (
     <>
-      {!loadingProjectDir && !placeholderProject && !projectDirectory && (
-        <ProjectSelection setSelectedProjectDirectory={setSelectedProjectDirectory} />
+      <TitleBar />
+      {projectDirectory ? (
+        <AppContextProvider
+          projectDir={projectDirectory}
+          database={database}
+          mutateProjectDir={mutateProjectDir}
+          setSelectedProjectDirectory={setSelectedProjectDirectory}
+        >
+          <TasksProvider>
+            <div className={`theme-wrapper ${darkMode ? 'bp4-dark dark' : ''}`}>
+              {projectDirectory && (
+                <>
+                  <SideMenu />
+                  <div className="viewport">
+                    <Outlet />
+                  </div>
+                </>
+              )}
+            </div>
+            <TasksPanel />
+          </TasksProvider>
+        </AppContextProvider>
+      ) : (
+        <>
+          {!loadingProjectDir && !placeholderProject && !projectDirectory && (
+            <ProjectSelection setSelectedProjectDirectory={setSelectedProjectDirectory} />
+          )}
+          {(loadingProjectDir || placeholderProject) && <Spinner />}
+        </>
       )}
-      {(loadingProjectDir || placeholderProject) && <Spinner />}
+
+      {queryDebugToolsVisible && (
+        <ReactQueryDevtoolsPanel onClose={() => setQueryDebugToolsVisible(false)} />
+      )}
     </>
   );
 }

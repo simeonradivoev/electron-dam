@@ -86,7 +86,6 @@ function FolderFileGrid({ path }: Props) {
                   width: '100%',
                   transform: `translateY(${virtualRow.start}px)`,
                 }}
-                ref={rowVirtualizer.measureElement}
                 key={virtualRow.key as Key}
               >
                 {rowElements}
