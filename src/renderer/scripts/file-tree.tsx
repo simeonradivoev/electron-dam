@@ -110,8 +110,8 @@ export const getIcon = (path: string | undefined): IconName => {
   return iconMap.get(ext) ?? 'document';
 };
 
-export async function LoadGlobalTags(): Promise<GlobalTagEntry[]> {
-  const tags = await window.api.getGlobalTags(32);
+export async function LoadGlobalTags() {
+  const { tags, count } = await window.api.getGlobalTags(32);
   tags.sort((lhs, rhs) => {
     const comparison = rhs.count - lhs.count;
     if (comparison === 0) {
@@ -119,7 +119,7 @@ export async function LoadGlobalTags(): Promise<GlobalTagEntry[]> {
     }
     return comparison;
   });
-  return tags;
+  return { tags, count };
 }
 
 export const BuildNodeQueries = (
@@ -129,15 +129,6 @@ export const BuildNodeQueries = (
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    queryClient.setQueryDefaults(['selected'], {
-      queryFn: async () => {
-        const files = await database;
-        const transactionSelected = files.transaction('selected', 'readonly');
-        const storeSelected = transactionSelected.objectStore('selected');
-        const keys = await storeSelected.getAllKeys();
-        return keys;
-      },
-    });
     queryClient.setQueryDefaults(['expanded'], {
       queryFn: async () => {
         const files = await database;
@@ -145,18 +136,6 @@ export const BuildNodeQueries = (
         const storeSelected = transactionSelected.objectStore('expanded');
         const keys = await storeSelected.getAllKeys();
         return keys;
-      },
-    });
-    queryClient.setMutationDefaults<string[], Error, string[]>(['selected'], {
-      mutationFn: async (data) => {
-        const files = await database;
-        const transactionSelected = files.transaction('selected', 'readwrite');
-        const storeSelected = transactionSelected.objectStore('selected');
-        storeSelected.clear();
-        return Promise.all(data.map((d) => storeSelected.add(true, d)));
-      },
-      onSuccess: (data, v, r, c) => {
-        c.client.setQueryData(c.mutationKey as string[], data);
       },
     });
     queryClient.setMutationDefaults<string[], Error, string[]>(['expanded'], {

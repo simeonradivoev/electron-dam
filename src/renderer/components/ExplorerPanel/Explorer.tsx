@@ -15,9 +15,6 @@ function Explorer() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const hasBundleOp = useIsMutating({ mutationKey: ['bundle-op'] }) > 0;
-  const { mutateAsync: setSelectedAsync } = useMutation<string[], Error, string[]>({
-    mutationKey: ['selected'],
-  });
 
   const { mutate: handleBundleCreate, isPending: isCreatingBundle } = useMutation({
     mutationKey: ['bundle-op', 'create'],
@@ -59,7 +56,6 @@ function Explorer() {
         await window.api.moveBundle(path, newPath);
 
         // Select and navigate to the moved bundle
-        await setSelectedAsync([newPath]);
         navigate(`/explorer/${encodeURIComponent(newPath)}`);
 
         // Refetch to update the tree (simpler for context menu moves)
@@ -136,7 +132,6 @@ function Explorer() {
       sizes={[sideBarSize, 100 - sideBarSize]}
       onDragEnd={(size) => {
         setSideBarSize(size[0]);
-        window.localStorage.setItem('sideBarSize', String(size[0]));
       }}
     >
       <ExplorerBar

@@ -28,6 +28,7 @@ import { ContextMenuBuilder } from 'renderer/@types/preload';
 import { useApp } from 'renderer/contexts/AppContext';
 import { ImportMedia } from 'renderer/scripts/loader';
 import { humanFileSize, formatDuration, FileTypeIcons } from 'renderer/scripts/utils';
+import { AppToaster } from 'renderer/toaster';
 import { AutoTagType, BundleMetaFile, zipDelimiter } from 'shared/constants';
 import BundlePreview from '../Bundles/BundlePreviewBase';
 import PreviewPanel3D from '../Previews/PreviewPanel3D';
@@ -43,22 +44,17 @@ interface FileInfoPanelProps {
 
 // eslint-disable-next-line react/function-component-definition
 const FileInfoPanel: React.FC<FileInfoPanelProps> = ({ item, contextMenu }) => {
-  const { database, viewInExplorer, filter } = useApp();
+  const { viewInExplorer, filter } = useApp();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const metadataMutation = useMutation<FileMetadata, Error, FileMetadata>({
-    onSuccess: (_d, v, _rv, c) => {
-      c.client.invalidateQueries({ queryKey: ['metadata', database] });
-      c.client.setQueryData(['tags', item], _d.tags ?? []);
-      return _d;
-    },
-    mutationKey: ['metadata', item],
-  });
 
-  async function handleEmbeddingGeneration(path: string) {
-    const newMetadata = await window.api.generateEmbeddings(path);
-    metadataMutation.mutate(newMetadata);
-  }
+  const embeddingsMutation = useMutation({
+    mutationFn: () => (item ? window.api.generateEmbeddings(item) : Promise.reject()),
+    onSuccess: () => {
+      refetchMetadata();
+    },
+    mutationKey: ['embeddings', item],
+  });
 
   const handleEditBundle = useCallback(
     (id: string | number) => {
@@ -67,7 +63,7 @@ const FileInfoPanel: React.FC<FileInfoPanelProps> = ({ item, contextMenu }) => {
     [navigate],
   );
 
-  const metadata = useQuery({
+  const { data: metadata, refetch: refetchMetadata } = useQuery({
     enabled: !!item,
     queryKey: ['metadata', item],
     queryFn: async (queryKey) => {
@@ -93,21 +89,16 @@ const FileInfoPanel: React.FC<FileInfoPanelProps> = ({ item, contextMenu }) => {
 
   const autoMetadataMutation = useMutation({
     mutationKey: ['metadata', item],
-    mutationFn: (type: AutoTagType) =>
+    mutationFn: async (type: AutoTagType) =>
       item ? window.api.autoMetadata(item, type) : Promise.reject(),
-    onSuccess: (d) => {
-      metadataMutation.mutate(d ?? {});
-      return d;
+    onError: (o) => {
+      AppToaster.show({ message: o.message, intent: 'danger' });
     },
-  });
-
-  const embeddingGenerationMutation = useMutation({
-    mutationKey: ['emeddings', item],
-    mutationFn: async () => {
+    onSuccess: (_d, v, r, context) => {
       if (item) {
-        await handleEmbeddingGeneration(item);
+        context.client.refetchQueries({ queryKey: ['tags', normalize(item)] });
       }
-      return item;
+      embeddingsMutation.mutate();
     },
   });
 
@@ -172,10 +163,10 @@ const FileInfoPanel: React.FC<FileInfoPanelProps> = ({ item, contextMenu }) => {
   // Folder
   else if (fileInfo?.isDirectory) {
     previewPanel = <FolderFileGrid path={fileInfo.path} />;
-  } else if (!importedMesh.data && loadingFileInfo) {
+  } else if (!importedMesh.data && item && loadingFileInfo) {
     previewPanel = <NonIdealState icon={<Spinner />} title="Loading" />;
   } else {
-    previewPanel = <div className="preview-empty" />;
+    previewPanel = <NonIdealState icon="eye-open">Select Asset to Preview</NonIdealState>;
   }
 
   const BREADCRUMBS = useQuery<BreadcrumbProps[], unknown, BreadcrumbProps[], [string, FileInfo]>({
@@ -233,6 +224,21 @@ const FileInfoPanel: React.FC<FileInfoPanelProps> = ({ item, contextMenu }) => {
       return crums;
     },
   });
+
+  let fileSizeTag: JSX.Element | undefined;
+  if (fileInfo && fileInfo.size) {
+    fileSizeTag = (
+      <Tag icon="floppy-disk" minimal>
+        Size: {humanFileSize(fileInfo.size)}
+      </Tag>
+    );
+  } else if (item && loadingFileInfo) {
+    fileSizeTag = (
+      <Tag icon="floppy-disk" minimal>
+        <Spinner size={16} />
+      </Tag>
+    );
+  }
 
   return (
     <div className="file-info-panel">
@@ -303,23 +309,13 @@ const FileInfoPanel: React.FC<FileInfoPanelProps> = ({ item, contextMenu }) => {
       )}
       {(!fileInfo || !fileInfo.bundle || fileInfo.bundle.isParentBundle) && <Divider />}
       <ul className="file-stats">
-        {fileInfo ? (
-          fileInfo.size > 0 && (
-            <Tag icon="floppy-disk" minimal>
-              Size: {humanFileSize(fileInfo.size)}
-            </Tag>
-          )
-        ) : (
-          <Tag icon="floppy-disk" minimal>
-            <Spinner size={16} />
-          </Tag>
-        )}
-        {metadata.data?.description && (
+        {fileSizeTag}
+        {metadata?.description && (
           <Tag style={{ maxWidth: 128 }} icon="predictive-analysis" minimal>
-            {autoMetadataMutation.isPending ? <Spinner size={16} /> : metadata.data?.description}
+            {autoMetadataMutation.isPending ? <Spinner size={16} /> : metadata?.description}
           </Tag>
         )}
-        {metadata.data?.embeddings && (
+        {metadata?.embeddings && (
           <Tag style={{ maxWidth: 128 }} icon="heatmap" minimal title="Embeddings">
             {autoMetadataMutation.isPending ? <Spinner size={16} /> : ''}
           </Tag>
@@ -367,10 +363,10 @@ const FileInfoPanel: React.FC<FileInfoPanelProps> = ({ item, contextMenu }) => {
                 </MenuItem2>
                 {fileInfo?.path && (
                   <MenuItem2
-                    disabled={!metadata.data?.description || embeddingGenerationMutation.isPending}
+                    disabled={!metadata?.description || embeddingsMutation.isPending}
                     label="Generate Embeddings"
                     icon="predictive-analysis"
-                    onClick={() => embeddingGenerationMutation.mutate()}
+                    onClick={() => embeddingsMutation.mutate()}
                   />
                 )}
               </Menu>

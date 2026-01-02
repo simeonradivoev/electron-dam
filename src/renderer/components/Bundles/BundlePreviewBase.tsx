@@ -1,4 +1,4 @@
-import { Button, Classes, Divider, ResizeSensor } from '@blueprintjs/core';
+import { Button, Classes, Divider, ResizeSensor, Tag, TagInput } from '@blueprintjs/core';
 import { useQuery } from '@tanstack/react-query';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { normalize } from 'pathe';
@@ -92,6 +92,13 @@ const BundleTop = forwardRef<HTMLDivElement, PropsTop>(
           >
             {bundle?.bundle.description ?? ''}
           </ReactMarkdown>
+          {showInExplorerEnabled && (
+            <div className="tags">
+              {bundle?.bundle.tags?.map((t) => (
+                <Tag minimal>{t}</Tag>
+              ))}
+            </div>
+          )}
           <Divider />
         </div>
       </div>

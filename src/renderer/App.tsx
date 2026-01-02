@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Options } from 'shared/constants';
 import { useLocalStorage, useSessionStorage } from 'usehooks-ts';
+import '../../node_modules/file-icons-js/css/style.css';
 import './App.scss';
 import ProjectSelection from './components/ProjectSelection';
 import SideMenu from './components/SideMenu';

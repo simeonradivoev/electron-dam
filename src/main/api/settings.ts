@@ -1,6 +1,7 @@
 import { app } from 'electron';
 import log from 'electron-log';
 import Store from 'electron-store';
+import { appVersion } from 'main/util';
 import z from 'zod/v3';
 import { getOption, MainIpcGetter, Options, OptionType, StoreSchema } from '../../shared/constants';
 
@@ -56,5 +57,5 @@ export default function InitializeSettingsApi(api: MainIpcGetter, store: Store<S
     );
   };
   api.getSetting = async (key) => getSetting(store, key);
-  api.getVersion = () => Promise.resolve({ version: app.getVersion() });
+  api.getVersion = () => Promise.resolve({ version: appVersion });
 }

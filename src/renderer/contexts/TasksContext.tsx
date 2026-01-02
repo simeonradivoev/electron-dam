@@ -1,3 +1,4 @@
+import { IconName, NonIdealState, ProgressBar } from '@blueprintjs/core';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createContext, ReactNode, useContext, useEffect, useMemo } from 'react';
 import { useApp } from 'renderer/contexts/AppContext';
@@ -38,7 +39,29 @@ export function TasksProvider({ children }: { children: ReactNode | ReactNode[] 
     (): TasksContextType => ({ cancelTask, tasks: tasks ?? [] }),
     [tasks],
   );
-  return <TasksContext.Provider value={taskContext}>{children}</TasksContext.Provider>;
+
+  const blockingTasks = useMemo(
+    () =>
+      tasks?.filter(
+        (t) => t.options.blocking && (t.status === 'PENDING' || t.status === 'RUNNING'),
+      ),
+    [tasks],
+  );
+
+  return (
+    <TasksContext.Provider value={taskContext}>
+      {blockingTasks && blockingTasks?.length > 0 ? (
+        <NonIdealState
+          icon={blockingTasks[0].options.icon as IconName}
+          title={blockingTasks[0].label}
+        >
+          <ProgressBar intent="primary" value={blockingTasks[0].progress} />
+        </NonIdealState>
+      ) : (
+        children
+      )}
+    </TasksContext.Provider>
+  );
 }
 
 export const useTasks = () => {

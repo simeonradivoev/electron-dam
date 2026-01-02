@@ -19,7 +19,7 @@ import { useMatch, useNavigate } from 'react-router-dom';
 import { FileTypeIcons, toggleElementMutable } from 'renderer/scripts/utils';
 import scrollIntoView from 'scroll-into-view-if-needed';
 import { FileType } from 'shared/constants';
-import { useLocalStorage } from 'usehooks-ts';
+import { useLocalStorage, useSessionStorage } from 'usehooks-ts';
 import '../../App.scss';
 import { useApp } from '../../contexts/AppContext';
 import SearchResultEntry from './SearchResultEntry';
@@ -109,13 +109,7 @@ function SearchPage() {
   const [typeFilter, setTypeFilter] = useLocalStorage<FileType[]>('searchTypeFilter', []);
   const selectedRef = useRef<HTMLLIElement | null>(null);
   const navigate = useNavigate();
-  const { mutate: selectedMutation } = useMutation<string[], Error, string[]>({
-    mutationKey: ['selected'],
-  });
-
-  const { data: selected } = useQuery<string[] | undefined, Error, string[]>({
-    queryKey: ['selected'],
-  });
+  const [selected, setSelected] = useSessionStorage<string[]>('selected', []);
 
   const toggleType = useCallback(
     (type: FileType) => {
@@ -262,7 +256,7 @@ function SearchPage() {
                   contextMenu={contextMenu}
                   onClick={() => {
                     if (node.nodeData?.path) {
-                      selectedMutation([node.nodeData.path]);
+                      setSelected([node.nodeData.path]);
                     }
                   }}
                   onDoubleClick={() => {
@@ -273,7 +267,7 @@ function SearchPage() {
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
                       if (node.nodeData?.path) {
-                        selectedMutation([node.nodeData.path]);
+                        setSelected([node.nodeData.path]);
                       }
                     }
                   }}

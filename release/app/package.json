@@ -1,6 +1,6 @@
 {
   "name": "electron-dam",
-  "version": "0.1.0-alpha",
+  "version": "1.0.0",
   "description": "A bundle based digital asset manager built on top of electron using React and typescript. Based on the Electron React Boilerplate",
   "keywords": [
     "DAM",

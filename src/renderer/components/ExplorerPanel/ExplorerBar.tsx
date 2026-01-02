@@ -1,3 +1,4 @@
+import { arraysEqual } from '@blueprintjs/core/lib/esm/common/utils';
 import {
   AsyncDataLoaderDataRef,
   asyncDataLoaderFeature,
@@ -15,12 +16,13 @@ import {
 import { useTree } from '@headless-tree/react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Virtualizer } from '@tanstack/react-virtual';
-import { dirname, normalize } from 'pathe';
+import { dirname, join, normalize } from 'pathe';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useMatch, useNavigate, useSearchParams } from 'react-router-dom';
 import { ContextMenuBuilder } from 'renderer/@types/preload';
 import { useApp } from 'renderer/contexts/AppContext';
 import { FileType } from 'shared/constants';
+import { useSessionStorage, useTimeout } from 'usehooks-ts';
 import ExplorerBarSearch from './ExplorerBarSearch';
 import ExplorerBarTree from './ExplorerBarTree';
 
@@ -43,21 +45,14 @@ function ExplorerBar({
   const virtualizer = useRef<Virtualizer<HTMLDivElement, Element> | null>(null);
   const [loadingItemData, setLoadingItemData] = useState<string[]>([]);
   const [loadingItemChildrens, setLoadingItemChildrens] = useState<string[]>([]);
+  const [selected, setSelected] = useSessionStorage<string[]>('selected', []);
   const { projectDirectory, filter } = useApp();
-
-  const { data: selected } = useQuery<string[]>({
-    queryKey: ['selected'],
-    placeholderData: [],
-  });
 
   const { data: expanded } = useQuery<string[]>({
     queryKey: ['expanded'],
     placeholderData: [],
   });
 
-  const { mutate: selectedMutate } = useMutation<string[], Error, string[]>({
-    mutationKey: ['selected'],
-  });
   const { mutate: expandedMutate } = useMutation<string[], Error, string[]>({
     mutationKey: ['expanded'],
   });
@@ -65,9 +60,9 @@ function ExplorerBar({
   const handleSelection = useCallback(
     (itemsUpdater: Updater<string[]>) => {
       const items = itemsUpdater as string[];
-      selectedMutate(items);
+      setSelected(items);
     },
-    [selectedMutate],
+    [setSelected],
   );
 
   const handleFocus = useCallback(
@@ -126,13 +121,13 @@ function ExplorerBar({
     createLoadingItemData: () => ({ name: 'Loading...', isDirectory: false }) as FileTreeNode,
     onLoadedItem: (itemId, item) => {
       // Scroll to element on first load
-      if (focusedItem && itemId == focusedItem) {
+      if (focusedItem && itemId === focusedItem) {
         // Give time for the tree to make the instance element and for the virtualizer to populate
         setTimeout(() => {
           virtualizer.current?.scrollToIndex(tree.getItemInstance(itemId).getItemMeta().index, {
             align: 'center',
           });
-        }, 100);
+        }, 500);
       }
     },
     dataLoader: {
@@ -274,10 +269,40 @@ function ExplorerBar({
     [tree],
   );
 
+  // Handle the exapnsion of items that the focused item needs to be seen
+  useEffect(() => {
+    if (focusedItem && expanded) {
+      const newExpanded = [...expanded];
+      let hadChanges = false;
+      const pathArray = focusedItem.split('/');
+      for (let i = 0; i < pathArray.length; i += 1) {
+        const path = join(...pathArray.slice(0, -i));
+
+        if (!newExpanded.includes(path)) {
+          newExpanded?.push(path);
+          hadChanges = true;
+        }
+      }
+
+      if (hadChanges) {
+        expandedMutate(newExpanded);
+      }
+
+      const treeItem = tree.getItemInstance(focusedItem);
+      if (treeItem) {
+        if (virtualizer.current) {
+          virtualizer.current!.scrollToIndex(treeItem.getItemMeta().index);
+          console.log('Scroll ' + treeItem.getItemMeta().index);
+        }
+      }
+    }
+  }, [focusedItem, tree, virtualizer.current]);
+
   return (
     <div className="side-panel">
       <ExplorerBarSearch tree={tree} refresh={handleRefresh} />
       <ExplorerBarTree
+        ref={virtualizer}
         isSearching={isSearching}
         tree={tree}
         contextMenu={contextMenu}

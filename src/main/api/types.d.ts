@@ -94,6 +94,7 @@ declare global {
     virtualBundleCount: number;
     assetCount: number;
     assetsSize: number;
+    missingBundlesCount: number;
     missingMetadataCount: number;
     missingEmbeddingsCount: number;
   }
@@ -165,5 +166,18 @@ declare global {
     status: 'PENDING' | 'RUNNING' | 'COMPLETED' | 'FAILED' | 'CANCELED';
     progress?: number;
     error?: string;
+    options: { blocking: boolean; icon?: string };
+    userData?: any;
+  }
+
+  interface NodeRequire {
+    context(
+      path: string,
+      deep?: boolean,
+      filter?: RegExp,
+    ): {
+      keys(): string[];
+      <T>(id: string): T;
+    };
   }
 }

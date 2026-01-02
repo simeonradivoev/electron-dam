@@ -1,4 +1,5 @@
 import { IDBPDatabase } from 'idb/with-async-ittr';
+import { normalize } from 'pathe';
 import {
   createContext,
   ReactNode,
@@ -84,8 +85,8 @@ export function AppContextProvider({
   const viewInExplorer = useCallback(
     (id: string) => {
       navigate({
-        pathname: `/explorer/${encodeURIComponent(id)}`,
-        search: `?focus=${encodeURIComponent(id)}`,
+        pathname: `/explorer/${encodeURIComponent(normalize(id))}`,
+        search: `?focus=${encodeURIComponent(normalize(id))}`,
       });
     },
     [navigate],

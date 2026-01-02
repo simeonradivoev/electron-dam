@@ -20,7 +20,7 @@ import {
 import { addTask } from '../managers/task-manager';
 import { compressStringToBase64, dataUrlToBuffer } from '../util';
 import { checkMetadataIssues, findBundleInfoForFile } from './bundles-api';
-import { getAllAssetsIn, getMetadata, operateOnMetadata } from './file-system-api';
+import { getAllAssetsIn, getMetadata, operateOnMetadata, pathExistsSync } from './file-system-api';
 import { GetAbsoluteThumbnailPath, GetAbsoluteThumbnailPathForFile } from './protocols';
 
 let audioDecode: (buf: ArrayBuffer | Uint8Array) => Promise<AudioBuffer>;
@@ -88,7 +88,7 @@ async function autoFileMetadata(
         'Xenova/ast-finetuned-audioset-10-10-0.4593',
         {
           device: 'gpu',
-          dtype: 'fp16',
+          dtype: 'q4',
         },
       );
 
@@ -137,10 +137,14 @@ async function autoFileMetadata(
           systemContent += `\nTake into account the name of the file as it might include clues.
             Take into account the bundle information such as name and description if provided.`;
           if (bundle.previewUrl) {
-            console.log();
-            const imageBuffer = await readFile(bundle.previewUrl);
-            images.push(await ollama.encodeImage(imageBuffer));
-            systemContent += `\nTake into account the preview of the bundle the file is from`;
+            const previewPath = { projectDir: filePath.projectDir, path: bundle.previewUrl };
+            if (pathExistsSync(previewPath)) {
+              const imageBuffer = await readFile(
+                path.join(previewPath.projectDir, previewPath.path),
+              );
+              images.push(await ollama.encodeImage(imageBuffer));
+              systemContent += `\nTake into account the preview of the bundle the file is from`;
+            }
           }
         }
         //systemContent += `Do not verbatium copy the automatically generated tags, just use them as reference.`;

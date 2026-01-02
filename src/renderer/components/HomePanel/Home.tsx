@@ -1,7 +1,9 @@
 /* eslint-disable prettier/prettier */
 // src/renderer/components/HomePanel/Home.tsx
-import { Card, Classes, Icon, NonIdealState, Spinner, Tag } from '@blueprintjs/core';
+import { Card, Classes, Icon, NonIdealState, Spinner, Tag, Text } from '@blueprintjs/core';
+import { Tooltip2 } from '@blueprintjs/popover2';
 import { useQuery } from '@tanstack/react-query';
+import classNames from 'classnames';
 import { useCallback, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from 'renderer/contexts/AppContext';
@@ -16,7 +18,7 @@ interface Props {
 function Home(props: Props) {
   const stats = useQuery({ queryKey: ['stats'], queryFn: () => window.api.getHomeBundles() });
   const { setFileInfo, database, projectDirectory } = useApp();
-  const { data: tags } = useQuery({
+  const { data: tagsData } = useQuery({
     enabled: !!database && !!projectDirectory,
     queryKey: ['tags', projectDirectory],
     queryFn: LoadGlobalTags,
@@ -77,12 +79,6 @@ function Home(props: Props) {
             <Icon icon="document" /> File Count
           </p>
           <h1>{stats?.data?.stats.assetCount}</h1>
-          <p className={Classes.TEXT_MUTED}>
-            No Metadata: {stats?.data?.stats.missingMetadataCount}
-          </p>
-          <p className={Classes.TEXT_MUTED}>
-            No Embeddings: {stats?.data?.stats.missingEmbeddingsCount}
-          </p>
         </Card>
         <Card elevation={elevation}>
           <p>
@@ -90,13 +86,51 @@ function Home(props: Props) {
           </p>
           <h1>{humanFileSize(stats?.data?.stats.assetsSize ?? 0)}</h1>
         </Card>
+        <Card elevation={elevation}>
+          <p>
+            <Icon icon="help" /> Missing
+          </p>
+          <ul className={classNames(Classes.LIST, Classes.LIST_UNSTYLED, Classes.TEXT_MUTED)}>
+            <li>
+              <Tooltip2 content="How many files have no description or that can be used to derive embeddings.">
+                <Text>
+                  Metadata: {stats?.data?.stats.missingMetadataCount} (
+                  {(
+                    1 -
+                    (stats?.data?.stats.missingMetadataCount ?? 0) /
+                      (stats.data?.stats.assetCount ?? 1)
+                  ).toLocaleString(undefined, { style: 'percent' })}
+                  )
+                </Text>
+              </Tooltip2>
+            </li>
+            <li>
+              <Tooltip2 content="How many assets have metadata such as a description but have no generated embeddings for it">
+                <Text>Embeddings: {stats?.data?.stats.missingEmbeddingsCount}</Text>
+              </Tooltip2>
+            </li>
+            <li>
+              <Tooltip2 content="How many files are not in a bundle">
+                <Text>
+                  Loose: {stats?.data?.stats.missingBundlesCount} (
+                  {(
+                    1 -
+                    (stats?.data?.stats.missingBundlesCount ?? 0) /
+                      (stats.data?.stats.assetCount ?? 1)
+                  ).toLocaleString(undefined, { style: 'percent' })}
+                  )
+                </Text>
+              </Tooltip2>
+            </li>
+          </ul>
+        </Card>
         <Card elevation={elevation} className="tags-container">
           <p>
-            <Icon icon="tag" /> Tags
+            <Icon icon="tag" /> Tags ({tagsData?.count})
           </p>
           <div className="quick-tags y-scroll">
-            {tags ? (
-              tags.map((tag) => (
+            {tagsData ? (
+              tagsData.tags.map((tag) => (
                 <Tag
                   className="tag"
                   key={tag.tag}

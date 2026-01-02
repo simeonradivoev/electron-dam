@@ -86,7 +86,7 @@ export type ChannelSub<TArgs extends any[] = any[]> = {
 export const channelsSchema = {
   get: {
     getProjectDirectory: {} as ChannelGetter<string | null>,
-    getGlobalTags: {} as ChannelGetter<GlobalTagEntry[], [limit?: number]>,
+    getGlobalTags: {} as ChannelGetter<{ tags: GlobalTagEntry[]; count: number }, [limit?: number]>,
     getAllFiles: {} as ChannelGetter<FileTreeNode[], [path: string]>,
     getFile: {} as ChannelGetter<FileTreeNode | null, [path: string]>,
     getFileChildrenPaths: {} as ChannelGetter<string[], [path: string]>,

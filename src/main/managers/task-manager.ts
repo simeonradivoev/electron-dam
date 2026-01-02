@@ -16,6 +16,7 @@ function getActiveTasks(): TaskMetadata[] {
       status: task.status,
       progress: task.progress,
       error: task.error,
+      options: task.options,
     };
     return meta;
   });
@@ -32,6 +33,7 @@ function emitUpdate() {
 export function addTask<T>(
   label: string,
   taskFn: (signal: AbortSignal, progress: (p: number) => void) => Promise<T>,
+  options?: TaskMetadata['options'],
   userData?: any,
 ): Promise<T> {
   const id = v4();
@@ -43,6 +45,7 @@ export function addTask<T>(
     progress: 0,
     status: 'PENDING',
     abortController,
+    options: options ?? { blocking: false },
     userData,
   };
 

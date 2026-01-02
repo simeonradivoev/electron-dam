@@ -4,7 +4,7 @@ import EventEmitter from 'events';
 import { existsSync, mkdirSync } from 'fs';
 import path from 'path';
 import { URL } from 'url';
-import { BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, ipcMain } from 'electron';
 import log from 'electron-log';
 import picomatch from 'picomatch';
 import Rand from 'rand-seed';
@@ -28,6 +28,8 @@ export const ignoredFilesMatch = picomatch(
   ],
   { nocase: true, windows: true },
 );
+
+export const appVersion = process.env.APP_VERSION || app.getVersion();
 
 export const supportedFilesMatch = picomatch([...supportedTypesFlat.map((e) => `**/*${e}`)], {
   nocase: true,
@@ -189,3 +191,24 @@ export async function mapAsync<T, V>(values: T[], mapper: (value: T) => Promise<
   }
   return results;
 }
+
+export async function foreachAsync<T>(
+  values: T[],
+  mapper: (value: T, index: number) => Promise<void>,
+) {
+  for (let i = 0; i < values.length; i += 1) {
+    try {
+      await mapper(values[i], i);
+    } catch (error) {
+      log.error(error);
+    }
+  }
+}
+
+const RESOURCES_PATH = app.isPackaged
+  ? path.join(process.resourcesPath, 'assets')
+  : path.join(__dirname, '../../../../assets');
+
+export const getAssetPath = (...paths: string[]): string => {
+  return path.join(RESOURCES_PATH, ...paths);
+};

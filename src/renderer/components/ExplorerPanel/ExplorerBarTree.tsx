@@ -1,7 +1,7 @@
 import { Icon, IconName } from '@blueprintjs/core';
 import { showContextMenu } from '@blueprintjs/popover2';
 import { ItemInstance, TreeInstance } from '@headless-tree/core';
-import { elementScroll, useVirtualizer, Virtualizer } from '@tanstack/react-virtual';
+import { useVirtualizer, VirtualItem, Virtualizer } from '@tanstack/react-virtual';
 import cn from 'classnames';
 import React, {
   forwardRef,
@@ -121,15 +121,12 @@ const TreeItem = memo(
         }}
         onDoubleClick={onDoubleClick}
         className={cn('bp4-tree-node', {
-          'bp4-tree-node-selected': isSelected,
+          'bp4-tree-node-selected': isFocused,
           'bp4-disabled': isSearching && !searchMatch,
+          'multi-selection': isSelected,
         })}
       >
-        <div
-          className={cn(`bp4-tree-node-content bp4-tree-node-content-${indent}`, {
-            focused: isFocused,
-          })}
-        >
+        <div className={cn(`bp4-tree-node-content bp4-tree-node-content-${indent}`, {})}>
           {nodeData.isDirectory ? (
             <>
               <span
@@ -187,7 +184,6 @@ const Inner = forwardRef<Virtualizer<HTMLDivElement, Element>, Props>(
       count: tree.getItems().length,
       getScrollElement: () => parentRef.current,
       estimateSize: () => 30,
-      useAnimationFrameWithResizeObserver: true,
     });
 
     useImperativeHandle(ref, () => virtualizer);

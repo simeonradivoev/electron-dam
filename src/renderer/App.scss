@@ -731,6 +731,11 @@ input.changed {
   .bundle-content {
     padding-left: 1em;
     padding-right: 1em;
+
+    .tags {
+      display: flex;
+      gap: 0.2em;
+    }
   }
 
   .preview-image-container {
@@ -1381,13 +1386,30 @@ input.changed {
   }
 }
 
-.bp4-tree-node:not(.bp4-tree-node-selected) .bp4-tree-node-content {
-  &.focused {
-    background-color: transparentize($color: $pt-intent-warning, $amount: 0.8);
-    outline-color: $pt-intent-warning;
-    outline-width: 2px;
-    outline-style: dashed;
+.bp4-tree-node:not(.bp4-tree-node-selected) {
+  &.multi-selection {
+    background-color: mix($pt-intent-primary, $pt-app-background-color, 10%);
+    border-color: transparentize($pt-intent-primary, 0.8);
+    border-width: 1px;
+    border-style: solid;
+    margin-left: -1px;
+    margin-top: -1px;
   }
+}
+
+
+.bp4-tree-node.multi-selection:not(.bp4-tree-node-selected):not(.multi-selection + .bp4-tree-node) {
+  border-top-width: 2px;
+  border-top-style: dashed;
+  border-top-color: $pt-intent-primary;
+  margin-top: -2px;
+}
+
+.bp4-tree-node.multi-selection:not(.bp4-tree-node-selected):not(:has(+ .multi-selection)) {
+  border-bottom-width: 2px;
+  border-bottom-style: dashed;
+  border-bottom-color: $pt-intent-primary;
+  margin-bottom: -2px;
 }
 
 .settings {
@@ -1455,6 +1477,16 @@ $icon-size: 16px;
     .title {
       font-size: 13px;
       font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-right: 1em;
+    }
+
+    .path {
+      text-overflow: ellipsis;
+      overflow-x: auto;
+      overflow-y: hidden;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;

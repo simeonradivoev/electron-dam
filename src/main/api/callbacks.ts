@@ -13,10 +13,7 @@ import { LoadVectorDatabase, removeIndex, updateFileFromPath } from './serach-ap
  */
 export default function InitializeCallbacks(store: Store<StoreSchema>) {
   projectEvents.on('projectChange', async (directoryPath) => {
-    const database = await LoadDatabaseExact(store, directoryPath);
-    addTask('Indexing Files', (abort, progress) =>
-      LoadVectorDatabase(store, database, abort, progress),
-    );
+    await LoadDatabaseExact(store, directoryPath);
   });
 
   fileEvents.on('metadata-updated', async (filePath) => {

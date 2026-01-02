@@ -156,7 +156,11 @@ export async function getDescription(filePath: FilePath): Promise<string | undef
   return meta?.description;
 }
 
-async function allFilesRec(parentPath: FilePath, process: (path: FilePath) => void): Promise<void> {
+async function allFilesRec(
+  parentPath: FilePath,
+  process: (path: FilePath) => void,
+  includeBundles: boolean = false,
+): Promise<void> {
   const parentDir = await pathLstat(parentPath);
   if (!parentDir.isDirectory()) {
     return;
@@ -174,6 +178,11 @@ async function allFilesRec(parentPath: FilePath, process: (path: FilePath) => vo
 
       // Directory
       if (dir.isDirectory()) {
+        if (includeBundles) {
+          if (pathExistsSync(pathJoin(childPath, BundleMetaFile))) {
+            process(childPath);
+          }
+        }
         await allFilesRec(childPath, process);
       }
       // Non Directory
@@ -591,24 +600,35 @@ export default function InitializeFileSystemApi(
     });
   }
 
-  async function getAllTags(limit?: number): Promise<GlobalTagEntry[]> {
+  async function getAllTags(limit?: number) {
     const tagsSet = new Map<string, number>();
     const projectDir = (store.get('projectDirectory') as string) ?? '';
-    await allFilesRec({ projectDir, path: '' }, async (filePath) => {
-      const tags = await getTags(filePath);
-      tags?.forEach((t) => {
-        const tag = t.toString();
-        if (tagsSet.has(tag)) {
-          tagsSet.set(tag, tagsSet.get(tag)! + 1);
-        } else {
-          tagsSet.set(tag, 1);
-        }
-      });
+    await allFilesRec(
+      { projectDir, path: '' },
+      async (filePath) => {
+        const tags = await getTags(filePath);
+        tags?.forEach((t) => {
+          const tag = t.toString();
+          if (tagsSet.has(tag)) {
+            tagsSet.set(tag, tagsSet.get(tag)! + 1);
+          } else {
+            tagsSet.set(tag, 1);
+          }
+        });
+      },
+      true,
+    );
+    const virtualBundles = db.getCollection<VirtualBundle>('bundles');
+    virtualBundles.find().forEach((v) => {
+      v.tags?.forEach((t) => tagsSet.set(t, (tagsSet.get(t) ?? 0) + 1));
     });
     const tags = Array.from(tagsSet.entries()).sort((a, b) => b[1] - a[1]);
-    return tags
-      .slice(0, limit ? Math.min(tags.length - 1, limit) : tags.length)
-      .map((e) => ({ tag: e[0], count: e[1] }) as GlobalTagEntry);
+    return {
+      tags: tags
+        .slice(0, limit ? Math.min(tags.length - 1, limit) : tags.length)
+        .map((e) => ({ tag: e[0], count: e[1] }) as GlobalTagEntry),
+      count: tags.length,
+    };
   }
 
   async function removeAllTags(id: string): Promise<void> {

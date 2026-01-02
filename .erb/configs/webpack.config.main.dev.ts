@@ -1,11 +1,13 @@
 /**
  * Webpack config for development electron main process
  */
-import path from 'path';
+import path, { normalize } from 'path';
+import CopyPlugin from 'copy-webpack-plugin';
 import ForkTsCheckerWebpackPlugin from 'fork-ts-checker-webpack-plugin';
 import webpack from 'webpack';
 import { BundleAnalyzerPlugin } from 'webpack-bundle-analyzer';
 import { merge } from 'webpack-merge';
+import { version } from '../../release/app/package.json';
 import checkNodeEnv from '../scripts/check-node-env';
 import baseConfig from './webpack.config.base';
 import webpackPaths from './webpack.paths';
@@ -17,7 +19,7 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 const configuration: webpack.Configuration = {
-  devtool: 'inline-source-map',
+  devtool: 'source-map',
 
   mode: 'development',
 
@@ -32,7 +34,6 @@ const configuration: webpack.Configuration = {
       type: 'commonjs2',
     },
   },
-
   resolve: {
     extensions: ['.ts', '.js'],
   },
@@ -43,8 +44,16 @@ const configuration: webpack.Configuration = {
       analyzerMode: process.env.ANALYZE === 'true' ? 'server' : 'disabled',
       analyzerPort: 8888,
     }),
-    new webpack.DefinePlugin({
-      'process.type': '"browser"',
+    new CopyPlugin({
+      patterns: [
+        {
+          from: path.join(webpackPaths.srcNodeModulesPath, 'assimpjs', 'dist', 'assimpjs.wasm'),
+          to: webpackPaths.distMainPath,
+        },
+      ],
+    }),
+    new webpack.EnvironmentPlugin({
+      APP_VERSION: version,
     }),
     new ForkTsCheckerWebpackPlugin({
       async: false,

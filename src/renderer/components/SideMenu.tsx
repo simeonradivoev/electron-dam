@@ -1,9 +1,10 @@
 import { Button, ButtonGroup, Spinner, SpinnerSize } from '@blueprintjs/core';
 import { useIsFetching } from '@tanstack/react-query';
 import cn from 'classnames';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useNavigate, useMatch } from 'react-router-dom';
 import { useApp } from 'renderer/contexts/AppContext';
+import { useTasks } from 'renderer/contexts/TasksContext';
 import { useLocalStorage } from 'usehooks-ts';
 
 const searchQueryKey = 'search-query';
@@ -13,6 +14,7 @@ const focusedBundleKey = 'focused-bundle-key';
 function SideMenu() {
   const navigate = useNavigate();
   const { focusedItem } = useApp();
+  const { tasks } = useTasks();
   const [searchQuery, setSearchQuery] = useLocalStorage<string | undefined>(
     searchQueryKey,
     undefined,
@@ -25,6 +27,10 @@ function SideMenu() {
   const searchMatch = useMatch('search/:query/:page');
   const bundleMatch = useMatch('/bundles/:focusId');
   const isFetching = useIsFetching();
+  const activeTasks = useMemo(
+    () => tasks.filter((t) => t.status === 'PENDING' || t.status === 'RUNNING').length,
+    [tasks],
+  );
 
   useEffect(() => {
     if (searchMatch?.params.query) {
@@ -83,7 +89,7 @@ function SideMenu() {
         onClick={() => {
           navigate('/tasks');
         }}
-        icon="list"
+        icon="inbox"
       />
       <Button
         title={`Search (${searchQuery})`}
@@ -103,7 +109,9 @@ function SideMenu() {
         }}
         icon="cog"
       />
-      {isFetching > 0 && <Spinner className="loading" size={SpinnerSize.SMALL} />}
+      {(isFetching > 0 || activeTasks > 0) && (
+        <Spinner className="loading" size={SpinnerSize.SMALL} />
+      )}
     </ButtonGroup>
   );
 }

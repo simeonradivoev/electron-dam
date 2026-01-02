@@ -8,7 +8,7 @@ import StreamZip, { ZipEntry } from 'node-stream-zip';
 import sharp from 'sharp';
 import { zipDelimiter, StoreSchema } from '../../shared/constants';
 import AsyncQueue from '../managers/AsyncQueue';
-import { imageMediaFormatsMatch, mkdirs } from '../util';
+import { getAssetPath, imageMediaFormatsMatch, mkdirs } from '../util';
 import { findBundleInfoForFile, findFolderPreview, findZipPreviewReadable } from './bundles-api';
 
 export function RegisterProtocols() {

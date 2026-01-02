@@ -14,7 +14,7 @@ import { installExtension, REACT_DEVELOPER_TOOLS } from 'electron-extension-inst
 import log from 'electron-log';
 import Store from 'electron-store';
 import { autoUpdater } from 'electron-updater';
-import zodToJsonSchema from 'zod-to-json-schema';
+import 'source-map-support/register';
 import { StoreSchema, MainIpcCallbacks, MainIpcGetter, StoreSchemaZod } from '../shared/constants';
 import InitializeCallbacks from './api/callbacks';
 import { LoadDatabase } from './api/database-api';
@@ -27,7 +27,14 @@ import InitializeSettingsApi from './api/settings';
 import InitializeTransformersApi from './api/transformers-api';
 import InitializeWindowApi from './api/window-api';
 import { addTask, InitializeTasks, InitializeTasksApi } from './managers/task-manager';
-import { registerMainCallbacks, registerMainHandlers, resolveHtmlPath } from './util';
+import migrations, { MigrationContext } from './migrations/migrations';
+import {
+  appVersion,
+  getAssetPath,
+  registerMainCallbacks,
+  registerMainHandlers,
+  resolveHtmlPath,
+} from './util';
 
 class AppUpdater {
   constructor() {
@@ -39,11 +46,6 @@ class AppUpdater {
 
 let mainWindow: BrowserWindow | null = null;
 
-if (process.env.NODE_ENV === 'production') {
-  const sourceMapSupport = require('source-map-support');
-  sourceMapSupport.install();
-}
-
 const isDebug = process.env.NODE_ENV === 'development' || process.env.DEBUG_PROD === 'true';
 
 if (isDebug) {
@@ -51,14 +53,6 @@ if (isDebug) {
 }
 
 const createWindow = async (store: Store<StoreSchema>) => {
-  const RESOURCES_PATH = app.isPackaged
-    ? path.join(process.resourcesPath, 'assets')
-    : path.join(__dirname, '../../assets');
-
-  const getAssetPath = (...paths: string[]): string => {
-    return path.join(RESOURCES_PATH, ...paths);
-  };
-
   const windowSize = store.get('windowSize', { width: 1024, height: 728 });
   const position = store.get('windowPosition', { x: undefined, y: undefined });
   log.log('Electron runtime versions:', process.versions);
@@ -77,7 +71,7 @@ const createWindow = async (store: Store<StoreSchema>) => {
       nodeIntegration: false,
       preload: app.isPackaged
         ? path.join(__dirname, 'preload.js')
-        : path.join(__dirname, '../../.erb/dll/preload.js'),
+        : path.join(__dirname, '../../../../.erb/dll/preload.js'),
     },
     // Remove the window frame from windows applications
     frame: false,
@@ -140,7 +134,6 @@ app
   .whenReady()
   .then(async () => {
     // Initialization
-    console.log(app.getPath('userData'));
     const store = new Store<StoreSchema>({
       deserialize: (s) => StoreSchemaZod.parse(JSON.parse(s)),
       defaults: StoreSchemaZod.parse({}),
@@ -174,12 +167,14 @@ app
 
     mainWindow = await createWindow(context.store);
     InitializeTasks(mainWindow);
-    const database = await LoadDatabase(context.store);
-    if (database) {
-      addTask('Indexing Assets', (abort, progress) =>
-        LoadVectorDatabase(context.store, database, abort, progress),
-      );
-    }
+
+    mainWindow.on('ready-to-show', async () => {
+      const database = await LoadDatabase(context.store);
+      // this is mainly for handling page reloads, dispose old database
+      mainWindow!.once('ready-to-show', () => {
+        database?.close();
+      });
+    });
 
     app.on('activate', async () => {
       // On macOS it's common to re-create a window in the app when the

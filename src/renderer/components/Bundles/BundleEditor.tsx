@@ -350,7 +350,7 @@ function BundleEditor() {
               label="Open Graph"
             />
             <MenuItem2
-              onClick={() => handleImport(ImportType.OpenGraph)}
+              onClick={() => handleImport(ImportType.Ollama)}
               icon="predictive-analysis"
               title="Use Ollama llm to generate all the metadata based on the link page's contents. This is the most advanced and slow option. You need to have ollama running locally with the model gemma3"
               label="Ollama"

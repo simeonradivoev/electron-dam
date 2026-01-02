@@ -405,6 +405,7 @@ export default function InitializeBundlesApi(
     const allFiles = await getAllAssets(store);
     const projectDir = store.get('projectDirectory');
     const issues = await mapAsync(allFiles, (f) => checkMetadataIssues(projectDir, f));
+    const missingBundlesCount = issues.filter((stats) => !stats.hasBundle).length;
     const missingMetadataCount = issues.filter(
       (stats) => stats.missingDescription && stats.hasBundle,
     ).length;
@@ -441,6 +442,7 @@ export default function InitializeBundlesApi(
         assetsSize,
         missingMetadataCount,
         missingEmbeddingsCount,
+        missingBundlesCount,
       },
     };
   }

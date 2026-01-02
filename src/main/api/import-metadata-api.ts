@@ -4,7 +4,7 @@ import * as https from 'https';
 import path from 'path';
 import { pipeline, SummarizationOutput } from '@huggingface/transformers';
 import * as cheerio from 'cheerio';
-import { ipcMain, IpcMainInvokeEvent } from 'electron';
+import { app, ipcMain, IpcMainInvokeEvent } from 'electron';
 import ElectronStore from 'electron-store';
 import ollama from 'ollama';
 import puppeteer from 'puppeteer-extra';
@@ -32,6 +32,44 @@ async function openGraphBundleImport(
     title: $('title')?.text() ?? $('meta[property="og:title"]')?.attr('content'),
     preview: $('meta[property="og:image"]')?.attr('content'),
   };
+}
+
+async function loadPageScreenshot(
+  url: string,
+  abort?: AbortSignal,
+  progress?: (p: number) => void,
+) {
+  const abortHandler = () => {
+    ollama.abort();
+    abort?.removeEventListener('abort', abortHandler);
+  };
+  abort?.addEventListener('abort', abortHandler);
+  const browser = await puppeteer.launch({
+    headless: true,
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-blink-features=AutomationControlled',
+    ],
+  });
+  progress?.(0.1);
+  const page = await browser.newPage();
+  progress?.(0.2);
+  await page.setViewport({ width: 1280, height: 720 });
+  await page.setExtraHTTPHeaders({
+    'Accept-Language': 'en-US,en;q=0.9',
+  });
+  progress?.(0.3);
+  await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
+  progress?.(0.5);
+
+  // Use delay function instead of waitForTimeout
+  await new Promise((resolve) => {
+    setTimeout(resolve, 3000);
+  });
+  progress?.(0.6);
+
+  return page.screenshot({ fullPage: true });
 }
 
 async function loadPageHtml(url: string, abort?: AbortSignal, progress?: (p: number) => void) {
@@ -87,6 +125,7 @@ async function ollamaBundleImport(
   });
 
   const pageHtml = await loadPageHtml(address, abort, progress);
+  const pageScreenshot = await loadPageScreenshot(address, abort, progress);
   const $ = cheerio.load(pageHtml);
   // Remove script, style, and other non-content tags
   $('script, style, noscript, iframe, svg').remove();
@@ -95,7 +134,7 @@ async function ollamaBundleImport(
   console.log(pageText);
 
   const format = zodToJsonSchema(Metadata);
-  const content = `Extract the description of the main presented game asset pack in text. Look for its description and tags.
+  const content = `Extract the description of the main presented game asset pack in text. Look for its description and tags from the provided image.
           1. Description - A clear, concise description of the asset bundle
           2. Tags - Relevant categorization tags (e.g., "3D", "weapons", "fantasy", "PBR", "mobile-ready")
           Rules:
@@ -108,8 +147,6 @@ async function ollamaBundleImport(
             - Return ONLY valid JSON matching the provided format.
             - Do not add any text before or after the JSON.
             - Do not include any price or deals information.
-          Content:
-            ${pageText}
 
           Return only the JSON object, no additional text.
             `;
@@ -120,8 +157,9 @@ async function ollamaBundleImport(
     model: 'gemma3',
     messages: [
       {
-        role: 'system',
-        content,
+        role: 'user',
+        content: `Describe the following asset pack from the screenshot in the provided json format. Here is the page text contents for reference: ${pageText}`,
+        images: [pageScreenshot],
       },
     ],
     format,
@@ -133,7 +171,6 @@ async function ollamaBundleImport(
     },
   });
 
-  console.log(response.message.content);
   const metadata = Metadata.parse(JSON.parse(response.message.content));
   metadata.tags = metadata.tags.map((t) => t.toLowerCase());
   metadata.tags.sort();

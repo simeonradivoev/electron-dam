@@ -1,6 +1,7 @@
+import path from 'path';
 import { env as transformersEnv } from '@huggingface/transformers';
 import { app } from 'electron';
-import path from 'path';
+import { getAssetPath } from 'main/util';
 
 function getModelsPath() {
   if (app.isPackaged) {
@@ -8,7 +9,7 @@ function getModelsPath() {
     return path.join(process.resourcesPath, 'models');
   }
 
-  return path.join(app.getAppPath(), 'assets', 'models');
+  return getAssetPath('models');
 }
 
 export default function InitializeTransformersApi() {

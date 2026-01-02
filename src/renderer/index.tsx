@@ -23,11 +23,6 @@ const root = createRoot(container);
 const queryClient = new QueryClient();
 const database = openDB<FilesDB>('selection database', 4, {
   upgrade(udb, _oldVersion, _newVersion, transaction) {
-    if (!udb.objectStoreNames.contains('selected')) {
-      udb.createObjectStore('selected');
-    } else {
-      transaction.objectStore('selected');
-    }
     if (!udb.objectStoreNames.contains('expanded')) {
       udb.createObjectStore('expanded');
     } else {
