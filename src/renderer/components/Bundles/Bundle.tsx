@@ -1,5 +1,5 @@
 import { Button, Icon, Menu } from '@blueprintjs/core';
-import { MenuItem2, showContextMenu } from '@blueprintjs/popover2';
+import { MenuItem2, showContextMenu, Tooltip2 } from '@blueprintjs/popover2';
 import { useQueryClient } from '@tanstack/react-query';
 import { normalize } from 'pathe';
 import { memo, useCallback, useContext, useMemo, useState } from 'react';
@@ -103,9 +103,7 @@ const Bundle = memo(
           <Icon className="overlay-icon" icon="search" />
           <div id="properties">
             {bundle.isVirtual && <Icon title="Virtual Bundle" className="virtual" icon="cloud" />}
-            {bundle.name.endsWith('.zip') && (
-              <Icon title="Compressed Bundle" className="virtual" icon="compressed" />
-            )}
+            {bundle.name.endsWith('.zip') && <Icon className="virtual" icon="compressed" />}
           </div>
           {validPreview ? (
             <img

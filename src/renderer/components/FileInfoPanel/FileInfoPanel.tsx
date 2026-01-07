@@ -10,27 +10,22 @@ import {
   Navbar,
   NavbarGroup,
   NavbarDivider,
-  Menu,
-  OverlayToaster,
-  Position,
-  Toast,
   NonIdealState,
-  Icon,
+  Classes,
 } from '@blueprintjs/core';
-import { Breadcrumbs2, MenuItem2, Popover2 } from '@blueprintjs/popover2';
+import { Breadcrumbs2, Popover2, Tooltip2 } from '@blueprintjs/popover2';
 import { Canvas } from '@react-three/fiber';
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { dirname, join, normalize } from 'pathe';
-import { useCallback, useContext } from 'react';
+import { keepPreviousData, useIsMutating, useQuery } from '@tanstack/react-query';
+import { join, normalize } from 'pathe';
+import { useCallback, useMemo, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { useMatch, useNavigate, useSearchParams } from 'react-router-dom';
-import { ContextMenuBuilder } from 'renderer/@types/preload';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from 'renderer/contexts/AppContext';
 import { ImportMedia } from 'renderer/scripts/loader';
-import { humanFileSize, formatDuration, FileTypeIcons } from 'renderer/scripts/utils';
-import { AppToaster } from 'renderer/toaster';
-import { AutoTagType, BundleMetaFile, zipDelimiter } from 'shared/constants';
+import { humanFileSize, formatDuration, QueryKeys } from 'renderer/scripts/utils';
+import { BundleMetaFile, zipDelimiter } from 'shared/constants';
 import BundlePreview from '../Bundles/BundlePreviewBase';
+import FileContextMenu from '../ExplorerPanel/FileContextMenu';
 import PreviewPanel3D from '../Previews/PreviewPanel3D';
 import PreviewPanelAudio from '../Previews/PreviewPanelAudio';
 import PreviewPanelImage from '../Previews/PreviewPanelImage';
@@ -39,22 +34,25 @@ import FolderFileGrid from './FolderFileGrid';
 
 interface FileInfoPanelProps {
   item?: string;
-  contextMenu: ContextMenuBuilder;
+  contextPortal?: HTMLElement;
+  showSource?: boolean;
+  searchQuery?: string;
+  allowTagEditing?: boolean;
 }
 
 // eslint-disable-next-line react/function-component-definition
-const FileInfoPanel: React.FC<FileInfoPanelProps> = ({ item, contextMenu }) => {
+const FileInfoPanel: React.FC<FileInfoPanelProps> = ({
+  item,
+  contextPortal,
+  showSource,
+  searchQuery,
+  allowTagEditing = true,
+}) => {
+  useRef();
   const { viewInExplorer, filter } = useApp();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-
-  const embeddingsMutation = useMutation({
-    mutationFn: () => (item ? window.api.generateEmbeddings(item) : Promise.reject()),
-    onSuccess: () => {
-      refetchMetadata();
-    },
-    mutationKey: ['embeddings', item],
-  });
+  const isGeneratingMetadata = useIsMutating({ mutationKey: [QueryKeys.metadata, item] }) > 0;
 
   const handleEditBundle = useCallback(
     (id: string | number) => {
@@ -63,12 +61,11 @@ const FileInfoPanel: React.FC<FileInfoPanelProps> = ({ item, contextMenu }) => {
     [navigate],
   );
 
-  const { data: metadata, refetch: refetchMetadata } = useQuery({
+  const { data: metadata } = useQuery({
     enabled: !!item,
-    queryKey: ['metadata', item],
-    queryFn: async (queryKey) => {
-      const [, path] = queryKey.queryKey;
-      return window.api.getMetadata(path!).catch(() => null);
+    queryKey: [QueryKeys.metadata, item],
+    queryFn: async () => {
+      return window.api.getMetadata(item!).catch(() => null);
     },
   });
 
@@ -78,40 +75,24 @@ const FileInfoPanel: React.FC<FileInfoPanelProps> = ({ item, contextMenu }) => {
     error: fileInfoError,
   } = useQuery({
     enabled: !!item,
-    queryKey: ['fileInfo', item],
-    queryFn: async (queryKey) => {
-      const [, path] = queryKey.queryKey;
-      return window.api.getFileDetails(path!);
+    queryKey: [QueryKeys.fileInfo, item],
+    queryFn: async () => {
+      return window.api.getFileDetails(item!);
     },
   });
 
   const { importedMesh, importedImage, importedAudio } = ImportMedia(fileInfo);
 
-  const autoMetadataMutation = useMutation({
-    mutationKey: ['metadata', item],
-    mutationFn: async (type: AutoTagType) =>
-      item ? window.api.autoMetadata(item, type) : Promise.reject(),
-    onError: (o) => {
-      AppToaster.show({ message: o.message, intent: 'danger' });
-    },
-    onSuccess: (_d, v, r, context) => {
-      if (item) {
-        context.client.refetchQueries({ queryKey: ['tags', normalize(item)] });
-      }
-      embeddingsMutation.mutate();
-    },
-  });
-
-  let previewPanel = <></>;
+  let previewPanel;
   if (importedImage.data) {
     previewPanel = (
-      <div className="preview-image">
+      <div className="preview preview-image">
         <PreviewPanelImage image={importedImage} />
       </div>
     );
   } else if (importedAudio.data) {
     previewPanel = (
-      <div className="preview-audio">
+      <div className="preview preview-audio">
         <PreviewPanelAudio
           path={fileInfo?.path}
           hasThumbnail={fileInfo?.hasThumbnail ?? false}
@@ -126,13 +107,14 @@ const FileInfoPanel: React.FC<FileInfoPanelProps> = ({ item, contextMenu }) => {
     previewPanel = (
       <Tabs>
         <Tab
-          className="preview-markdown"
+          className="preview preview-markdown"
           id="readme"
           title="Readme"
           panel={
             <ReactMarkdown
               className="preview-markdown-tab"
-              transformImageUri={(src, _alt) => {
+              skipHtml={false}
+              transformImageUri={(src) => {
                 if (src.startsWith('./')) {
                   return `app://${src.replace('.', fileInfo?.path ?? '')}`;
                 }
@@ -147,10 +129,11 @@ const FileInfoPanel: React.FC<FileInfoPanelProps> = ({ item, contextMenu }) => {
     );
   }
   // Bundles
-  else if (fileInfo?.isDirectory && fileInfo?.bundle) {
+  else if (fileInfo?.bundle) {
     previewPanel = (
       <BundlePreview
-        className="y-scroll wide"
+        searchQuery={searchQuery}
+        className="preview"
         bundle={fileInfo.bundle?.bundle}
         onSelect={(s: string) => {
           viewInExplorer(s);
@@ -162,68 +145,87 @@ const FileInfoPanel: React.FC<FileInfoPanelProps> = ({ item, contextMenu }) => {
   }
   // Folder
   else if (fileInfo?.isDirectory) {
-    previewPanel = <FolderFileGrid path={fileInfo.path} />;
+    previewPanel = <FolderFileGrid className="preview" path={fileInfo.path} />;
   } else if (!importedMesh.data && item && loadingFileInfo) {
     previewPanel = <NonIdealState icon={<Spinner />} title="Loading" />;
   } else {
     previewPanel = <NonIdealState icon="eye-open">Select Asset to Preview</NonIdealState>;
   }
 
-  const BREADCRUMBS = useQuery<BreadcrumbProps[], unknown, BreadcrumbProps[], [string, FileInfo]>({
-    enabled: !!fileInfo,
-    placeholderData: keepPreviousData,
-    queryKey: ['Breadcrumb', fileInfo ?? ({} as FileInfo)],
-    queryFn: (context) => {
-      const [, info] = context.queryKey;
-      const normalizedBundlePath = info.bundlePath && normalize(info.bundlePath);
-      const bundlePath =
-        normalizedBundlePath &&
-        normalizedBundlePath.substring(0, normalizedBundlePath.length - BundleMetaFile.length - 1);
-      let crums: BreadcrumbProps[] =
-        info.bundle && info.bundle.isParentBundle
-          ? [
-              {
-                text: info.bundle.name,
-                icon: 'box',
-              },
-            ]
-          : [];
-
-      crums = crums.concat(
-        normalize(info.path)
-          .split('/')
-          .map((path, index, array) => {
-            const selectPath = join(...array.slice(0, index + 1));
-            const crum: BreadcrumbProps = {
-              onClick:
-                index < array.length - 1
-                  ? () => {
-                      viewInExplorer(selectPath);
-                    }
-                  : undefined,
-              text: path,
-              current: index === array.length - 1,
-            };
-            if (index < array.length - 1) {
-              if (bundlePath && bundlePath === selectPath) {
-                crum.icon = path.endsWith(zipDelimiter) ? 'compressed' : 'box';
-              } else {
-                crum.icon = 'folder-open';
-              }
-            } else if (info.bundle && !info.bundle.isParentBundle) {
-              crum.icon = 'box';
-            } else if (info.isDirectory) {
-              crum.icon = path.endsWith(zipDelimiter) ? 'compressed' : 'folder-open';
-            } else {
-              crum.icon = 'document';
+  function createBreadCrum(
+    info: FileInfo,
+    bundlePath: string | undefined,
+    path: string,
+    index: number,
+    array: string[],
+  ) {
+    const selectPath = join(...array.slice(0, index + 1));
+    const crum: BreadcrumbProps = {
+      onClick:
+        index < array.length - 1
+          ? () => {
+              viewInExplorer(selectPath);
             }
-            return crum;
-          }),
-      );
+          : undefined,
+      text: path,
+      current: index === array.length - 1,
+    };
+    if (index < array.length - 1) {
+      if (bundlePath && bundlePath === selectPath) {
+        crum.icon = path.endsWith(zipDelimiter) ? 'compressed' : 'box';
+      } else {
+        crum.icon = 'folder-open';
+      }
+    } else if (info.bundle && !info.bundle.isParentBundle) {
+      crum.icon = 'box';
+    } else if (info.isDirectory) {
+      crum.icon = path.endsWith(zipDelimiter) ? 'compressed' : 'folder-open';
+    } else {
+      crum.icon = 'document';
+    }
+    return crum;
+  }
 
-      return crums;
-    },
-  });
+  const sourceUrl =
+    fileInfo?.bundle?.bundle.bundle.sourceUrl && new URL(fileInfo.bundle.bundle.bundle.sourceUrl);
+  const fileInfoPath =
+    (showSource || fileInfo?.bundle?.bundle.isVirtual) && sourceUrl
+      ? [sourceUrl.host]
+      : normalize(fileInfo?.path ?? '').split('/');
+
+  const BREADCRUMBS = useMemo((): BreadcrumbProps[] => {
+    if (!fileInfo || !fileInfoPath) {
+      return [];
+    }
+
+    const info = fileInfo;
+    const normalizedBundlePath = info.bundlePath && normalize(info.bundlePath);
+    const bundlePath =
+      normalizedBundlePath &&
+      normalizedBundlePath.substring(0, normalizedBundlePath.length - BundleMetaFile.length - 1);
+    let crums: BreadcrumbProps[] =
+      info.bundle && info.bundle.isParentBundle
+        ? [
+            {
+              text: info.bundle.name,
+              icon: 'box',
+            },
+          ]
+        : [];
+
+    crums = crums.concat(
+      fileInfoPath.map((p, index, array) => createBreadCrum(info, bundlePath, p, index, array)),
+    );
+
+    return crums;
+  }, [
+    fileInfoPath,
+    !fileInfo,
+    fileInfo?.bundlePath,
+    fileInfo?.bundle,
+    fileInfo?.path,
+    viewInExplorer,
+  ]);
 
   let fileSizeTag: JSX.Element | undefined;
   if (fileInfo && fileInfo.size) {
@@ -242,39 +244,31 @@ const FileInfoPanel: React.FC<FileInfoPanelProps> = ({ item, contextMenu }) => {
 
   return (
     <div className="file-info-panel">
-      <Navbar id="header ">
+      <Navbar className="header">
         <NavbarGroup>
-          <Breadcrumbs2
-            className="breadcrumbs"
-            collapseFrom="end"
-            overflowListProps={{ alwaysRenderOverflow: true }}
-            items={
-              (BREADCRUMBS.isPlaceholderData
-                ? BREADCRUMBS.data?.concat({
-                    text: <Spinner size={16} />,
-                  } as BreadcrumbProps)
-                : BREADCRUMBS.data) ?? []
-            }
-          />
+          <Breadcrumbs2 className="breadcrumbs" collapseFrom="start" items={BREADCRUMBS} />
         </NavbarGroup>
         <NavbarGroup align="right">
           <NavbarDivider />
-          <Popover2
-            interactionKind="click"
-            placement="bottom"
-            minimal
-            content={
-              fileInfo
-                ? contextMenu(
-                    fileInfo.path ?? '',
-                    fileInfo.bundle ? fileInfo.path : undefined,
-                    fileInfo.isDirectory ?? true,
-                  )
-                : undefined
-            }
-          >
-            <Button minimal icon="menu" />
-          </Popover2>
+          {!!fileInfo && (
+            <Popover2
+              interactionKind="click"
+              placement="bottom"
+              portalContainer={contextPortal}
+              minimal
+              hasBackdrop
+              content={
+                <FileContextMenu
+                  assetPath={fileInfo.path}
+                  isDirectory={fileInfo.isDirectory}
+                  hasBundlePath={!!fileInfo.bundlePath}
+                  navigate={navigate}
+                />
+              }
+            >
+              <Button minimal icon="menu" />
+            </Popover2>
+          )}
         </NavbarGroup>
       </Navbar>
       <div className="preview-3d">
@@ -307,80 +301,69 @@ const FileInfoPanel: React.FC<FileInfoPanelProps> = ({ item, contextMenu }) => {
       ) : (
         previewPanel
       )}
-      {(!fileInfo || !fileInfo.bundle || fileInfo.bundle.isParentBundle) && <Divider />}
-      <ul className="file-stats">
-        {fileSizeTag}
-        {metadata?.description && (
-          <Tag style={{ maxWidth: 128 }} icon="predictive-analysis" minimal>
-            {autoMetadataMutation.isPending ? <Spinner size={16} /> : metadata?.description}
-          </Tag>
-        )}
-        {metadata?.embeddings && (
-          <Tag style={{ maxWidth: 128 }} icon="heatmap" minimal title="Embeddings">
-            {autoMetadataMutation.isPending ? <Spinner size={16} /> : ''}
-          </Tag>
-        )}
-        {fileInfo?.isZip && <Tag style={{ maxWidth: 128 }} icon="compressed" minimal />}
-        {fileInfo?.audioMetadata?.format.duration && (
-          <Tag style={{ maxWidth: 128 }} icon="time" minimal title="Duration">
-            {formatDuration(Math.round(fileInfo?.audioMetadata?.format?.duration) * 1000)}
-          </Tag>
-        )}
-        {fileInfo?.audioMetadata?.format?.bitrate && (
-          <Tag icon="regression-chart" minimal title="Bitrate (kilobits per second)">
-            {Math.round((fileInfo?.audioMetadata?.format?.bitrate ?? 0) * 0.001)} kbps
-          </Tag>
-        )}
-        {fileInfo?.audioMetadata?.common.bpm && (
-          <Tag icon="one-to-one" minimal title="Beats per minute">
-            {fileInfo?.audioMetadata?.common.bpm} bpm
-          </Tag>
-        )}
-        {fileInfo?.audioMetadata?.format.lossless && <Tag icon="flame" minimal title="Lossless" />}
-      </ul>
-
-      <FileInfoTags
-        filter={filter}
-        fileInfo={fileInfo ?? null}
-        contextMenu={
-          <Popover2
-            interactionKind="click"
-            placement="top-end"
-            hasBackdrop
-            minimal
-            content={
-              <Menu>
-                <MenuItem2 label="Describe" icon="barcode">
-                  <MenuItem2
-                    icon="predictive-analysis"
-                    label="Ollama"
-                    onClick={() => autoMetadataMutation.mutate(AutoTagType.Ollama)}
-                  />
-                  <MenuItem2
-                    label="Transformers"
-                    onClick={() => autoMetadataMutation.mutate(AutoTagType.Transformers)}
-                  />
-                </MenuItem2>
-                {fileInfo?.path && (
-                  <MenuItem2
-                    disabled={!metadata?.description || embeddingsMutation.isPending}
-                    label="Generate Embeddings"
-                    icon="predictive-analysis"
-                    onClick={() => embeddingsMutation.mutate()}
-                  />
+      {!fileInfo?.isDirectory && (
+        <ul className="file-stats">
+          {fileSizeTag}
+          {metadata?.description && (
+            <Tooltip2 content={<ReactMarkdown>{metadata?.description}</ReactMarkdown>}>
+              <Tag
+                className="description-tag"
+                style={{ maxWidth: 128 }}
+                icon="predictive-analysis"
+                minimal
+              >
+                {isGeneratingMetadata ? (
+                  <Spinner size={16} />
+                ) : (
+                  <div className={Classes.TEXT_OVERFLOW_ELLIPSIS} title="">
+                    {metadata?.description}
+                  </div>
                 )}
-              </Menu>
-            }
-          >
-            <Button
-              minimal
-              loading={autoMetadataMutation.isPending}
-              rightIcon="caret-down"
-              icon="settings"
-            />
-          </Popover2>
-        }
-      />
+              </Tag>
+            </Tooltip2>
+          )}
+          {metadata?.embeddings && (
+            <Tooltip2 content="Embeddings">
+              <Tag style={{ maxWidth: 128 }} icon="heatmap" minimal>
+                {isGeneratingMetadata ? <Spinner size={16} /> : ''}
+              </Tag>
+            </Tooltip2>
+          )}
+          {fileInfo?.isZip && <Tag style={{ maxWidth: 128 }} icon="compressed" minimal />}
+          {fileInfo?.audioMetadata?.format.duration && (
+            <Tooltip2 content="Duration">
+              <Tag style={{ maxWidth: 128 }} icon="time" minimal>
+                {formatDuration(Math.round(fileInfo?.audioMetadata?.format?.duration) * 1000)}
+              </Tag>
+            </Tooltip2>
+          )}
+          {fileInfo?.audioMetadata?.format?.bitrate && (
+            <Tooltip2 content="Bitrate (kilobits per second)">
+              <Tag icon="regression-chart" minimal>
+                {Math.round((fileInfo?.audioMetadata?.format?.bitrate ?? 0) * 0.001)} kbps
+              </Tag>
+            </Tooltip2>
+          )}
+          {fileInfo?.audioMetadata?.common.bpm && (
+            <Tooltip2 content="Beats per minute">
+              <Tag icon="one-to-one" minimal>
+                {fileInfo?.audioMetadata?.common.bpm} bpm
+              </Tag>
+            </Tooltip2>
+          )}
+          {fileInfo?.audioMetadata?.format.lossless && (
+            <Tooltip2 content="Lossless">
+              <Tag icon="flame" minimal />
+            </Tooltip2>
+          )}
+        </ul>
+      )}
+
+      {!!item && (
+        <div className="footer">
+          <FileInfoTags allowEditing={allowTagEditing} filter={filter} item={item} />
+        </div>
+      )}
     </div>
   );
 };

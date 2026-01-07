@@ -28,26 +28,6 @@ export default function Metadata() {
             ))}
         </form.OptionsForm>
       </form.AppForm>
-      <Divider />
-      <FormGroup
-        label={
-          <>
-            Generate Missing Embeddings{' '}
-            <Icon
-              className={Classes.TEXT_MUTED}
-              title="Only files that have defined description can have embeddings generated."
-              icon="info-sign"
-            />
-          </>
-        }
-        subLabel="This will generate searchable embeddings for all suitable files."
-      >
-        <ControlGroup>
-          <Button icon="refresh" onClick={() => window.api.generateMissingEmbeddings()}>
-            Generate
-          </Button>
-        </ControlGroup>
-      </FormGroup>
     </div>
   );
 }

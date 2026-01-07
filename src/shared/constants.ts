@@ -1,5 +1,4 @@
-import { async } from 'node-stream-zip';
-import z, { infer, string } from 'zod/v3';
+import z from 'zod/v3';
 
 export enum FileType {
   Audio = 'Audio',
@@ -93,36 +92,44 @@ export const channelsSchema = {
     getFileChildren: {} as ChannelGetter<FileTreeNode[], [path: string]>,
     addTags: {} as ChannelGetter<string[] | null, [path: string, tags: string[]]>,
     removeTag: {} as ChannelGetter<string[] | null, [path: string, tag: string]>,
-    autoMetadata: {} as ChannelGetter<FileMetadata | null, [path: string, type: AutoTagType]>,
+    removeAllTags: {} as ChannelGetter<void>,
+    autoMetadata: {} as ChannelGetter<
+      void,
+      [path: string, type: AutoTagType, missingOnly: boolean]
+    >,
+    canGenerateMetadata: {} as ChannelGetter<boolean, [path: string, type: AutoTagType]>,
     saveAudioPreview: {} as ChannelGetter<void, [path: string, blob: string]>,
     getTags: {} as ChannelGetter<string[], [path: string]>,
     setTags: {} as ChannelGetter<string[] | null, [path: string, tags: string[]]>,
     getParentTags: {} as ChannelGetter<string[], [path: string]>,
-    getMetadata: {} as ChannelGetter<FileMetadata | null, [path: string]>,
+    getMetadata: {} as ChannelGetter<AnyMetadata | null, [path: string]>,
     getFileDetails: {} as ChannelGetter<FileInfo | null, [path: string]>,
     selectProjectDirectory: {} as ChannelGetter<string | null>,
     createBundle: {} as ChannelGetter<boolean, [directory: string]>,
     updateBundle: {} as ChannelGetter<Bundle | null, [path: string, bundle: Bundle]>,
     deleteBundle: {} as ChannelGetter<void, [path: string]>,
     importBundleMetadata: {} as ChannelGetter<BundleMetadata, [url: string, type: ImportType]>,
+    canImportBundleMetadata: {} as ChannelGetter<boolean, [url: string, type: ImportType]>,
     downloadPreview: {} as ChannelGetter<void, [bundlePath: string, url: string]>,
     minimizeWindow: {} as ChannelGetter<void>,
     maximizeWindow: {} as ChannelGetter<void>,
     openPath: {} as ChannelGetter<void, [path: string]>,
     getBundles: {} as ChannelGetter<BundleInfo[]>,
     getBundle: {} as ChannelGetter<BundleInfo | null, [id: string]>,
+    getBundleForAsset: {} as ChannelGetter<BundleInfo | null, [path: string]>,
     createVirtualBundle: {} as ChannelGetter<VirtualBundle | undefined, [bundle: VirtualBundle]>,
     getHomeBundles: {} as ChannelGetter<HomePageBundles | undefined>,
     convertBundleToLocal: {} as ChannelGetter<boolean, [id: string]>,
     moveBundle: {} as ChannelGetter<boolean, [oldPath: string, newPath: string]>,
     search: {} as ChannelGetter<
-      { nodes: SearchTreeNode[]; count: number; pageSize: number },
+      { nodes: SearchEntryResult[]; count: number; pageSize: number },
       [query: string, typesFilter: FileType[], page: number]
     >,
     getTasks: {} as ChannelGetter<TaskMetadata[]>,
-    reIndexDatabaseSearch: {} as ChannelGetter<void>,
-    generateEmbeddings: {} as ChannelGetter<FileMetadata, [path: string]>,
+    reIndexFiles: {} as ChannelGetter<void>,
+    generateEmbeddings: {} as ChannelGetter<AnyMetadata | null, [path: string]>,
     generateMissingEmbeddings: {} as ChannelGetter<void>,
+    canGenerateEmbeddings: {} as ChannelGetter<boolean, [path: string]>,
     getSetting: {} as ChannelGetter<any, [key: keyof typeof Options]>,
     getSettings: {} as ChannelGetter<{ [key: string]: any }, [category: OptionCategory]>,
     getDefaultSettingValue: {} as ChannelGetter<any, [key: keyof typeof Options]>,
@@ -131,7 +138,10 @@ export const channelsSchema = {
     cancelTask: {} as ChannelGetter<void, [id: string]>,
     exportBundle: {} as ChannelGetter<void, [path: string]>,
     getVersion: {} as ChannelGetter<VersionMetadata>,
+    openSystemPath: {} as ChannelGetter<void, [pathType: 'log' | 'user' | 'project']>,
     saveAudioPeaks: {} as ChannelGetter<void, [path: string, peaks: string]>,
+    removeDescription: {} as ChannelGetter<void, [path: string]>,
+    getCacheSize: {} as ChannelGetter<number>,
   },
   on: {
     fileAdded: {} as ChannelSub<[path: string]>,
@@ -182,9 +192,10 @@ export type OptionType = {
   subLabel?: string;
   description?: string;
   schema: z.ZodTypeAny;
-  type: 'string' | 'number' | 'bool';
+  type: 'string' | 'number' | 'bool' | 'enum';
   category: OptionCategory;
   default?: any;
+  options?: any[];
   hintValue?: string;
   localType?: 'local' | 'session';
   min?: number;
@@ -226,9 +237,8 @@ export const Options = {
     schema: z
       .string()
       .url()
-      .default(() => Options.ollamaHost.default),
+      .default(() => 'http://127.0.0.1:11434'),
     type: 'string',
-    default: 'http://127.0.0.1:11434',
     category: OptionCategory.Metadata,
   },
   ollamaModel: {
@@ -252,8 +262,16 @@ export const Options = {
     schema: z.number().min(16).default(128),
     type: 'number',
     category: OptionCategory.General,
-    stepSize: 10,
+    stepSize: 16,
     min: 16,
+  },
+  embeddingDevice: {
+    label: 'Embedding Device',
+    description: 'What device should we use for enbedding generation',
+    schema: z.enum(['gpu', 'cpu', 'webgpu', 'wasm', 'auto', 'cuda']).default('gpu'),
+    options: ['gpu', 'cpu', 'webgpu', 'wasm', 'auto', 'cuda'],
+    type: 'enum',
+    category: OptionCategory.Metadata,
   },
 } satisfies OptionsType;
 

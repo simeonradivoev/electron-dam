@@ -1,7 +1,7 @@
 import { Icon, IconName } from '@blueprintjs/core';
-import { showContextMenu } from '@blueprintjs/popover2';
-import { ItemInstance, TreeInstance } from '@headless-tree/core';
-import { useVirtualizer, VirtualItem, Virtualizer } from '@tanstack/react-virtual';
+import { Popover2 } from '@blueprintjs/popover2';
+import { HotkeysConfig, HotkeysCoreDataRef, ItemInstance, TreeInstance } from '@headless-tree/core';
+import { useVirtualizer, Virtualizer } from '@tanstack/react-virtual';
 import cn from 'classnames';
 import React, {
   forwardRef,
@@ -9,12 +9,11 @@ import React, {
   Key,
   useImperativeHandle,
   useRef,
-  useEffect,
   useMemo,
   memo,
 } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ContextMenuBuilder } from 'renderer/@types/preload';
+import { ShowContextMenuParams } from 'renderer/@types/preload';
 import { getIcon } from 'renderer/scripts/file-tree';
 
 /**
@@ -23,7 +22,7 @@ import { getIcon } from 'renderer/scripts/file-tree';
 type Props = {
   tree: TreeInstance<FileTreeNode>;
   isSearching: boolean;
-  contextMenu: ContextMenuBuilder;
+  contextMenu: (params: ShowContextMenuParams | undefined) => void;
   onClick: (e: React.MouseEvent<HTMLElement>, i: ItemInstance<FileTreeNode>) => void;
 };
 
@@ -35,7 +34,7 @@ type TreeItemProps = {
   searchMatch: boolean;
   nodeData: FileTreeNode;
   isSelected: boolean;
-  context: () => JSX.Element;
+  contextMenu: (params: ShowContextMenuParams | undefined) => void;
   indent: number;
   isFocused: boolean;
   onCustomClick: (e: React.MouseEvent<HTMLElement>) => void;
@@ -43,7 +42,6 @@ type TreeItemProps = {
   virtualItemStart: number;
   onDoubleClick: () => void;
   dragLineStyle: any;
-  props: Record<string, any>;
 };
 
 const TreeItem = memo(
@@ -55,7 +53,7 @@ const TreeItem = memo(
     onCustomClick,
     nodeData,
     isSelected,
-    context,
+    contextMenu,
     indent,
     searchMatch,
     isSearching,
@@ -63,7 +61,6 @@ const TreeItem = memo(
     onDoubleClick,
     isFocused,
     dragLineStyle,
-    props,
   }: TreeItemProps) => {
     const iconElement = useMemo(() => {
       let icon: IconName;
@@ -99,7 +96,6 @@ const TreeItem = memo(
     ]);
     return (
       <li
-        {...props}
         style={{
           position: 'absolute',
           top: 0,
@@ -114,9 +110,9 @@ const TreeItem = memo(
           if (!isSelected) {
             onCustomClick(e);
           }
-          showContextMenu({
-            content: context(),
-            targetOffset: { left: e.clientX, top: e.clientY },
+          contextMenu({
+            id: nodeData.path,
+            rect: new DOMRect(e.clientX, e.clientY, 16, 16),
           });
         }}
         onDoubleClick={onDoubleClick}
@@ -189,7 +185,24 @@ const Inner = forwardRef<Virtualizer<HTMLDivElement, Element>, Props>(
     useImperativeHandle(ref, () => virtualizer);
 
     return (
-      <div ref={parentRef} className="tree-parent y-scroll" onKeyDown={(e) => e.preventDefault()}>
+      <div
+        ref={parentRef}
+        tabIndex={-1}
+        className="tree-parent y-scroll"
+        role="tree"
+        onKeyDown={(e) => {
+          e.preventDefault();
+          tree.getDataRef<HotkeysCoreDataRef>().current.keydownHandler?.(e as any as KeyboardEvent);
+        }}
+        onKeyUp={(e) => {
+          e.preventDefault();
+          tree.getDataRef<HotkeysCoreDataRef>().current.keyupHandler?.(e as any as KeyboardEvent);
+        }}
+        onBlur={(e) => {
+          e.preventDefault();
+          tree.getDataRef<HotkeysCoreDataRef>().current.resetHandler?.(e as any as FocusEvent);
+        }}
+      >
         <div
           style={{
             height: `${virtualizer.getTotalSize()}px`,
@@ -197,17 +210,11 @@ const Inner = forwardRef<Virtualizer<HTMLDivElement, Element>, Props>(
           }}
           className="bp4-tree tree bp4-elevation-0"
         >
-          <ul
-            role="tree"
-            className="bp4-tree-node-list bp4-tree-root"
-            {...tree.getContainerProps()}
-          >
+          <ul className="bp4-tree-node-list bp4-tree-root" {...tree.getContainerProps('files')}>
             {virtualizer.getVirtualItems().map((virtualItem) => {
               const item = tree.getItems()[virtualItem.index];
-              const props = item.getProps();
               return (
                 <TreeItem
-                  props={props}
                   data-index={virtualItem.index}
                   dragLineStyle={tree.getDragLineStyle()}
                   key={virtualItem.key as Key}
@@ -222,13 +229,7 @@ const Inner = forwardRef<Virtualizer<HTMLDivElement, Element>, Props>(
                   collapse={item.collapse}
                   isExpanded={item.isExpanded()}
                   isFocused={item.isFocused()}
-                  context={() =>
-                    contextMenu(
-                      item.getId(),
-                      item.getItemData().bundlePath,
-                      item.getItemData().isDirectory ?? true,
-                    )
-                  }
+                  contextMenu={contextMenu}
                   indent={item.getItemMeta().level}
                   onDoubleClick={() => handleNodeDoubleClick(item.getItemData())}
                   isSearching={isSearching}

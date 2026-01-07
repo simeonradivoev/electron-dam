@@ -20,7 +20,7 @@ export function createRendererCallbacks() {
       ipcRenderer.on(channel, subscription);
 
       return () => {
-        ipcRenderer.removeListener(channel, subscription);
+        ipcRenderer.off(channel, subscription);
       };
     };
   });

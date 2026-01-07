@@ -1,14 +1,16 @@
 import { NonIdealState, ResizeSensor, Spinner } from '@blueprintjs/core';
 import { useQuery } from '@tanstack/react-query';
 import { useVirtualizer } from '@tanstack/react-virtual';
+import classNames from 'classnames';
 import { Key, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import BundleFileEntry from '../Bundles/BundleFileEntry';
 
 type Props = {
   path: string;
+  className?: string;
 };
 
-function FolderFileGrid({ path }: Props) {
+function FolderFileGrid({ path, className }: Props) {
   const parentRef = useRef<HTMLDivElement>(null);
   const [parentWidth, setParentWidth] = useState<number | undefined>(undefined);
 
@@ -56,7 +58,7 @@ function FolderFileGrid({ path }: Props) {
         style={{
           overflow: 'auto', // Make it scroll!
         }}
-        className="asset-grid y-scroll wide"
+        className={classNames(className, 'asset-grid y-scroll wide')}
       >
         <div
           style={{

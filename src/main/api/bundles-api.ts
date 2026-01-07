@@ -1,36 +1,52 @@
 import { spawn } from 'child_process';
 import { createWriteStream } from 'fs';
-import { lstat, writeFile, unlink, readFile, mkdir, rename } from 'fs/promises';
+import { lstat, writeFile, unlink, readFile, mkdir, rename, stat, rm } from 'fs/promises';
 import path, { normalize } from 'path';
 import { dialog, BrowserWindow, shell, Notification } from 'electron';
+import log from 'electron-log/main';
 import Store from 'electron-store';
 import JSZip from 'jszip';
 import Loki from 'lokijs';
 import StreamZip from 'node-stream-zip';
-import { BundleMetaFile, StoreSchema, MainIpcGetter, previewTypes } from '../../shared/constants';
+import {
+  BundleMetaFile,
+  StoreSchema,
+  MainIpcGetter,
+  previewTypes,
+  zipDelimiter,
+} from '../../shared/constants';
 import { addTask } from '../managers/task-manager';
-import { getRandom, mapAsync } from '../util';
+import { getRandom, TypedEventEmitter } from '../util';
 import {
   findBundlePath,
-  getAllAssets,
+  forAllAssetsInProject,
   getAllAssetsIn,
   getMetadata,
   getMetaId,
+  operateOnMetadata,
   pathExistsSync,
   pathJoin,
   pathLstat,
   pathReaddir,
+  pathStat,
   resolveAssetPath,
 } from './file-system-api';
 
+interface MetadataIssues {
+  missingDescription: boolean;
+  canGenerateEmbeddings: boolean;
+  missingEmbeddings: boolean;
+  hasBundle: boolean;
+}
+
 export async function checkMetadataIssues(projectDir: string, node: FileTreeNode) {
-  const metadata = await getMetadata<FileMetadata>({ projectDir, path: node.path });
+  const metadata = await getMetadata({ projectDir, path: node.path });
   return {
     missingDescription: !metadata?.description,
     canGenerateEmbeddings: !!metadata?.description,
     missingEmbeddings: !metadata?.embeddings,
-    hasBundle: !node.bundlePath,
-  };
+    hasBundle: !!node.bundlePath,
+  } satisfies MetadataIssues as MetadataIssues;
 }
 
 async function searchParents<T>(
@@ -49,14 +65,14 @@ export async function loadDirectoryBundle(
   bundleDirectory: FilePath,
 ): Promise<BundleInfo | undefined> {
   const bundlePath = pathJoin(bundleDirectory, BundleMetaFile);
-  const bundleStat = await pathLstat(bundlePath).catch((e) => null);
+  const bundleStat = await pathStat(bundlePath).catch((e) => null);
   if (bundleStat) {
     const fileData = await readFile(path.join(bundlePath.projectDir, bundlePath.path), 'utf8');
     const entry: BundleInfo = {
-      id: path.dirname(bundlePath.path),
+      id: bundleDirectory.path,
       bundle: JSON.parse(fileData),
       isVirtual: false,
-      name: path.basename(path.dirname(bundlePath.path)),
+      name: path.basename(bundleDirectory.path),
       date: bundleStat.birthtime,
     };
     return entry;
@@ -94,7 +110,7 @@ export async function searchParentBundle(
 }
 
 async function createBundle(bundlePath: FilePath): Promise<boolean> {
-  const directoryStat = await pathLstat(bundlePath);
+  const directoryStat = await pathStat(bundlePath);
   if (directoryStat.isDirectory()) {
     const bundle: Bundle = {};
     return writeFile(
@@ -102,7 +118,7 @@ async function createBundle(bundlePath: FilePath): Promise<boolean> {
       JSON.stringify(bundle),
     )
       .catch((err) => {
-        console.error(err);
+        log.error(err);
         return false;
       })
       .then(() => true);
@@ -110,26 +126,18 @@ async function createBundle(bundlePath: FilePath): Promise<boolean> {
 
   if (bundlePath.path.endsWith('.zip')) {
     const bundle: Bundle = {};
-    return writeFile(`${bundlePath}.${BundleMetaFile}`, JSON.stringify(bundle))
+    return writeFile(
+      path.join(bundlePath.projectDir, `${bundlePath.path}.${BundleMetaFile}`),
+      JSON.stringify(bundle),
+    )
       .catch((err) => {
-        console.error(err);
+        log.error(err);
         return false;
       })
       .then(() => true);
   }
 
   return false;
-}
-
-async function tryGetBundleEntryFromPath(bundlePath: FilePath): Promise<BundleInfo | null> {
-  if (bundlePath.path.endsWith('.zip')) {
-    return tryGetBundleEntryFromMetaFile({
-      projectDir: bundlePath.projectDir,
-      path: `${bundlePath.path}.${BundleMetaFile}`,
-    });
-  }
-
-  return tryGetBundleEntryFromMetaFile(pathJoin(bundlePath, BundleMetaFile));
 }
 
 export async function findZipPreviewReadable(zipPath: FilePath) {
@@ -162,31 +170,27 @@ export function findFolderPreview(folder: FilePath) {
   return undefined;
 }
 
-async function tryGetBundleEntryFromMetaFile(bundleMetaPath: FilePath): Promise<BundleInfo | null> {
-  const bundleStat = await pathLstat(bundleMetaPath).catch((e) => null);
+export async function tryGetBundleEntryFromFolderPath(
+  directoryPath: FilePath,
+): Promise<BundleInfo | null> {
+  const bundleStat = await pathStat(directoryPath).catch(() => null);
   if (bundleStat) {
-    const bundle = await getMetadata<Bundle>(bundleMetaPath);
+    const bundle = await getMetadata(directoryPath, bundleStat);
     if (!bundle) {
       return null;
     }
     const bundleEntry: BundleInfo = {
-      id: path.dirname(bundleMetaPath.path),
+      id: directoryPath.path,
       bundle,
-      name: path.basename(path.dirname(bundleMetaPath.path)),
+      name: path.basename(directoryPath.path),
       isVirtual: false,
       date: bundleStat.birthtime,
     };
 
-    const metaPath = getMetaId(bundleMetaPath.path);
-    const zipEnding = `.zip.${BundleMetaFile}`;
-    if (metaPath.endsWith(zipEnding)) {
-      const zipMetaFile = metaPath.substring(0, metaPath.length - BundleMetaFile.length - 1);
-      bundleEntry.id = zipMetaFile;
-      bundleEntry.name = path.basename(zipMetaFile);
-    } else {
+    if (!directoryPath.path.endsWith(zipDelimiter)) {
       const bundlePreview = findFolderPreview({
-        projectDir: bundleMetaPath.projectDir,
-        path: bundleMetaPath.path.substring(0, bundleMetaPath.path.length - BundleMetaFile.length),
+        projectDir: directoryPath.projectDir,
+        path: directoryPath.path,
       });
       bundleEntry.previewUrl = bundlePreview;
     }
@@ -203,27 +207,34 @@ async function findChildrenBundles(parent: FilePath, bundles: BundleInfo[]): Pro
   await Promise.all(
     dirs.map(async (dir) => {
       const childPath = pathJoin(parent, dir.name);
+      const isZip = dir.isFile() && childPath.path.endsWith('.zip');
 
-      if (dir.isDirectory()) {
-        const bundlePath = pathJoin(childPath, BundleMetaFile);
-        const bundle = await tryGetBundleEntryFromMetaFile(bundlePath);
+      if (dir.isDirectory() || isZip) {
+        const bundle = await tryGetBundleEntryFromFolderPath(childPath);
 
         if (bundle) {
           bundles.push(bundle);
-        } else {
+        } else if (!isZip) {
           await findChildrenBundles(childPath, bundles);
-        }
-      } else if (childPath.path.endsWith('.zip')) {
-        const bundle = await tryGetBundleEntryFromMetaFile({
-          projectDir: childPath.projectDir,
-          path: `${childPath.path}.${BundleMetaFile}`,
-        });
-
-        if (bundle) {
-          bundles.push(bundle);
         }
       }
     }),
+  );
+}
+
+export async function getVirtualBundles(
+  virtualBundles: Collection<VirtualBundle>,
+): Promise<BundleInfo[]> {
+  return virtualBundles.find().map(
+    (b) =>
+      ({
+        id: b.id,
+        name: b.name,
+        previewUrl: b.previewUrl,
+        bundle: b,
+        isVirtual: true,
+        date: new Date(b.date),
+      }) satisfies BundleInfo as BundleInfo,
   );
 }
 
@@ -234,21 +245,10 @@ export async function getBundles(
   const bundles: BundleInfo[] = [];
   const projectDir = store.get('projectDirectory') as string | undefined;
   if (projectDir) {
-    const root = await lstat(projectDir);
     await findChildrenBundles({ projectDir, path: '' }, bundles);
   }
 
-  const allBundles = virtualBundles.find();
-  allBundles.forEach((b) =>
-    bundles.push({
-      id: b.id,
-      name: b.name,
-      previewUrl: b.previewUrl,
-      bundle: b,
-      isVirtual: true,
-      date: new Date(b.date),
-    }),
-  );
+  bundles.push(...(await getVirtualBundles(virtualBundles)));
 
   return bundles.sort((a, b) => b.date?.getTime() - a.date?.getTime());
 }
@@ -256,7 +256,7 @@ export async function getBundles(
 export async function findBundleInfoForFile(filePath: FilePath): Promise<BundleInfo | null> {
   const bundlePath = await findBundlePath(filePath);
   if (bundlePath) {
-    return tryGetBundleEntryFromMetaFile(bundlePath);
+    return tryGetBundleEntryFromFolderPath(bundlePath);
   }
   return null;
 }
@@ -303,7 +303,7 @@ export async function convertBundleToLocal(
         try {
           child.kill();
         } catch (e) {
-          console.error('Failed to kill process', e);
+          log.error('Failed to kill process', e);
         }
       };
 
@@ -344,7 +344,7 @@ export async function convertBundleToLocal(
 
       return true;
     } catch (error) {
-      console.error('Failed to convert bundle:', error);
+      log.error('Failed to convert bundle:', error);
       // Cleanup if possible (e.g. delete destinationPath)
       // We might want to delete the folder if it was partially created
       throw error;
@@ -391,7 +391,6 @@ export default function InitializeBundlesApi(
   api: MainIpcGetter,
   store: Store<StoreSchema>,
   db: Loki,
-  removeAllTags: (projectDir: string, id: string) => void,
 ) {
   let virtualBundles = db.getCollection<VirtualBundle>('bundles');
   if (virtualBundles === null) {
@@ -402,9 +401,20 @@ export default function InitializeBundlesApi(
   }
 
   async function getHomeBundles(): Promise<HomePageBundles | undefined> {
-    const allFiles = await getAllAssets(store);
+    const issues: MetadataIssues[] = [];
+    let assetsSize = 0;
     const projectDir = store.get('projectDirectory');
-    const issues = await mapAsync(allFiles, (f) => checkMetadataIssues(projectDir, f));
+    await forAllAssetsInProject(
+      store,
+      async (node) => {
+        issues.push(await checkMetadataIssues(projectDir, node));
+        if (!node.isDirectory) {
+          assetsSize += node.size;
+        }
+      },
+      true,
+    );
+
     const missingBundlesCount = issues.filter((stats) => !stats.hasBundle).length;
     const missingMetadataCount = issues.filter(
       (stats) => stats.missingDescription && stats.hasBundle,
@@ -412,11 +422,7 @@ export default function InitializeBundlesApi(
     const missingEmbeddingsCount = issues.filter(
       (stats) => stats.missingEmbeddings && stats.canGenerateEmbeddings,
     ).length;
-    const assetCount = allFiles.length;
-    const assetsSize = allFiles
-      .filter((f) => !f.isDirectory)
-      .map((f) => f.size)
-      .reduce((p, c) => p + c, 0);
+    const assetCount = issues.length;
 
     const bundles = await getBundles(store, virtualBundles);
 
@@ -458,7 +464,7 @@ export default function InitializeBundlesApi(
         name: virtualBundle.name,
       } as BundleInfo;
     }
-    return tryGetBundleEntryFromPath({ projectDir: store.get('projectDirectory'), path: id });
+    return tryGetBundleEntryFromFolderPath({ projectDir: store.get('projectDirectory'), path: id });
   }
 
   async function deleteBundle(bundleId: string): Promise<void> {
@@ -470,11 +476,9 @@ export default function InitializeBundlesApi(
     const bundlePath = normalize(
       path.join(store.get('projectDirectory'), bundleId, BundleMetaFile),
     );
-    if (await lstat(bundlePath).catch((e) => false)) {
-      unlink(bundlePath);
+    if (await stat(bundlePath).catch((e) => false)) {
+      await rm(bundlePath);
     }
-
-    await removeAllTags(store.get('projectDirectory'), bundleId);
   }
 
   async function createVirtualBundle(bundle: VirtualBundle) {
@@ -488,8 +492,13 @@ export default function InitializeBundlesApi(
       virtualBundles.update(finalBundle as VirtualBundle);
       return finalBundle;
     }
-    const bundleFilePath = resolveAssetPath(store, normalize(path.join(bundleId, BundleMetaFile)));
-    return writeFile(bundleFilePath, JSON.stringify(bundle)).then(() => finalBundle);
+    return operateOnMetadata(
+      { projectDir: store.get('projectDirectory'), path: bundleId },
+      async (meta) => {
+        Object.assign(meta, JSON.stringify(bundle));
+        return true;
+      },
+    );
   }
 
   async function moveBundle(oldPath: string, newPath: string): Promise<boolean> {

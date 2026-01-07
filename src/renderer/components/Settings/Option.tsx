@@ -2,6 +2,7 @@ import {
   Classes,
   ControlGroup,
   FormGroup,
+  HTMLSelect,
   Icon,
   InputGroup,
   Menu,
@@ -160,6 +161,20 @@ export default function Option({ isFetching, defaultValue, instantSubmit }: Prop
           placeholder={option.hintValue}
           onBlur={field.handleBlur}
           onChange={(v) => handleChange((v.target as HTMLInputElement).checked)}
+        />
+      </FormGroup>
+    );
+  } else if (option.type === 'enum') {
+    control = (
+      <FormGroup label={label} className={labelClass}>
+        <HTMLSelect
+          options={option.options}
+          className={cn({
+            changed: !field.state.meta.isDefaultValue,
+            [Classes.SKELETON]: isFetching,
+          })}
+          value={field.state.value}
+          onChange={(e) => handleChange(e.target.value)}
         />
       </FormGroup>
     );

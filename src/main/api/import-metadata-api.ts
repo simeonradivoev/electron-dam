@@ -1,16 +1,14 @@
 import * as fs from 'fs';
-import { copyFile } from 'fs/promises';
 import * as https from 'https';
 import path from 'path';
-import { pipeline, SummarizationOutput } from '@huggingface/transformers';
+import { setTimeout } from 'timers/promises';
 import * as cheerio from 'cheerio';
-import { app, ipcMain, IpcMainInvokeEvent } from 'electron';
+import log from 'electron-log/main';
 import ElectronStore from 'electron-store';
 import ollama from 'ollama';
 import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import sharp from 'sharp';
-import TurndownService from 'turndown';
 import zodToJsonSchema from 'zod-to-json-schema';
 import z from 'zod/v3';
 import { StoreSchema, ImportType, MainIpcGetter, previewTypes } from '../../shared/constants';
@@ -39,11 +37,6 @@ async function loadPageScreenshot(
   abort?: AbortSignal,
   progress?: (p: number) => void,
 ) {
-  const abortHandler = () => {
-    ollama.abort();
-    abort?.removeEventListener('abort', abortHandler);
-  };
-  abort?.addEventListener('abort', abortHandler);
   const browser = await puppeteer.launch({
     headless: true,
     args: [
@@ -60,24 +53,17 @@ async function loadPageScreenshot(
     'Accept-Language': 'en-US,en;q=0.9',
   });
   progress?.(0.3);
-  await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
+  await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000, signal: abort });
   progress?.(0.5);
 
   // Use delay function instead of waitForTimeout
-  await new Promise((resolve) => {
-    setTimeout(resolve, 3000);
-  });
+  await setTimeout(3000, undefined, { signal: abort });
   progress?.(0.6);
 
-  return page.screenshot({ fullPage: true });
+  return page.screenshot({ fullPage: false, optimizeForSpeed: true, type: 'webp' });
 }
 
 async function loadPageHtml(url: string, abort?: AbortSignal, progress?: (p: number) => void) {
-  const abortHandler = () => {
-    ollama.abort();
-    abort?.removeEventListener('abort', abortHandler);
-  };
-  abort?.addEventListener('abort', abortHandler);
   const browser = await puppeteer.launch({
     headless: true,
     args: [
@@ -94,13 +80,11 @@ async function loadPageHtml(url: string, abort?: AbortSignal, progress?: (p: num
     'Accept-Language': 'en-US,en;q=0.9',
   });
   progress?.(0.3);
-  await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
+  await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000, signal: abort });
   progress?.(0.5);
 
   // Use delay function instead of waitForTimeout
-  await new Promise((resolve) => {
-    setTimeout(resolve, 3000);
-  });
+  await setTimeout(3000, undefined, { signal: abort });
   progress?.(0.6);
 
   return page.content();
@@ -117,11 +101,15 @@ async function ollamaBundleImport(
   };
   abort.addEventListener('abort', abortHandler);
   const Metadata = z.object({
-    description: z.string().describe('Detailed and complete description of the audio'),
-    previewImageUrl: z.string().describe('The URL of the preview image'),
+    description: z
+      .string()
+      .max(512)
+      .describe('Clear, detailed description of the bundle in Markdown format'),
     tags: z
       .array(z.string())
-      .describe('Labels describing the audio. A list of single word labels.'),
+      .describe(
+        `Relevant categorization tags (e.g., "3D", "weapons", "fantasy", "PBR", "mobile-ready")`,
+      ),
   });
 
   const pageHtml = await loadPageHtml(address, abort, progress);
@@ -131,14 +119,15 @@ async function ollamaBundleImport(
   $('script, style, noscript, iframe, svg').remove();
 
   const pageText = $('body').text().replace(/\s+/g, ' ').trim();
-  console.log(pageText);
+  log.silly(pageText);
 
   const format = zodToJsonSchema(Metadata);
   const content = `Extract the description of the main presented game asset pack in text. Look for its description and tags from the provided image.
-          1. Description - A clear, concise description of the asset bundle
+          1. Description - A detailed description of the asset bundle in markdown format in under 512 characters.
           2. Tags - Relevant categorization tags (e.g., "3D", "weapons", "fantasy", "PBR", "mobile-ready")
           Rules:
             - Include a description of the bundle as well as a list of tags.
+            - Include information what the bundle is about, the type of assets, its uses, etc.
             - Limit labels to single words when possible.
             - Format the output into JSON.
             - This information will be used in a Digital Asset Manager app, format the description to fit that purpose.
@@ -147,15 +136,20 @@ async function ollamaBundleImport(
             - Return ONLY valid JSON matching the provided format.
             - Do not add any text before or after the JSON.
             - Do not include any price or deals information.
+            - Do not include contact information.
 
           Return only the JSON object, no additional text.
             `;
 
-  console.log(pageText);
+  log.silly(pageText);
 
   const response = await ollama.chat({
     model: 'gemma3',
     messages: [
+      {
+        role: 'system',
+        content,
+      },
       {
         role: 'user',
         content: `Describe the following asset pack from the screenshot in the provided json format. Here is the page text contents for reference: ${pageText}`,
@@ -169,15 +163,25 @@ async function ollamaBundleImport(
       top_p: 0.9,
       top_k: 40,
     },
+    stream: true,
   });
 
-  const metadata = Metadata.parse(JSON.parse(response.message.content));
+  let message = '';
+  for await (const part of response) {
+    message += part.message.content;
+    if (abort.aborted) {
+      response.abort();
+    }
+  }
+
+  log.silly(message);
+
+  const metadata = Metadata.parse(JSON.parse(message));
   metadata.tags = metadata.tags.map((t) => t.toLowerCase());
   metadata.tags.sort();
 
   const bundle: BundleMetadata = {
     description: metadata.description,
-    preview: metadata.previewImageUrl,
     tags: metadata.tags,
   };
 
@@ -259,6 +263,17 @@ export default function InitializeImportMetadataApi(
 ) {
   puppeteer.use(StealthPlugin());
 
+  api.canImportBundleMetadata = async (url, type) => {
+    if (type === ImportType.Ollama) {
+      try {
+        await ollama.version();
+      } catch (error) {
+        return false;
+      }
+    }
+
+    return true;
+  };
   api.importBundleMetadata = (url, type) =>
     addTask(`Importing Metadata with ${type}`, (abort, progress) =>
       importBundleMetadata(url, type, abort, progress),

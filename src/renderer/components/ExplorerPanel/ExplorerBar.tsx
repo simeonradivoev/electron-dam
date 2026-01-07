@@ -1,4 +1,3 @@
-import { arraysEqual } from '@blueprintjs/core/lib/esm/common/utils';
 import {
   AsyncDataLoaderDataRef,
   asyncDataLoaderFeature,
@@ -14,15 +13,15 @@ import {
   Updater,
 } from '@headless-tree/core';
 import { useTree } from '@headless-tree/react';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Virtualizer } from '@tanstack/react-virtual';
 import { dirname, join, normalize } from 'pathe';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useMatch, useNavigate, useSearchParams } from 'react-router-dom';
-import { ContextMenuBuilder } from 'renderer/@types/preload';
+import { ShowContextMenuParams } from 'renderer/@types/preload';
 import { useApp } from 'renderer/contexts/AppContext';
+import { QueryKeys } from 'renderer/scripts/utils';
 import { FileType } from 'shared/constants';
-import { useSessionStorage, useTimeout } from 'usehooks-ts';
+import { useSessionStorage } from 'usehooks-ts';
 import ExplorerBarSearch from './ExplorerBarSearch';
 import ExplorerBarTree from './ExplorerBarTree';
 
@@ -30,7 +29,7 @@ interface ExplorerBarProps {
   focusedItem?: string;
   setFocusedItem: (id: string) => void;
   typeFilter: FileType[];
-  contextMenu: ContextMenuBuilder;
+  contextMenu: (params: ShowContextMenuParams | undefined) => void;
   quickAction?: (e: KeyboardEvent) => void;
 }
 
@@ -47,6 +46,7 @@ function ExplorerBar({
   const [loadingItemChildrens, setLoadingItemChildrens] = useState<string[]>([]);
   const [selected, setSelected] = useSessionStorage<string[]>('selected', []);
   const { projectDirectory, filter } = useApp();
+  const queryClient = useQueryClient();
 
   const { data: expanded } = useQuery<string[]>({
     queryKey: ['expanded'],
@@ -180,7 +180,7 @@ function ExplorerBar({
       const path = normalize(p);
 
       const instance = tree.getItemInstance(path);
-      instance?.invalidateItemData(false);
+      instance?.invalidateItemData(true);
       instance?.invalidateChildrenIds(false);
 
       const parentDir = dirname(path);
@@ -202,7 +202,7 @@ function ExplorerBar({
       const parentDir = dirname(path);
       const parent = tree.getItemInstance(parentDir);
 
-      instance?.invalidateItemData(false);
+      instance?.invalidateItemData(true);
       instance?.invalidateChildrenIds();
 
       if (parent) {
@@ -214,6 +214,16 @@ function ExplorerBar({
       }
     };
 
+    const handleFileChanged = (p: string) => {
+      const path = normalize(p);
+      const instance = tree.getItemInstance(path);
+      instance?.invalidateItemData(true);
+      queryClient.invalidateQueries({ queryKey: [QueryKeys.metadata, path] });
+      queryClient.invalidateQueries({ queryKey: [QueryKeys.tags, path] });
+      queryClient.invalidateQueries({ queryKey: [QueryKeys.fileInfo, path] });
+    };
+
+    const clearOnFileChanged = window.apiCallbacks.fileChanged(handleFileChanged);
     const clearOnFileAdded = window.apiCallbacks.fileAdded(handleAddedFile);
     const clearOnFolderAdded = window.apiCallbacks.folderAdded(handleAddedFile);
     const clearOnFileUnlinked = window.apiCallbacks.fileUnlinked(handleRemoved);
@@ -224,6 +234,7 @@ function ExplorerBar({
       clearOnFolderAdded();
       clearOnFileUnlinked();
       clearOnFolderUnlinked();
+      clearOnFileChanged();
     };
   }, [projectDirectory, tree]);
 
@@ -292,7 +303,6 @@ function ExplorerBar({
       if (treeItem) {
         if (virtualizer.current) {
           virtualizer.current!.scrollToIndex(treeItem.getItemMeta().index);
-          console.log('Scroll ' + treeItem.getItemMeta().index);
         }
       }
     }

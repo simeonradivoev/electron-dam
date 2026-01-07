@@ -1,20 +1,32 @@
 import { Divider, Tab, TabId, Tabs } from '@blueprintjs/core';
 import { useState } from 'react';
+import { useMatch, useNavigate } from 'react-router-dom';
 import Debug from './Debug';
 import General from './General';
 import Metadata from './Metadata';
 
 function Settings() {
-  const [navbarTabId, setNavbarTabId] = useState<TabId>('general');
+  const navigate = useNavigate();
+  const tabMatch = useMatch('/settings/:tab');
+
   return (
     <div className="settings">
-      <Tabs vertical onChange={setNavbarTabId} selectedTabId={navbarTabId} large>
+      <Tabs
+        vertical
+        onChange={(tab) => navigate(`/settings/${tab}`)}
+        selectedTabId={tabMatch?.params.tab}
+        large
+      >
         <Tab icon="settings" id="general" title="General" />
         <Tab icon="search-template" id="metadata" title="Metadata" />
         <Tab icon="bug" id="debug" title="Debug" />
       </Tabs>
       <Divider />
-      <Tabs className="settings-content-tabs" selectedTabId={navbarTabId} renderActiveTabPanelOnly>
+      <Tabs
+        className="settings-content-tabs"
+        selectedTabId={tabMatch?.params.tab}
+        renderActiveTabPanelOnly
+      >
         <Tab className="settings-content" id="general" panel={<General />} />
         <Tab className="settings-content" id="metadata" panel={<Metadata />} />
         <Tab className="settings-content" id="debug" panel={<Debug />} />

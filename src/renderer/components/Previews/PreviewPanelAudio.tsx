@@ -78,7 +78,7 @@ function PreviewPanelAudio({ importedAudio, isZip, path, audioMetadata, hasThumb
       waveColor: '#2d72d2',
       progressColor: '#c87619',
       // If true, normalize by the maximum peak instead of 1.0.
-      normalize: true,
+      normalize: false,
       hideScrollbar: true,
       mediaControls: false,
       // Fixes issue with having # in name or path. encodeURI doesn't work
@@ -89,12 +89,15 @@ function PreviewPanelAudio({ importedAudio, isZip, path, audioMetadata, hasThumb
       backend: isZip ? 'WebAudio' : 'MediaElement',
       peaks: audioMetadata?.peaks ? decodePeaks(audioMetadata.peaks) : undefined,
     });
+    wavesurfer.setVolume(volume);
     wavesurfer.on('finish', () => {
       if (localStorage.getItem('loop')) {
         wavesurferRef.current?.play();
       }
     });
-    wavesurfer.on('play', () => setPlay(true));
+    wavesurfer.on('play', () => {
+      setPlay(true);
+    });
     wavesurfer.on('pause', () => setPlay(false));
     wavesurfer.on('error', (e) => {
       if (e.name === 'AbortError') {
@@ -106,7 +109,6 @@ function PreviewPanelAudio({ importedAudio, isZip, path, audioMetadata, hasThumb
     wavesurfer.on('load', () => {});
 
     wavesurfer.on('ready', (e) => {
-      wavesurfer.setVolume(volume);
       wavesurfer.setMuted(muted);
       if (path && !isZip) {
         if (!hasThumbnail) {

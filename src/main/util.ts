@@ -5,7 +5,7 @@ import { existsSync, mkdirSync } from 'fs';
 import path from 'path';
 import { URL } from 'url';
 import { app, BrowserWindow, ipcMain } from 'electron';
-import log from 'electron-log';
+import log from 'electron-log/main';
 import picomatch from 'picomatch';
 import Rand from 'rand-seed';
 import {
@@ -194,11 +194,19 @@ export async function mapAsync<T, V>(values: T[], mapper: (value: T) => Promise<
 
 export async function foreachAsync<T>(
   values: T[],
-  mapper: (value: T, index: number) => Promise<void>,
+  mapper: (value: T, index: number) => Promise<any>,
+  abort?: AbortSignal,
+  progress?: (p: number) => void,
 ) {
   for (let i = 0; i < values.length; i += 1) {
     try {
       await mapper(values[i], i);
+      if (abort?.aborted) {
+        break;
+      }
+      if (progress) {
+        progress((1.0 / values.length) * i);
+      }
     } catch (error) {
       log.error(error);
     }

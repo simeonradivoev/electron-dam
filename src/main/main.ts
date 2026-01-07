@@ -11,7 +11,7 @@
 import path from 'path';
 import { app, BrowserWindow, Menu, shell } from 'electron';
 import { installExtension, REACT_DEVELOPER_TOOLS } from 'electron-extension-installer';
-import log from 'electron-log';
+import log from 'electron-log/main';
 import Store from 'electron-store';
 import { autoUpdater } from 'electron-updater';
 import 'source-map-support/register';
@@ -22,19 +22,15 @@ import InitializeGenerateMetadataApi from './api/generate-metadata-api';
 import InitializeImportMetadataApi from './api/import-metadata-api';
 import InstallProjectDirectoryApi from './api/project-api';
 import InitializeProtocols, { RegisterProtocols } from './api/protocols';
-import { InitializeGlobalSearchApi, LoadVectorDatabase } from './api/serach-api';
+import { initialize as InitializeEmbeddings } from './api/search/EmbeddingsService';
+import { InitializeGlobalSearchApi } from './api/search/serach-api';
 import InitializeSettingsApi from './api/settings';
 import InitializeTransformersApi from './api/transformers-api';
 import InitializeWindowApi from './api/window-api';
-import { addTask, InitializeTasks, InitializeTasksApi } from './managers/task-manager';
-import migrations, { MigrationContext } from './migrations/migrations';
-import {
-  appVersion,
-  getAssetPath,
-  registerMainCallbacks,
-  registerMainHandlers,
-  resolveHtmlPath,
-} from './util';
+import { InitializeTasks, InitializeTasksApi } from './managers/task-manager';
+import { getAssetPath, registerMainCallbacks, registerMainHandlers, resolveHtmlPath } from './util';
+
+log.initialize();
 
 class AppUpdater {
   constructor() {
@@ -144,11 +140,12 @@ app
 
     // API Registration
     InitializeWindowApi(apiGetters);
+    InitializeEmbeddings(store);
     InstallProjectDirectoryApi(apiGetters, store);
     InitializeImportMetadataApi(apiGetters, store);
     InitializeTasksApi(apiGetters, apiCallbacks);
-    InitializeCallbacks(store);
-    await InitializeGlobalSearchApi(apiGetters);
+    InitializeCallbacks(store, apiCallbacks);
+    await InitializeGlobalSearchApi();
     InitializeTransformersApi();
     await InitializeGenerateMetadataApi(apiGetters, store);
     InitializeSettingsApi(apiGetters, store);

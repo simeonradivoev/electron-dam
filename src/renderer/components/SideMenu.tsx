@@ -1,8 +1,8 @@
 import { Button, ButtonGroup, Spinner, SpinnerSize } from '@blueprintjs/core';
 import { useIsFetching } from '@tanstack/react-query';
 import cn from 'classnames';
-import { useEffect, useMemo } from 'react';
-import { useNavigate, useMatch } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useMatch, useBlocker } from 'react-router-dom';
 import { useApp } from 'renderer/contexts/AppContext';
 import { useTasks } from 'renderer/contexts/TasksContext';
 import { useLocalStorage } from 'usehooks-ts';
@@ -24,8 +24,12 @@ function SideMenu() {
     focusedBundleKey,
     undefined,
   );
+  const [settingsTab, setSettingsTab] = useState('general');
   const searchMatch = useMatch('search/:query/:page');
-  const bundleMatch = useMatch('/bundles/:focusId');
+  const bundleMatch = useMatch('/bundles/:focusId/:mode');
+  const settingsMatch = useMatch('/settings/:tab');
+  const isBundles = useMatch('bundles/*');
+  const isSettings = useMatch('settings/*');
   const isFetching = useIsFetching();
   const activeTasks = useMemo(
     () => tasks.filter((t) => t.status === 'PENDING' || t.status === 'RUNNING').length,
@@ -45,10 +49,16 @@ function SideMenu() {
   }, [searchMatch, setSearchPage]);
 
   useEffect(() => {
-    if (bundleMatch?.params.focusId) {
+    if (isBundles) {
       setFocusedBundle(bundleMatch?.params.focusId);
     }
-  }, [bundleMatch?.params.focusId, setFocusedBundle]);
+  }, [bundleMatch?.params.focusId, isBundles, setFocusedBundle]);
+
+  useEffect(() => {
+    if (isSettings) {
+      setSettingsTab(settingsMatch?.params.tab ?? 'general');
+    }
+  }, [isSettings, settingsMatch?.params.tab]);
 
   return (
     <ButtonGroup onFocus={() => {}} large vertical className="side-menu">
@@ -64,9 +74,11 @@ function SideMenu() {
       <Button
         title={focusedBundle ? `Bundle (${focusedBundle})` : `Bundles`}
         minimal
-        active={!!useMatch('bundles/*')}
+        active={!!isBundles}
         onClick={() => {
-          navigate(focusedBundle ? `/bundles/${focusedBundle}` : '/bundles');
+          navigate(
+            focusedBundle ? `/bundles/${encodeURIComponent(focusedBundle)}/info` : '/bundles',
+          );
         }}
         icon="projects"
       />
@@ -101,11 +113,11 @@ function SideMenu() {
         icon="search"
       />
       <Button
-        title="Settings"
+        title={`Settings (${settingsTab})`}
         minimal
-        active={!!useMatch('settings')}
+        active={!!isSettings}
         onClick={() => {
-          navigate({ pathname: `/settings` });
+          navigate({ pathname: `/settings/${settingsTab}` });
         }}
         icon="cog"
       />

@@ -1,9 +1,13 @@
 import { Button, Classes, Divider, ResizeSensor, Tag, TagInput } from '@blueprintjs/core';
+import { Tooltip2 } from '@blueprintjs/popover2';
 import { useQuery } from '@tanstack/react-query';
 import { useVirtualizer } from '@tanstack/react-virtual';
+import classNames from 'classnames';
 import { normalize } from 'pathe';
 import React, { forwardRef, Key, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
+import rehypeRaw from 'rehype-raw';
+import { highlighter } from 'renderer/scripts/utils';
 import BundleFileEntry from './BundleFileEntry';
 
 type PropsTop = {
@@ -12,6 +16,7 @@ type PropsTop = {
   onSelect: (id: string) => void;
   onEdit: (id: string | number) => void;
   style?: React.CSSProperties;
+  searchQuery?: string;
 };
 
 type Props = {
@@ -22,10 +27,14 @@ type Props = {
   onSelect: (id: string) => void;
   onEdit: (id: string | number) => void;
   style?: React.CSSProperties;
+  searchQuery?: string;
 };
 
 const BundleTop = forwardRef<HTMLDivElement, PropsTop>(
-  ({ style, bundle, onSelect: select, onEdit: edit, showInExplorerEnabled = false }, ref) => {
+  (
+    { style, bundle, onSelect: select, onEdit: edit, searchQuery, showInExplorerEnabled = false },
+    ref,
+  ) => {
     return (
       <div ref={ref} style={style}>
         {bundle?.previewUrl ? (
@@ -51,6 +60,11 @@ const BundleTop = forwardRef<HTMLDivElement, PropsTop>(
             <h1 className={bundle ? '' : Classes.SKELETON}>
               {bundle?.name ?? 'Bundle Loading Placeholder Text'}
             </h1>
+            {!!(bundle?.bundle as any).embeddings && (
+              <Tooltip2 content="Embeddings">
+                <Tag minimal icon="heatmap" />
+              </Tooltip2>
+            )}
             {!showInExplorerEnabled || bundle?.isVirtual ? (
               <></>
             ) : (
@@ -83,6 +97,8 @@ const BundleTop = forwardRef<HTMLDivElement, PropsTop>(
           </div>
           <ReactMarkdown
             className="description css-fix"
+            skipHtml={false}
+            rehypePlugins={[rehypeRaw as any]}
             transformImageUri={(src, _alt) => {
               if (src.startsWith('./')) {
                 return `app://${src.replace('.', bundle?.id ?? '')}`;
@@ -90,7 +106,11 @@ const BundleTop = forwardRef<HTMLDivElement, PropsTop>(
               return src;
             }}
           >
-            {bundle?.bundle.description ?? ''}
+            {bundle?.bundle.description
+              ? searchQuery
+                ? highlighter.highlight(bundle.bundle.description, searchQuery).HTML
+                : bundle.bundle.description
+              : ''}
           </ReactMarkdown>
           {showInExplorerEnabled && (
             <div className="tags">
@@ -114,6 +134,7 @@ function BundlePreviewBase({
   className,
   onSelect,
   onEdit,
+  searchQuery,
   showFiles = false,
   showInExplorerEnabled = false,
 }: Props) {
@@ -121,7 +142,7 @@ function BundlePreviewBase({
   const [parentWidth, setParentWidth] = useState<number | undefined>(undefined);
 
   const { data: files } = useQuery({
-    enabled: !!bundle,
+    enabled: !!bundle && !bundle.isVirtual,
     queryKey: ['grid-files', bundle?.id],
     queryFn: () => window.api.getAllFiles(bundle!.id),
   });
@@ -168,7 +189,7 @@ function BundlePreviewBase({
           overflow: 'auto', // Make it scroll!
         }}
         id="preview-bundle-parent"
-        className="asset-grid y-scroll wide"
+        className={classNames(className, 'asset-grid y-scroll wide')}
       >
         <div
           style={{
@@ -177,11 +198,12 @@ function BundlePreviewBase({
             position: 'relative',
           }}
         >
-          <div className={`preview-bundle ${className}`}>
+          <div className="preview-bundle">
             {firstItem && firstItem.index === 0 && (
               <>
                 <BundleTop
                   data-index={0}
+                  searchQuery={searchQuery}
                   key={firstItem.key as Key}
                   style={{
                     position: 'absolute',

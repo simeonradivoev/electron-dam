@@ -1,5 +1,5 @@
-import { app } from 'electron';
-import log from 'electron-log';
+import { app, shell } from 'electron';
+import log from 'electron-log/main';
 import Store from 'electron-store';
 import { appVersion } from 'main/util';
 import z from 'zod/v3';
@@ -58,4 +58,19 @@ export default function InitializeSettingsApi(api: MainIpcGetter, store: Store<S
   };
   api.getSetting = async (key) => getSetting(store, key);
   api.getVersion = () => Promise.resolve({ version: appVersion });
+  api.openSystemPath = async (pathType) => {
+    switch (pathType) {
+      case 'log':
+        shell.showItemInFolder(log.transports.file.getFile().path);
+        break;
+      case 'project':
+        shell.openPath(store.get('projectDirectory'));
+        break;
+      case 'user':
+        shell.openPath(app.getPath('userData'));
+        break;
+      default:
+        break;
+    }
+  };
 }

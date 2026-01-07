@@ -1,30 +1,22 @@
-import { pipeline, PipelineType } from '@huggingface/transformers';
+import { FeatureExtractionPipeline, pipeline } from '@huggingface/transformers';
 import { app } from 'electron';
+import ElectronStore from 'electron-store';
+import { StoreSchema } from 'shared/constants';
+import { getSetting } from '../settings';
 
-class EmbeddingsService {
-  private extractor: any;
-  //private model = 'Xenova/all-MiniLM-L6-v2';
-  public readonly model = 'Xenova/gte-small';
+let extractor: any;
+//private model = 'Xenova/all-MiniLM-L6-v2';
+export const model = 'Xenova/gte-small';
 
-  async initialize() {
-    if (!this.extractor) {
-      // Use a runtime import wrapper so the TypeScript/CommonJS downlevel
-      // doesn't transform `import()` into `require()` (which fails for ESM-only packages).
-      this.extractor = await pipeline('feature-extraction', this.model, {
-        device: 'cpu',
-        dtype: 'fp32',
-        cache_dir: app.getPath('appData'),
-      });
-    }
-  }
-
-  async generate(text: string): Promise<number[]> {
-    if (!this.extractor) {
-      await this.initialize();
-    }
-    const output = await this.extractor(text, { pooling: 'mean', normalize: true });
-    return Array.from(output.data);
-  }
+export async function initialize(store: ElectronStore<StoreSchema>) {
+  extractor = await pipeline('feature-extraction', model, {
+    device: getSetting(store, 'embeddingDevice'),
+    dtype: 'fp32',
+    cache_dir: app.getPath('appData'),
+  });
 }
 
-export const embeddingsService = new EmbeddingsService();
+export async function generate(text: string): Promise<number[]> {
+  const output = await extractor(text, { pooling: 'mean', normalize: true });
+  return Array.from(output.data);
+}

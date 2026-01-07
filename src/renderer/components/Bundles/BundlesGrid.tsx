@@ -7,8 +7,9 @@ import {
   ResizeSensor,
   Spinner,
 } from '@blueprintjs/core';
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useVirtualizer } from '@tanstack/react-virtual';
+import { normalize } from 'pathe';
 import { Key, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from 'renderer/contexts/AppContext';
@@ -24,11 +25,11 @@ function BundlesGrid() {
   const {
     data: bundles,
     refetch: refetchBundles,
-    isFetched: isFetchingBundles,
+    isFetching: isFetchingBundles,
   } = useQuery<BundleInfo[], undefined, BundleInfo[]>({
     enabled: !!projectDirectory,
     refetchOnWindowFocus: false,
-    refetchOnMount: false,
+    placeholderData: keepPreviousData,
     queryKey: ['bundles', projectDirectory],
     queryFn: () => {
       return window.api.getBundles();
@@ -54,7 +55,7 @@ function BundlesGrid() {
       });
     } else {
       navigate({
-        pathname: `/bundles/${encodeURIComponent(id.toString())}/info`,
+        pathname: `/bundles/${encodeURIComponent(normalize(id.toString()))}/info`,
       });
     }
   };

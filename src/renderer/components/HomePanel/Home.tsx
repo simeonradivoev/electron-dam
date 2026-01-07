@@ -8,7 +8,7 @@ import { useCallback, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from 'renderer/contexts/AppContext';
 import { LoadGlobalTags } from 'renderer/scripts/file-tree';
-import { humanFileSize } from 'renderer/scripts/utils';
+import { humanFileSize, QueryKeys } from 'renderer/scripts/utils';
 import Bundle from '../Bundles/Bundle';
 
 interface Props {
@@ -20,7 +20,7 @@ function Home(props: Props) {
   const { setFileInfo, database, projectDirectory } = useApp();
   const { data: tagsData } = useQuery({
     enabled: !!database && !!projectDirectory,
-    queryKey: ['tags', projectDirectory],
+    queryKey: [QueryKeys.tags, projectDirectory],
     queryFn: LoadGlobalTags,
     refetchOnWindowFocus: false,
     refetchOnMount: false,

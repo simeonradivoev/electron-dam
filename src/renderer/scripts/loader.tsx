@@ -1,5 +1,6 @@
 /* eslint-disable no-restricted-syntax */
 import { keepPreviousData, useQuery, UseQueryResult } from '@tanstack/react-query';
+import log from 'electron-log/renderer';
 import { normalize } from 'pathe';
 import { useCallback, useState } from 'react';
 import * as three from 'three';
@@ -52,14 +53,14 @@ function loadObjModel(info: FileInfo, setImportedMesh: (mesh: any) => void) {
           },
           (progress: any) => {},
           (error: any) => {
-            console.error(error);
+            log.error(error);
             setImportedMesh(undefined);
           },
         );
       },
       (progress: any) => {},
       (error: any) => {
-        console.error(error);
+        log.error(error);
         setImportedMesh(undefined);
       },
     );
@@ -71,7 +72,7 @@ function loadObjModel(info: FileInfo, setImportedMesh: (mesh: any) => void) {
       },
       (progress: any) => {},
       (error: any) => {
-        console.error(error);
+        log.error(error);
         setImportedMesh(undefined);
       },
     );
@@ -95,7 +96,7 @@ function loadStlModel(info: FileInfo, setImportedMesh: (mesh: any) => void) {
     },
     (progress: any) => {},
     (error: any) => {
-      console.error(error);
+      log.error(error);
       setImportedMesh(undefined);
     },
   );

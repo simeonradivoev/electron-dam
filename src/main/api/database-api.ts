@@ -1,12 +1,11 @@
 import { lstat } from 'fs/promises';
 import path from 'path';
-import { app, dialog } from 'electron';
-import log from 'electron-log';
+import log from 'electron-log/main';
 import Store from 'electron-store';
 import Loki from 'lokijs';
 import { addTask } from 'main/managers/task-manager';
 import { satisfies } from 'semver';
-import { JSONStorage, memoryStorage, Umzug } from 'umzug';
+import { memoryStorage, Umzug } from 'umzug';
 import { MainIpcCallbacks, MainIpcGetter, StoreSchema } from '../../shared/constants';
 import migrations, { MigrationContext } from '../migrations/migrations';
 import {
@@ -16,10 +15,12 @@ import {
   unregisterMainHandlers,
 } from '../util';
 import InitializeBundlesApi from './bundles-api';
+import InitializeThumbnailCache from './cache/thumbnail-cache';
+import { InitializeDatabaseCallbacks } from './callbacks';
 import InitializeFileInfoApi from './file-info-api';
 import InitializeFileSystemApi from './file-system-api';
 import { projectEvents } from './project-api';
-import { InitializeSearchApi, LoadVectorDatabase } from './serach-api';
+import { InitializeSearchApi } from './search/serach-api';
 
 export function LoadDatabaseExact(store: Store<StoreSchema>, directory: string): Promise<Loki> {
   const database: Loki = new Loki(path.join(directory, 'dam-database.db'), {
@@ -28,11 +29,11 @@ export function LoadDatabaseExact(store: Store<StoreSchema>, directory: string):
     persistenceMethod: 'fs',
     autosaveInterval: 4000,
     autosaveCallback: () => {
-      console.log('autosaved db');
+      log.log('autosaved db');
     },
   });
 
-  projectEvents.once('projectChange', (_) => {
+  projectEvents.once('projectChange', () => {
     database.close();
   });
 
@@ -57,7 +58,7 @@ export function LoadDatabaseExact(store: Store<StoreSchema>, directory: string):
             const umzug = new Umzug<MigrationContext>({
               migrations,
               context: { db: database, store, dryRun: true, progress },
-              logger: console,
+              logger: log,
               storage: memoryStorage(),
             });
 
@@ -77,14 +78,24 @@ export function LoadDatabaseExact(store: Store<StoreSchema>, directory: string):
       }
 
       database.name = appVersion;
+      let fileSystemApi: ReturnType<typeof InitializeFileSystemApi>;
+      const reIndexTask = () =>
+        addTask(
+          'Indexing Assets',
+          (abort, progress) => fileSystemApi.fileIndexRegistry.index(abort, progress),
+          { blocking: false, icon: 'search-text' },
+        );
 
       await addTask(
         'Initializing',
         async () => {
-          const fileSystemApi = InitializeFileSystemApi(api, apiCallback, store, database);
-          InitializeFileInfoApi(api, store);
-          InitializeBundlesApi(api, store, database, fileSystemApi.removeAllTags);
-          InitializeSearchApi(api, store, database);
+          fileSystemApi = InitializeFileSystemApi(api, apiCallback, store, database);
+          InitializeThumbnailCache(api, store);
+          InitializeFileInfoApi(api, store, database);
+          InitializeBundlesApi(api, store, database);
+          InitializeSearchApi(api, store, database, fileSystemApi.fileIndexRegistry);
+          InitializeDatabaseCallbacks(store, database);
+          api.reIndexFiles = reIndexTask;
           registerMainHandlers(api);
 
           database.on('close', () => {
@@ -95,12 +106,7 @@ export function LoadDatabaseExact(store: Store<StoreSchema>, directory: string):
         { blocking: true },
       );
 
-      addTask(
-        'Indexing Assets',
-        (abort, progress) => LoadVectorDatabase(store, database, abort, progress),
-        { blocking: false, icon: 'search-text' },
-      );
-
+      reIndexTask();
       resolve(database);
     });
   });
@@ -108,7 +114,7 @@ export function LoadDatabaseExact(store: Store<StoreSchema>, directory: string):
 
 export async function LoadDatabase(store: Store<StoreSchema>): Promise<Loki | undefined> {
   const projectDir = store.get('projectDirectory') as string;
-  if (projectDir && !!(await lstat(projectDir).catch((e) => false))) {
+  if (projectDir && !!(await lstat(projectDir).catch(() => false))) {
     return LoadDatabaseExact(store, projectDir);
   }
   return undefined;

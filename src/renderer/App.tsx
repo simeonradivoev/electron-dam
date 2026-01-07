@@ -1,16 +1,15 @@
-import { FocusStyleManager, Spinner } from '@blueprintjs/core';
+import { Dialog, FocusStyleManager, PortalProvider, Spinner } from '@blueprintjs/core';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { ReactQueryDevtoolsPanel } from '@tanstack/react-query-devtools';
 import { IDBPDatabase } from 'idb/with-async-ittr';
 import { useCallback, useEffect, useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useBlocker } from 'react-router-dom';
 import { Options } from 'shared/constants';
 import { useLocalStorage, useSessionStorage } from 'usehooks-ts';
 import '../../node_modules/file-icons-js/css/style.css';
 import './App.scss';
 import ProjectSelection from './components/ProjectSelection';
 import SideMenu from './components/SideMenu';
-import TasksPanel from './components/TasksPanel/TasksPanel';
 import TitleBar from './components/TitleBar';
 import { AppContextProvider } from './contexts/AppContext';
 import { TasksProvider } from './contexts/TasksContext';
@@ -62,17 +61,18 @@ function App({ database }: { database: Promise<IDBPDatabase<FilesDB>> }) {
           setSelectedProjectDirectory={setSelectedProjectDirectory}
         >
           <TasksProvider>
-            <div className={`theme-wrapper ${darkMode ? 'bp4-dark dark' : ''}`}>
-              {projectDirectory && (
-                <>
-                  <SideMenu />
-                  <div className="viewport">
-                    <Outlet />
-                  </div>
-                </>
-              )}
-            </div>
-            <TasksPanel />
+            <PortalProvider portalClassName="app-portal">
+              <div className={`theme-wrapper ${darkMode ? 'bp4-dark dark' : ''}`}>
+                {projectDirectory && (
+                  <>
+                    <SideMenu />
+                    <div className="viewport">
+                      <Outlet />
+                    </div>
+                  </>
+                )}
+              </div>
+            </PortalProvider>
           </TasksProvider>
         </AppContextProvider>
       ) : (

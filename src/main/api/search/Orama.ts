@@ -7,19 +7,21 @@ import {
   Results,
   update,
   getByID,
-  OramaPlugin,
   count,
-  remove,
+  remove as oramaRemove,
   SearchParams,
   AnySchema,
+  SearchableType,
 } from '@orama/orama';
 import { persist } from '@orama/plugin-data-persistence';
+import { pluginQPS } from '@orama/plugin-qps';
+import log from 'electron-log/main';
 import Store from 'electron-store';
-import { FileType, Options, StoreSchema } from '../../../shared/constants';
+import { FileType, StoreSchema } from '../../../shared/constants';
 import { getSetting } from '../settings';
-import { embeddingsService } from './EmbeddingsService';
+import { generate } from './EmbeddingsService';
 
-const SearchSchema: AnySchema = {
+const SearchSchema: { [K in keyof SearchEntrySchema]: SearchableType | AnySchema } = {
   filename: 'string',
   description: 'string',
   path: 'string',
@@ -27,6 +29,9 @@ const SearchSchema: AnySchema = {
   bundleId: 'string',
   embeddings: 'vector[384]',
   tags: 'string[]',
+  id: 'string',
+  isArchived: 'boolean',
+  isVirtual: 'boolean',
 };
 
 export interface IndexSchema {
@@ -35,9 +40,8 @@ export interface IndexSchema {
   embeddings?: { data: number[] };
 }
 
-let db: any = null;
+let db: ReturnType<typeof create<typeof SearchSchema>>;
 const indexName = 'orama-index';
-const plugins: OramaPlugin[] = [];
 
 export async function initialize() {
   await createDatabase();
@@ -54,42 +58,31 @@ async function persistIndex(destinationPath: string) {
       path.join(destinationPath, `${indexName}.dpack`),
       data as unknown as string,
     );
-    console.log('Orama index saved to disk');
+    log.log('Orama index saved to disk');
   } catch (error) {
-    console.error('Could not save orama index to disk');
-    console.error(error);
+    log.error('Could not save orama index to disk');
+    log.error(error);
   }
 }
 
 export async function clearDatabase() {
-  console.log('Clearing Orama index by creating empty one...');
+  log.log('Clearing Orama index by creating empty one...');
   await createDatabase();
 }
 
 async function destroyPreviousIndex(destinationPath: string) {
   await fs.promises.rm(path.join(destinationPath, `${indexName}.dpack`));
-  console.log('Removed previous Orama index from disk');
+  log.log('Removed previous Orama index from disk');
 }
 
-export async function removeFile(file: FilePath) {
-  await remove(db, file.path);
+export async function remove(file: FilePath) {
+  await oramaRemove(db, file.path);
 }
 
-export async function indexFile(file: FileInfo, meta?: IndexSchema | null) {
-  const existing = getByID(db, file.path);
-  const bundleDescription = file.bundle?.bundle.bundle.description || '';
-  const entry: SearchEntrySchema = {
-    id: file.path,
-    filename: file.name,
-    description: meta?.description ?? bundleDescription,
-    path: file.path,
-    fileType: file.fileType,
-    tags: meta?.tags,
-    bundleId: file.bundle?.bundle.id || '',
-    embeddings: meta?.embeddings?.data,
-  };
+export async function index(entry: SearchEntrySchema) {
+  const existing = getByID(db, entry.id);
   if (existing) {
-    await update(db, file.path, entry);
+    await update(db, entry.id, entry);
   } else {
     await insert(db, entry);
   }
@@ -106,7 +99,7 @@ export async function search(
   }
 
   // Generate embedding for the query
-  const vector = await embeddingsService.generate(query);
+  const vector = await generate(query);
   const limit = getSetting(store, 'searchResultsPerPage');
 
   const options: SearchParams<any, SearchEntrySchema> = {
@@ -129,9 +122,10 @@ export async function search(
 }
 
 async function createDatabase() {
-  db = create({
+  db = create<typeof SearchSchema>({
     schema: SearchSchema,
-    plugins,
+    plugins: [pluginQPS() as any],
+    id: 'Search Database',
   });
 }
 

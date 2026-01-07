@@ -1,5 +1,6 @@
 import { createFormHook, createFormHookContexts } from '@tanstack/react-form';
 import { useQuery } from '@tanstack/react-query';
+import log from 'electron-log/renderer';
 import { useMemo } from 'react';
 import { BuildOptionValidators, getOption, OptionCategory, Options } from 'shared/constants';
 import { z } from 'zod/v3';
@@ -62,7 +63,7 @@ export function useSettings(category: OptionCategory) {
             ...d,
           } as { [key: string]: any };
         })
-        .catch((e) => console.error(e)),
+        .catch((e) => log.error(e)),
   });
 
   const validators = useMemo(() => BuildOptionValidators(category, true), [category]);

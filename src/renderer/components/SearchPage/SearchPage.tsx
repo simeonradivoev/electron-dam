@@ -9,19 +9,26 @@ import {
   Tag,
   ButtonGroup,
   Divider,
+  Navbar,
+  NavbarGroup,
+  IconSize,
 } from '@blueprintjs/core';
 import { MenuItem2, Popover2 } from '@blueprintjs/popover2';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import cn from 'classnames';
+import log from 'electron-log/renderer';
 import { normalize } from 'pathe';
-import React, { useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useEffect, useRef, useCallback, useMemo, useState } from 'react';
 import { useMatch, useNavigate } from 'react-router-dom';
+import Split from 'react-split';
+import { useTasks } from 'renderer/contexts/TasksContext';
 import { FileTypeIcons, toggleElementMutable } from 'renderer/scripts/utils';
 import scrollIntoView from 'scroll-into-view-if-needed';
 import { FileType } from 'shared/constants';
 import { useLocalStorage, useSessionStorage } from 'usehooks-ts';
 import '../../App.scss';
 import { useApp } from '../../contexts/AppContext';
+import FileInfoPanel from '../FileInfoPanel/FileInfoPanel';
 import SearchResultEntry from './SearchResultEntry';
 
 const SEARCH_QUERY_KEY = 'search-page-query';
@@ -43,7 +50,7 @@ export function getPaginationRange(current: number, total: number, siblings = 1)
   }
 
   // Middle pages
-  for (let i = start; i <= end; i++) {
+  for (let i = start; i <= end; i += 1) {
     range.push(i);
   }
 
@@ -65,7 +72,7 @@ async function fetchSearchResults(
   typeFilter: FileType[],
   page: number,
 ): Promise<{
-  nodes: TreeNodeInfo<SearchTreeNode>[];
+  nodes: TreeNodeInfo<SearchEntryResult>[];
   count: number | undefined;
   pageSize: number | undefined;
 }> {
@@ -77,7 +84,7 @@ async function fetchSearchResults(
     const searchResults = await window.api.search(query, typeFilter, page);
     if (searchResults) {
       // Convert FileTreeNode results to TreeNodeInfo format for BundleFileEntry
-      const treeNodes: TreeNodeInfo<SearchTreeNode>[] = searchResults.nodes
+      const treeNodes: TreeNodeInfo<SearchEntryResult>[] = searchResults.nodes
         .map((n) => {
           n.path = normalize(n.path);
           return n;
@@ -86,16 +93,16 @@ async function fetchSearchResults(
           (node) =>
             ({
               id: node.path,
-              label: node.name,
+              label: node.filename,
               nodeData: node,
               icon: node.fileType ? FileTypeIcons[node.fileType] : 'document',
-            }) satisfies TreeNodeInfo<SearchTreeNode>,
+            }) satisfies TreeNodeInfo<SearchEntryResult>,
         );
       return { nodes: treeNodes, count: searchResults.count, pageSize: searchResults.pageSize };
     }
     return { nodes: [], count: undefined, pageSize: undefined };
   } catch (error) {
-    console.error('Search failed:', error);
+    log.error('Search failed:', error);
     return { nodes: [], count: undefined, pageSize: undefined };
   }
 }
@@ -110,13 +117,16 @@ function SearchPage() {
   const selectedRef = useRef<HTMLLIElement | null>(null);
   const navigate = useNavigate();
   const [selected, setSelected] = useSessionStorage<string[]>('selected', []);
+  const [showFileView, setShowFileView] = useLocalStorage('showSearchFileView', false);
+  const [sideBarSize, setSideBarSize] = useState(38);
+  const { tasks } = useTasks();
 
   const toggleType = useCallback(
     (type: FileType) => {
       setTypeFilter(toggleElementMutable(typeFilter, type));
       navigate({ pathname: `/search/${search}/${0}` });
     },
-    [setTypeFilter, typeFilter],
+    [navigate, search, setTypeFilter, typeFilter],
   );
 
   const handleKeyDown = useCallback(
@@ -137,7 +147,7 @@ function SearchPage() {
   );
 
   const reIndex = useCallback(() => {
-    window.api.reIndexDatabaseSearch();
+    window.api.reIndexFiles();
   }, []);
 
   useEffect(() => {
@@ -152,9 +162,9 @@ function SearchPage() {
 
   const searchQuery = useQuery({
     queryKey: [SEARCH_QUERY_KEY, projectDirectory, search, typeFilter, page],
-    queryFn: () => fetchSearchResults(search ?? '', typeFilter, page),
-    refetchOnWindowFocus: false,
-    enabled: !!search,
+    queryFn: ({ queryKey }) =>
+      fetchSearchResults(queryKey[2] as string, queryKey[3] as FileType[], queryKey[4] as number),
+    enabled: !!search && !tasks.some((t) => t.label.startsWith('Indexing Assets')),
   });
 
   const pageCount = useMemo(() => {
@@ -164,7 +174,7 @@ function SearchPage() {
     return 0;
   }, [searchQuery.data?.count, searchQuery.data?.pageSize]);
 
-  const contextMenu = (node: TreeNodeInfo<SearchTreeNode>): JSX.Element => {
+  const contextMenu = (node: TreeNodeInfo<SearchEntryResult>): JSX.Element => {
     return (
       <Menu>
         <MenuItem2
@@ -188,28 +198,84 @@ function SearchPage() {
     );
   };
 
+  const searchResults = (
+    <div className="search-results-list y-scroll">
+      <ul>
+        {searchQuery.data?.nodes.map((node) => (
+          <SearchResultEntry
+            key={node.id}
+            contextMenu={contextMenu}
+            searchTerm={search}
+            onClick={() => {
+              if (node.nodeData?.path) {
+                setSelected([node.nodeData.path]);
+              }
+            }}
+            onDoubleClick={() => {
+              if (node.nodeData?.path) {
+                viewInExplorer(node.nodeData?.path);
+              }
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                if (node.nodeData?.path) {
+                  setSelected([node.nodeData.path]);
+                }
+              }
+            }}
+            ref={
+              selected && node.nodeData && selected.includes(node.nodeData.path)
+                ? selectedRef
+                : undefined
+            }
+            node={node}
+            isSelected={selected && node.nodeData ? selected.includes(node.nodeData?.path) : false}
+          />
+        ))}
+      </ul>
+      <ButtonGroup minimal className="pages">
+        {getPaginationRange(page, pageCount - 1, 10).map((p) =>
+          p === 'ellipsis' ? (
+            <Button>...</Button>
+          ) : (
+            <Button className={cn({ active: p === page + 1 })} onClick={() => handleSetPage(p - 1)}>
+              {p}
+            </Button>
+          ),
+        )}
+      </ButtonGroup>
+    </div>
+  );
+
   return (
     <div className="search-page">
       <div className="search-input-container">
         <InputGroup
+          disabled={!searchQuery.isEnabled}
+          type="search"
           large
+          maxLength={512}
           leftIcon="search"
           placeholder="Search files..."
           value={query ?? ''}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={handleKeyDown}
           rightElement={
-            <Popover2
-              minimal
-              content={
-                <Menu>
-                  <MenuItem2 icon="refresh" text="Re-Index Assets" onClick={reIndex} />
-                </Menu>
-              }
-              placement="bottom"
-            >
-              <Button minimal icon="settings" />
-            </Popover2>
+            searchQuery.isEnabled ? (
+              <Popover2
+                minimal
+                content={
+                  <Menu>
+                    <MenuItem2 icon="refresh" text="Re-Index Assets" onClick={reIndex} />
+                  </Menu>
+                }
+                placement="bottom"
+              >
+                <Button minimal icon="settings" />
+              </Popover2>
+            ) : (
+              <Spinner size={IconSize.STANDARD} />
+            )
           }
         />
       </div>
@@ -228,12 +294,12 @@ function SearchPage() {
           </div>
         )}
         <div className="search-results-header">
-          <ButtonGroup className="results-count">
+          <NavbarGroup className="results-count">
             Page {page + 1} out of {pageCount} <Divider /> <Tag>{searchQuery.data?.count}</Tag>{' '}
             result
             {searchQuery.data?.count !== 1 ? 's' : ''}
-          </ButtonGroup>
-          <ul>
+          </NavbarGroup>
+          <NavbarGroup>
             {Object.values(FileType).map((type) => (
               <ButtonGroup minimal key={type}>
                 <Button
@@ -245,58 +311,56 @@ function SearchPage() {
                 <Divider />
               </ButtonGroup>
             ))}
-          </ul>
+            <NavbarGroup>
+              <Button
+                active={showFileView}
+                minimal
+                onClick={() => setShowFileView(!showFileView)}
+                rightIcon="comparison"
+              >
+                Explorer View
+              </Button>
+            </NavbarGroup>
+          </NavbarGroup>
         </div>
-        {!searchQuery.isLoading && searchQuery.data && searchQuery.data.nodes.length > 0 && (
-          <div className="search-results-list y-scroll">
-            <ul>
-              {searchQuery.data.nodes.map((node) => (
-                <SearchResultEntry
-                  key={node.id}
-                  contextMenu={contextMenu}
-                  onClick={() => {
-                    if (node.nodeData?.path) {
-                      setSelected([node.nodeData.path]);
-                    }
-                  }}
-                  onDoubleClick={() => {
-                    if (node.nodeData?.path) {
-                      viewInExplorer(node.nodeData?.path);
-                    }
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      if (node.nodeData?.path) {
-                        setSelected([node.nodeData.path]);
-                      }
-                    }
-                  }}
-                  ref={
-                    selected && node.nodeData && selected.includes(node.nodeData.path)
-                      ? selectedRef
-                      : undefined
-                  }
-                  node={node}
-                  isSelected={
-                    selected && node.nodeData ? selected.includes(node.nodeData?.path) : false
-                  }
-                />
-              ))}
-            </ul>
-            <ButtonGroup minimal className="pages">
-              {getPaginationRange(page, pageCount - 1, 10).map((p) =>
-                p === 'ellipsis' ? (
-                  <Button>...</Button>
-                ) : (
-                  <Button className={cn({ active: p === page })} onClick={(e) => handleSetPage(p)}>
-                    {p}
-                  </Button>
-                ),
-              )}
-            </ButtonGroup>
-          </div>
-        )}
         {!searchQuery.isLoading &&
+          searchQuery.isEnabled &&
+          searchQuery.data &&
+          searchQuery.data.nodes.length > 0 &&
+          showFileView && (
+            <Split
+              direction="horizontal"
+              cursor="col-resize"
+              className="search-results-split"
+              snapOffset={30}
+              minSize={100}
+              expandToMin={false}
+              gutterSize={5}
+              sizes={[sideBarSize, 100 - sideBarSize]}
+              onDragEnd={(size) => {
+                setSideBarSize(size[0]);
+              }}
+            >
+              {searchResults}
+              {!!selected && selected.length > 0 && showFileView ? (
+                <FileInfoPanel
+                  allowTagEditing={false}
+                  searchQuery={search}
+                  showSource
+                  item={selected[0]}
+                />
+              ) : (
+                <NonIdealState icon="eye-open">Select asset to view</NonIdealState>
+              )}
+            </Split>
+          )}
+        {!searchQuery.isLoading &&
+          searchQuery.data &&
+          searchQuery.data.nodes.length > 0 &&
+          !showFileView &&
+          searchResults}
+        {!searchQuery.isLoading &&
+          searchQuery.isEnabled &&
           (!searchQuery.data || searchQuery.data.nodes.length === 0) &&
           search && (
             <div className="search-empty">
@@ -307,13 +371,18 @@ function SearchPage() {
               />
             </div>
           )}
-        {!searchQuery.isLoading && !search && (
+        {!searchQuery.isLoading && searchQuery.isEnabled && !search && (
           <div className="search-empty">
             <NonIdealState
               icon="search"
               title="Search for files"
               description="Press Enter to search or type to update your query"
             />
+          </div>
+        )}
+        {search && !searchQuery.isEnabled && (
+          <div className="search-empty">
+            <NonIdealState icon="search" title="Indexing Files" />
           </div>
         )}
       </div>

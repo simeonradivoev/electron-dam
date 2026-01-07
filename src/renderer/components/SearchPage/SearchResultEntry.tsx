@@ -1,5 +1,13 @@
 ﻿/* eslint-disable react/require-default-props */
-import { Icon, TreeNodeInfo, Tag, Classes } from '@blueprintjs/core';
+import {
+  Icon,
+  TreeNodeInfo,
+  Tag,
+  Classes,
+  IconName,
+  MaybeElement,
+  Intent,
+} from '@blueprintjs/core';
 import { showContextMenu } from '@blueprintjs/popover2';
 import cn from 'classnames';
 import {
@@ -11,32 +19,61 @@ import {
   useCallback,
   memo,
 } from 'react';
-import { getIcon } from 'renderer/scripts/file-tree';
+import { highlighter } from 'renderer/scripts/utils';
 import { FileType } from 'shared/constants';
 
 interface Props {
-  node: TreeNodeInfo<SearchTreeNode>;
+  node: TreeNodeInfo<SearchEntryResult>;
   isSelected?: boolean;
+  searchTerm: string | undefined;
   onClick: MouseEventHandler<HTMLLIElement>;
   onDoubleClick: MouseEventHandler<HTMLLIElement>;
   onKeyDown: KeyboardEventHandler<HTMLLIElement>;
-  contextMenu: (node: TreeNodeInfo<SearchTreeNode>) => JSX.Element;
+  contextMenu: (node: TreeNodeInfo<SearchEntryResult>) => JSX.Element;
   ref: MutableRefObject<HTMLLIElement | null> | undefined;
 }
 
 const SearchResultEntry = memo(
-  ({ node, onClick, onDoubleClick, onKeyDown, ref, contextMenu, isSelected = false }: Props) => {
+  ({
+    node,
+    onClick,
+    onDoubleClick,
+    onKeyDown,
+    ref,
+    contextMenu,
+    searchTerm,
+    isSelected = false,
+  }: Props) => {
     const localRef = useRef<HTMLLIElement>(null);
     const [validPreview, setValidPreview] = useState(true);
 
     const score = node.nodeData?.score ?? 0;
-    const scorePercentage = (score * 100).toFixed(0);
+    const labelHighlighted = searchTerm
+      ? highlighter.highlight(node.label as string, searchTerm).HTML
+      : (node.label as string);
+    const highlightedTags = node.nodeData?.tags?.map(
+      (t, index): { index: number; tag: string; intent: Intent; minimal: boolean } => {
+        if (searchTerm) {
+          const highlights = highlighter.highlight(t, searchTerm);
+          return {
+            index,
+            tag: t,
+            intent: highlights.positions.length > 0 ? 'primary' : 'none',
+            minimal: highlights.positions.length <= 0,
+          };
+        }
 
-    let scoreIntent: 'success' | 'warning' | 'none' = 'none';
+        return { index, tag: t, intent: 'none', minimal: true };
+      },
+    );
+
+    let scoreIntent: 'success' | 'warning' | 'danger' | 'none' = 'none';
     if (score > 0.8) {
       scoreIntent = 'success';
-    } else if (score > 0.5) {
+    } else if (score > 0.6) {
       scoreIntent = 'warning';
+    } else if (score > 0.5) {
+      scoreIntent = 'danger';
     }
 
     const handleContextMenu = useCallback(
@@ -48,6 +85,34 @@ const SearchResultEntry = memo(
       },
       [contextMenu, node],
     );
+
+    let preview: JSX.Element | undefined;
+    if (node.nodeData?.isVirtual && node.nodeData?.virtualPreview) {
+      preview = <img alt={node.nodeData.filename} src={node.nodeData?.virtualPreview} />;
+    } else if (validPreview) {
+      preview = (
+        <img
+          alt={node.nodeData?.filename}
+          onError={() => setValidPreview(false)}
+          src={`thumb://${node.nodeData?.path}`}
+        />
+      );
+    } else {
+      preview = <Icon icon={node.icon} size={24} />;
+    }
+
+    let typeIcon: IconName | MaybeElement | undefined;
+    if (node.nodeData?.fileType === FileType.Bundle) {
+      if (node.nodeData.isArchived) {
+        typeIcon = 'archive';
+      } else if (node.nodeData.isVirtual) {
+        typeIcon = 'cloud';
+      } else {
+        typeIcon = 'box';
+      }
+    } else {
+      typeIcon = node.icon;
+    }
 
     return (
       <li
@@ -61,21 +126,11 @@ const SearchResultEntry = memo(
         })}
         role="button"
       >
-        <div className="search-result-preview">
-          {validPreview ? (
-            <img
-              alt={node.nodeData?.name}
-              onError={() => setValidPreview(false)}
-              src={`thumb://${node.nodeData?.path}`}
-            />
-          ) : (
-            <Icon icon={node.icon} size={24} />
-          )}
-        </div>
+        <div className="search-result-preview">{preview}</div>
 
         <div className="search-result-content">
-          <div className={cn('search-result-name')} title={node.nodeData?.name}>
-            {node.label}
+          <div className={cn('search-result-name')} title={node.nodeData?.filename}>
+            <span dangerouslySetInnerHTML={{ __html: labelHighlighted }} />
           </div>
 
           <div
@@ -92,12 +147,15 @@ const SearchResultEntry = memo(
           {node.nodeData && (
             <div className="search-result-tags">
               <Tag
-                minimal
-                intent={node.nodeData?.fileType === FileType.Bundle ? 'primary' : 'none'}
-                icon={node.nodeData?.fileType === FileType.Bundle ? 'box' : node.icon}
+                minimal={node.nodeData?.fileType !== FileType.Bundle}
+                title={node.nodeData?.fileType}
+                intent="primary"
+                icon={typeIcon}
               />
-              {node.nodeData.tags?.map((t) => (
-                <Tag key={t}>{t}</Tag>
+              {highlightedTags?.map((t) => (
+                <Tag intent={t.intent} minimal={t.minimal} key={t.index}>
+                  {t.tag}
+                </Tag>
               ))}
             </div>
           )}
@@ -105,7 +163,7 @@ const SearchResultEntry = memo(
 
         <div className="search-result-score">
           <Tag large intent={scoreIntent} minimal className="score-tag">
-            {scorePercentage}%
+            {score.toLocaleString(undefined, { style: 'percent' })}
           </Tag>
         </div>
       </li>

@@ -58,7 +58,7 @@ const route = createHashRouter(
         },
         { path: 'tasks', element: <TasksPage /> },
         { path: 'search/*', element: <SearchPage /> },
-        { path: 'settings', element: <Settings /> },
+        { path: 'settings/*', element: <Settings /> },
       ],
     },
   ],

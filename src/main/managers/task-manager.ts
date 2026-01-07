@@ -1,4 +1,4 @@
-import { BrowserWindow, ipcMain } from 'electron';
+import { BrowserWindow } from 'electron';
 import PQueue from 'p-queue';
 import { v4 } from 'uuid';
 import { MainIpcCallbacks, MainIpcGetter } from '../../shared/constants';
@@ -32,7 +32,7 @@ function emitUpdate() {
 
 export function addTask<T>(
   label: string,
-  taskFn: (signal: AbortSignal, progress: (p: number) => void) => Promise<T>,
+  taskFn: (signal: AbortSignal, progress: ProgressReporter) => Promise<T>,
   options?: TaskMetadata['options'],
   userData?: any,
 ): Promise<T> {
@@ -89,12 +89,8 @@ export function addTask<T>(
 }
 
 export function cancelTasks(selector: (t: Task) => boolean) {
-  const toCancel: Task[] = [];
-  for (const task of tasks.values()) {
-    if (selector(task)) {
-      toCancel.push(task);
-    }
-  }
+  const toCancel: Task[] = Array.from(tasks.values()).filter(selector);
+
   toCancel.forEach((t) => {
     t.abortController?.abort();
     tasks.delete(t.id);

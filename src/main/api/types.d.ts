@@ -1,6 +1,7 @@
 import { DBSchema } from 'idb';
 import { IAudioMetadata } from 'music-metadata';
 import { FileType } from 'shared/constants';
+import { IndexSchema } from './search/orama';
 
 declare global {
   interface FileTreeNode {
@@ -9,7 +10,6 @@ declare global {
     bundlePath?: string;
     name: string;
     path: string;
-    children?: FileTreeNode[];
     fileType?: FileType;
     size: number;
     isArchived: boolean;
@@ -18,11 +18,6 @@ declare global {
   interface GlobalTagEntry {
     tag: string;
     count: number;
-  }
-
-  interface SearchTreeNode extends FileTreeNode {
-    score: number;
-    tags?: string[];
   }
 
   interface FileInfo {
@@ -149,10 +144,17 @@ declare global {
     filename: string;
     description: string;
     path: string;
+    isArchived: boolean;
     tags?: string[];
     fileType?: FileType | undefined;
     bundleId?: string;
     embeddings?: number[];
+    isVirtual: boolean;
+    virtualPreview?: string;
+  }
+
+  interface SearchEntryResult extends SearchEntrySchema {
+    score: number;
   }
 
   export interface Task extends TaskMetadata {
@@ -179,5 +181,23 @@ declare global {
       keys(): string[];
       <T>(id: string): T;
     };
+  }
+
+  type AnyMetadata = FileMetadata & Tags & Description & IndexSchema & Bundle & AudioMetadata;
+
+  type ProgressReporter = (progress: number) => void;
+
+  interface FileLoaderRegistry {
+    register: (...indexers: FileIndexingHandler[]) => void;
+    index: (abort: AbortSignal, progress: ProgressReporter) => Promise<void>;
+  }
+
+  type FileIndexingHandler = (
+    params: FileIndexerParams,
+  ) => Promise<(node: FileTreeNode) => Promise<any>>;
+
+  export interface FileIndexerParams {
+    projectDir: string;
+    abort: AbortSignal;
   }
 }

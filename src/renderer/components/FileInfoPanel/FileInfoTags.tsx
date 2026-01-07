@@ -1,46 +1,65 @@
 import { TagInput, TagProps } from '@blueprintjs/core';
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  keepPreviousData,
+  useIsMutating,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import { normalize } from 'pathe';
 import { ReactNode, useCallback } from 'react';
+import { QueryKeys } from 'renderer/scripts/utils';
 
 interface FileInfoTagsProps {
-  fileInfo: FileInfo | null;
+  item: string;
   filter: string | null;
+  allowEditing?: boolean;
   contextMenu?: JSX.Element;
 }
 
-function FileInfoTags({ fileInfo, filter, contextMenu = undefined }: FileInfoTagsProps) {
+function FileInfoTags({
+  item,
+  filter,
+  allowEditing = true,
+  contextMenu = undefined,
+}: FileInfoTagsProps) {
   // Access the client
   const queryClient = useQueryClient();
 
+  const isGeneratingMetadata =
+    useIsMutating({ mutationKey: [QueryKeys.metadata, normalize(item)] }) > 0;
+
   const { mutate: addTagMutation } = useMutation({
-    mutationKey: ['tags', normalize(fileInfo?.path ?? '')],
-    mutationFn: async (tagsToAdd: string[]) => window.api.addTags(fileInfo?.path ?? '', tagsToAdd),
-    onSuccess: (data) => queryClient.setQueryData(['tags', normalize(fileInfo?.path ?? '')], data),
+    mutationKey: [QueryKeys.tags, normalize(item)],
+    mutationFn: async (tagsToAdd: string[]) => window.api.addTags(item, tagsToAdd),
+    onSuccess: (data) => queryClient.setQueryData([QueryKeys.tags, normalize(item)], data),
   });
 
   const { mutate: removeTagsMutation, isPending: isRemovingTag } = useMutation({
-    mutationKey: ['tags', normalize(fileInfo?.path ?? '')],
-    mutationFn: async (tagToRemove: string) =>
-      window.api.removeTag(fileInfo?.path ?? '', tagToRemove),
-    onSuccess: (data) => queryClient.setQueryData(['tags', normalize(fileInfo?.path ?? '')], data),
+    mutationKey: [QueryKeys.tags, normalize(item)],
+    mutationFn: async (tagToRemove: string) => window.api.removeTag(item, tagToRemove),
+    onSuccess: (data) => queryClient.setQueryData([QueryKeys.tags, normalize(item)], data),
   });
 
   const tags = useQuery({
-    enabled: !!fileInfo,
     placeholderData: keepPreviousData,
-    queryKey: ['tags', normalize(fileInfo?.path ?? '')],
+    queryKey: [QueryKeys.tags, normalize(item)],
     queryFn: async () => {
-      return (await window.api.getTags(fileInfo?.path ?? '')) ?? [];
+      return (await window.api.getTags(item)) ?? [];
     },
   });
 
-  const parentTags = useQuery({
-    enabled: !!fileInfo,
+  const { data: node } = useQuery({
     placeholderData: keepPreviousData,
-    queryKey: ['parent-tags', normalize(fileInfo?.path ?? '')],
+    queryKey: ['bundle', normalize(item)],
+    queryFn: async () => window.api.getFile(item),
+  });
+
+  const parentTags = useQuery({
+    placeholderData: keepPreviousData,
+    queryKey: ['parent-tags', normalize(item)],
     queryFn: async () => {
-      return (await window.api.getParentTags(fileInfo?.path ?? '')) ?? [];
+      return (await window.api.getParentTags(item)) ?? [];
     },
   });
 
@@ -51,16 +70,24 @@ function FileInfoTags({ fileInfo, filter, contextMenu = undefined }: FileInfoTag
     [removeTagsMutation, tags.data],
   );
 
-  const isNonBundleFolder =
-    fileInfo?.isDirectory && (!fileInfo.bundle || fileInfo.bundle.isParentBundle);
+  const isBundle = !!node?.bundlePath && node.bundlePath === node.path;
+  const isNonBundleFolder = node?.isDirectory && !isBundle;
 
   return (
     <>
       {tags.isError ? <>{tags.error}</> : <></>}
       <TagInput
+        fill
         leftIcon="tag"
         className="tags"
-        disabled={!tags.data || isNonBundleFolder || isRemovingTag}
+        disabled={
+          !tags.data ||
+          isNonBundleFolder ||
+          isRemovingTag ||
+          isGeneratingMetadata ||
+          !allowEditing ||
+          (node?.isArchived && !isBundle)
+        }
         rightElement={contextMenu}
         onRemove={removeTag}
         onAdd={(t) => addTagMutation(t)}

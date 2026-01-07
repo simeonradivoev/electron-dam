@@ -5,26 +5,23 @@ import {
   FormGroup,
   InputGroup,
   Menu,
-  Position,
   TagInput,
   TagInputAddMethod,
   TextArea,
-  Toaster,
-  ToasterInstance,
 } from '@blueprintjs/core';
-import { ContextMenu2, MenuItem2, Popover2 } from '@blueprintjs/popover2';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { ContextMenu2, MenuItem2, Popover2, Tooltip2 } from '@blueprintjs/popover2';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import cn from 'classnames';
 import React, { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useOutletContext } from 'react-router-dom';
-import { arraysEqual } from 'renderer/scripts/utils';
+import { useBlocker, useOutletContext } from 'react-router-dom';
+import { arraysEqual, QueryKeys } from 'renderer/scripts/utils';
+import { AppToaster } from 'renderer/toaster';
 import { ImportType } from 'shared/constants';
 import { BundleDetailsContextType } from './BundleDetailsLayout';
 
 function BundleEditor() {
   const { bundle } = useOutletContext<BundleDetailsContextType>();
   const queryClient = useQueryClient();
-  const toasterRef = useRef<Toaster>(null);
   const previewInputRef = useRef<HTMLInputElement>(null);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
@@ -37,6 +34,10 @@ function BundleEditor() {
   const [isDraggingOverPreview, setIsDraggingOverPreview] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [changedTime, setChangeTime] = useState(0);
+  const { data: canImportWithOllama } = useQuery({
+    queryKey: ['can-import-metadata', bundle.id],
+    queryFn: () => window.api.canImportBundleMetadata(bundle.id, ImportType.Ollama),
+  });
 
   const changed = useMemo(
     () =>
@@ -58,6 +59,8 @@ function BundleEditor() {
       tags,
     ],
   );
+
+  const blocker = useBlocker(changed);
 
   const handleSubmit = useCallback(
     async (e: React.SyntheticEvent) => {
@@ -86,8 +89,8 @@ function BundleEditor() {
         }
       }
 
-      queryClient.setQueriesData({ queryKey: ['tags', bundle.id] }, tags ?? []);
-      queryClient.invalidateQueries({ queryKey: ['tags'] });
+      queryClient.setQueriesData({ queryKey: [QueryKeys.tags, bundle.id] }, tags ?? []);
+      queryClient.invalidateQueries({ queryKey: [QueryKeys.tags] });
 
       try {
         const newBundle = await window.api.updateBundle(bundle.id, newBundleInfo.bundle);
@@ -98,7 +101,7 @@ function BundleEditor() {
 
         queryClient.invalidateQueries({ queryKey: ['bundle', bundle?.id] });
       } catch (error: any) {
-        toasterRef.current?.show({ message: error.message, intent: 'danger' });
+        AppToaster.show({ message: error.message, intent: 'danger' });
       }
     },
     [bundle, tags, queryClient, description, link, name, preview],
@@ -132,17 +135,16 @@ function BundleEditor() {
     mutationKey: ['preview-download', bundle.id],
     mutationFn: async (filePath?: string) => {
       if ((link || filePath) && bundle.id) {
-        try {
-          await window.api.downloadPreview(bundle.id, filePath ?? link ?? '');
-          await new Promise((r) => setTimeout(r, 100));
-          return;
-        } catch (error: any) {
-          toasterRef?.current?.show({ message: `${error}`, intent: 'danger' });
-        }
+        await window.api.downloadPreview(bundle.id, filePath ?? link ?? '');
+        await new Promise((r) => {
+          setTimeout(r, 100);
+        });
+      } else {
+        throw new Error('No Bundle or link');
       }
-      throw new Error('No Bundle or link');
     },
-    onSuccess(data, variables, onMutateResult, context) {
+    onError: (error) => AppToaster.show({ message: `${error}`, intent: 'danger' }),
+    onSuccess() {
       queryClient
         .refetchQueries({ queryKey: ['bundle', bundle.id] })
         .then(() => setChangeTime(new Date().getTime()))
@@ -150,23 +152,18 @@ function BundleEditor() {
     },
   });
 
-  const handleImport = useCallback(
-    async (type: ImportType) => {
-      if (link) {
-        try {
-          const metadata = await window.api.importBundleMetadata(link ?? '', type);
-          if (metadata.description) {
-            setDescription(metadata.description);
-          }
-          setTags(metadata.tags ?? []);
-        } catch (error: any) {
-          const toaster = toasterRef?.current as ToasterInstance;
-          toaster?.show({ message: `${error}`, intent: 'danger' });
-        }
+  const importMutation = useMutation({
+    mutationKey: ['auto-metadata', bundle.id],
+    mutationFn: async (type: ImportType) => window.api.importBundleMetadata(link ?? '', type),
+    onError: (error) => AppToaster?.show({ message: `${error}`, intent: 'danger' }),
+    onSuccess: (metadata) => {
+      if (metadata.description) {
+        setDescription(metadata.description);
+        console.log(metadata.description);
       }
+      setTags(metadata.tags ?? []);
     },
-    [link, setDescription, setTags],
-  );
+  });
 
   const handleTagDelete = useCallback(
     (tag: ReactNode, index: number) => {
@@ -187,17 +184,17 @@ function BundleEditor() {
   }, [formRef]);
 
   useEffect(() => {
-    const dragEnterHandler = (e: DragEvent) => {
+    const dragEnterHandler = () => {
       setIsDragging(true);
     };
-    const dragLeaveHandler = (e: DragEvent) => {
+    const dragLeaveHandler = () => {
       setIsDragging(false);
     };
     const dragOverHandler = (e: DragEvent) => {
       e.preventDefault();
       setIsDragging(true);
     };
-    const dropHandler = (e: DragEvent) => {
+    const dropHandler = () => {
       setIsDragging(false);
     };
     document.body.addEventListener('dragenter', dragEnterHandler);
@@ -244,7 +241,6 @@ function BundleEditor() {
             setIsDraggingOverPreview(true);
           }}
           onDrop={(e) => {
-            console.log(e.dataTransfer?.files[0].path);
             downloadPreviewMutation(e.dataTransfer?.files[0].path);
             setIsDraggingOverPreview(false);
           }}
@@ -300,6 +296,7 @@ function BundleEditor() {
           name="description"
           id="description"
           growVertically
+          maxLength={512}
           className={description !== bundle.bundle.description ? 'changed' : undefined}
           fill
           value={description}
@@ -343,29 +340,41 @@ function BundleEditor() {
         position="bottom"
         content={
           <Menu>
-            <MenuItem2
-              onClick={() => handleImport(ImportType.OpenGraph)}
-              icon="import"
-              title="Download metadata from the link"
-              label="Open Graph"
-            />
-            <MenuItem2
-              onClick={() => handleImport(ImportType.Ollama)}
-              icon="predictive-analysis"
-              title="Use Ollama llm to generate all the metadata based on the link page's contents. This is the most advanced and slow option. You need to have ollama running locally with the model gemma3"
-              label="Ollama"
-            />
+            <Tooltip2
+              targetTagName="li"
+              content="Download metadata from the link"
+              hoverOpenDelay={2000}
+            >
+              <MenuItem2
+                disabled={importMutation.isPending}
+                onClick={() => importMutation.mutate(ImportType.OpenGraph)}
+                icon="import"
+                text="Open Graph"
+              />
+            </Tooltip2>
+
+            <Tooltip2
+              targetTagName="li"
+              hoverOpenDelay={2000}
+              content="Use Ollama llm to generate all the metadata based on the link page's contents. This is the most advanced and slow option. You need to have ollama running"
+            >
+              <MenuItem2
+                disabled={!canImportWithOllama || importMutation.isPending}
+                onClick={() => importMutation.mutate(ImportType.Ollama)}
+                icon="predictive-analysis"
+                text="Ollama"
+              />
+            </Tooltip2>
           </Menu>
         }
       >
-        <Button rightIcon="caret-down" disabled={!link}>
+        <Button rightIcon="caret-down" disabled={!link || importMutation.isPending}>
           Import
         </Button>
       </Popover2>
       <Button icon="trash" onClick={handleDeleteButton} intent="danger">
         Delete
       </Button>
-      <Toaster position={Position.BOTTOM_RIGHT} ref={toasterRef} />
       <Alert
         intent="danger"
         confirmButtonText="Delete"
@@ -377,6 +386,17 @@ function BundleEditor() {
         icon="trash"
       >
         Are you sure you want to delete the bundle, your files will <b>NOT</b> be lost.
+      </Alert>
+      <Alert
+        icon="warning-sign"
+        isOpen={blocker.state === 'blocked'}
+        confirmButtonText="Discard"
+        cancelButtonText="Cancel"
+        canOutsideClickCancel
+        onConfirm={() => blocker.proceed?.()}
+        onCancel={() => blocker.reset?.()}
+      >
+        You have unsaved changes!
       </Alert>
     </form>
   );

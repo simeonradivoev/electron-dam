@@ -7,8 +7,4 @@ declare global {
   }
 }
 
-export type ContextMenuBuilder = (
-  path: string,
-  bundlePath: string | undefined,
-  isDirectory: boolean,
-) => JSX.Element;
+export type ShowContextMenuParams = { id: string; rect: DOMRect };

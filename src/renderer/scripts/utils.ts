@@ -1,8 +1,12 @@
+import { stat } from 'fs/promises';
+import path, { normalize } from 'path';
 import { IconName } from '@blueprintjs/core';
+import { Highlight } from '@orama/highlight';
 import { hashKey, useQueryClient } from '@tanstack/react-query';
-import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
+import { useEffect, useSyncExternalStore } from 'react';
 import { FileType } from 'shared/constants';
-import { string } from 'zod/v3';
+
+export const highlighter = new Highlight();
 
 export function humanFileSize(size: number) {
   if (size < 1024) return `${size} B`;
@@ -46,6 +50,12 @@ export const FileTypeIcons = {
   [FileType.Textures]: 'media' as IconName,
   [FileType.Text]: 'document' as IconName,
   [FileType.Bundle]: 'box' as IconName,
+};
+
+export const QueryKeys = {
+  metadata: 'metadata',
+  tags: 'tags',
+  fileInfo: 'fileInfo',
 };
 
 export function isValidHttpUrl(string: string) {
@@ -190,4 +200,26 @@ export function decodePeaks(encoded: string): number[][] {
   }
 
   return peaks;
+}
+
+export async function getZipParentFs(p: FilePath): Promise<string | undefined> {
+  let current = p.path;
+
+  while (true) {
+    const parent = path.dirname(current);
+    if (parent === current) break;
+
+    try {
+      const fileStat = await stat(path.join(p.projectDir, parent));
+      if (fileStat.isFile() && parent.toLowerCase().endsWith('.zip')) {
+        return parent;
+      }
+    } catch {
+      // ignore missing paths
+    }
+
+    current = parent;
+  }
+
+  return undefined;
 }
