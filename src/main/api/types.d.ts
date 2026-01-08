@@ -111,11 +111,6 @@ declare global {
     };
   }
 
-  interface FilePath {
-    path: string;
-    projectDir: string;
-  }
-
   interface FilesDB extends DBSchema {
     selected: {
       value: boolean;

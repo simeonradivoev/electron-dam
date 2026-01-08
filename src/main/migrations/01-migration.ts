@@ -2,8 +2,8 @@ import { existsSync } from 'fs';
 import { stat } from 'fs/promises';
 import path, { normalize } from 'path';
 import log from 'electron-log/main';
-import { getMetaId, operateOnMetadata } from 'main/api/file-system-api';
-import { foreachAsync } from 'main/util';
+import { operateOnMetadata } from 'main/api/file-system-api';
+import { FilePath, foreachAsync } from 'main/util';
 import { BundleMetaFile } from 'shared/constants';
 import { MigrationParams } from 'umzug';
 import { MigrationContext } from './migrations';
@@ -32,14 +32,14 @@ export async function up({ context }: MigrationParams<MigrationContext>) {
 
     await foreachAsync(
       files,
-      async (file, index) => {
+      async (file) => {
         let absolutePath = normalize(file.path);
         const fileStat = await stat(absolutePath);
         if (fileStat.isDirectory()) {
           absolutePath = path.join(absolutePath, BundleMetaFile);
         }
         operateOnMetadata(
-          { projectDir, path: absolutePath.substring(projectDir.length + 1) },
+          new FilePath(projectDir, absolutePath.substring(projectDir.length + 1)),
           async (meta) => {
             const tags = meta.tags ?? [];
             tags.push(...file.tags.filter((t) => !tags.includes(t)));

@@ -1,5 +1,3 @@
-import { stat } from 'fs/promises';
-import path, { normalize } from 'path';
 import { IconName } from '@blueprintjs/core';
 import { Highlight } from '@orama/highlight';
 import { hashKey, useQueryClient } from '@tanstack/react-query';
@@ -200,26 +198,4 @@ export function decodePeaks(encoded: string): number[][] {
   }
 
   return peaks;
-}
-
-export async function getZipParentFs(p: FilePath): Promise<string | undefined> {
-  let current = p.path;
-
-  while (true) {
-    const parent = path.dirname(current);
-    if (parent === current) break;
-
-    try {
-      const fileStat = await stat(path.join(p.projectDir, parent));
-      if (fileStat.isFile() && parent.toLowerCase().endsWith('.zip')) {
-        return parent;
-      }
-    } catch {
-      // ignore missing paths
-    }
-
-    current = parent;
-  }
-
-  return undefined;
 }

@@ -1,4 +1,5 @@
 import { Button, ButtonGroup, ControlGroup, Divider, Slider } from '@blueprintjs/core';
+import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { decodePeaks, encodePeaks, useEvent } from 'renderer/scripts/utils';
 import { AppToaster } from 'renderer/toaster';
@@ -19,6 +20,7 @@ type Props = {
 function PreviewPanelAudio({ importedAudio, isZip, path, audioMetadata, hasThumbnail }: Props) {
   const waveformRef = useRef<HTMLDivElement>(null);
   const wavesurferRef = useRef<WaveSurfer>();
+  const queryClient = useQueryClient();
   const [playing, setPlay] = useState(false);
   const [volume, setVolume] = useLocalStorage('volume', 0.5);
 

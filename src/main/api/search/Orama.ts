@@ -17,6 +17,7 @@ import { persist } from '@orama/plugin-data-persistence';
 import { pluginQPS } from '@orama/plugin-qps';
 import log from 'electron-log/main';
 import Store from 'electron-store';
+import { FilePath } from 'main/util';
 import { FileType, StoreSchema } from '../../../shared/constants';
 import { getSetting } from '../settings';
 import { generate } from './EmbeddingsService';

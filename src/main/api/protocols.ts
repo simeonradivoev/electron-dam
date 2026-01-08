@@ -9,7 +9,7 @@ import StreamZip, { ZipEntry } from 'node-stream-zip';
 import sharp from 'sharp';
 import { zipDelimiter, StoreSchema } from '../../shared/constants';
 import AsyncQueue from '../managers/AsyncQueue';
-import { imageMediaFormatsMatch, mkdirs } from '../util';
+import { FilePath, imageMediaFormatsMatch, mkdirs } from '../util';
 import { findBundleInfoForFile, findFolderPreview, findZipPreviewReadable } from './bundles-api';
 import { thumbCache } from './cache/thumbnail-cache';
 import { pathExistsSync } from './file-system-api';
@@ -44,31 +44,26 @@ const thumbQueue = new AsyncQueue(4);
 
 export function GetThumbnailPath(filePath: FilePath, statInfo: Stats | ZipEntry): FilePath {
   if (statInfo instanceof Stats) {
-    return {
-      projectDir: filePath.projectDir,
-      path: path.join(
+    return filePath.with(
+      path.join(
         '.cache',
         'thumbnails',
         `${filePath.path.replaceAll(path.sep, '-')}-${statInfo.ino}-${statInfo.mtimeMs}.webp`,
       ),
-    };
+    );
   }
 
-  return {
-    projectDir: filePath.projectDir,
-    path: path.join(
+  return filePath.with(
+    path.join(
       '.cache',
       'thumbnails',
       `${filePath.path.replaceAll(path.sep, '-')}-${statInfo.version}.webp`,
     ),
-  };
+  );
 }
 
 export async function GetAbsoluteThumbnailPathForFile(filePath: FilePath, statInfoParam?: Stats) {
-  return GetThumbnailPath(
-    filePath,
-    statInfoParam ?? (await stat(path.join(filePath.projectDir, filePath.path))),
-  );
+  return GetThumbnailPath(filePath, statInfoParam ?? (await stat(filePath.absolute)));
 }
 
 export default function InitializeProtocols(store: Store<StoreSchema>) {
@@ -173,7 +168,7 @@ export default function InitializeProtocols(store: Store<StoreSchema>) {
               statInfo = await zip.entry(entryPath);
               if (statInfo) {
                 const zipCachePreviewPath = await GetThumbnailPath(
-                  { projectDir, path: fileLocalPath },
+                  new FilePath(projectDir, fileLocalPath),
                   statInfo,
                 );
 
@@ -190,7 +185,7 @@ export default function InitializeProtocols(store: Store<StoreSchema>) {
                   return;
                 }
 
-                mkdirs({ projectDir, path: path.join('.cache', 'thumbnails') });
+                mkdirs(new FilePath(projectDir, path.join('.cache', 'thumbnails')));
 
                 const zipStream = await zip.stream(entryPath);
                 const previewStats = await zipStream
@@ -216,10 +211,7 @@ export default function InitializeProtocols(store: Store<StoreSchema>) {
         }
 
         let cachePreviewPath = await GetThumbnailPath(
-          {
-            projectDir,
-            path: fileLocalPath,
-          },
+          new FilePath(projectDir, fileLocalPath),
           statInfo,
         );
         if (pathExistsSync(cachePreviewPath)) {
@@ -236,7 +228,7 @@ export default function InitializeProtocols(store: Store<StoreSchema>) {
         }
 
         if (statInfo.isDirectory()) {
-          const preview = findFolderPreview({ projectDir, path: fileLocalPath });
+          const preview = findFolderPreview(new FilePath(projectDir, fileLocalPath));
           if (preview) {
             const previewReadable = createReadStream(path.join(projectDir, preview));
             callback({
@@ -247,7 +239,7 @@ export default function InitializeProtocols(store: Store<StoreSchema>) {
             return;
           }
         } else if (fileLocalPath.endsWith('.zip')) {
-          const zipPreview = await findZipPreviewReadable({ projectDir, path: fileLocalPath });
+          const zipPreview = await findZipPreviewReadable(new FilePath(projectDir, fileLocalPath));
           if (zipPreview) {
             callback({
               statusCode: 200,
@@ -258,7 +250,7 @@ export default function InitializeProtocols(store: Store<StoreSchema>) {
           }
         }
 
-        mkdirs({ projectDir, path: path.join('.cache', 'thumbnails') });
+        mkdirs(new FilePath(projectDir, path.join('.cache', 'thumbnails')));
 
         const thumbnail = await nativeImage
           .createThumbnailFromPath(absoluteFilePath, {
@@ -282,10 +274,7 @@ export default function InitializeProtocols(store: Store<StoreSchema>) {
             return;
           }
 
-          const bunlde = await findBundleInfoForFile({
-            projectDir,
-            path: fileLocalPath,
-          });
+          const bunlde = await findBundleInfoForFile(new FilePath(projectDir, fileLocalPath));
 
           if (bunlde?.previewUrl) {
             const bundlePreviewAbsolutePath = path.join(projectDir, bunlde?.previewUrl);
@@ -295,7 +284,7 @@ export default function InitializeProtocols(store: Store<StoreSchema>) {
               const bundlePreviewStat = await stat(bundlePreviewAbsolutePath);
 
               cachePreviewPath = await GetThumbnailPath(
-                { projectDir, path: bunlde.previewUrl },
+                new FilePath(projectDir, bunlde.previewUrl),
                 bundlePreviewStat,
               );
 

@@ -1,17 +1,17 @@
+import { existsSync } from 'fs';
 import { dirname } from 'path';
 import log from 'electron-log/main';
 import Store from 'electron-store';
+import { FilePath } from 'main/util';
 import {
   BundleMetaFile,
   MainIpcCallbacks,
   MetaFileExtension,
   StoreSchema,
-  zipDelimiter,
 } from '../../shared/constants';
-import { addTask } from '../managers/task-manager';
 import { findBundleInfoForFile } from './bundles-api';
 import { LoadDatabaseExact } from './database-api';
-import { fileEvents } from './file-system-api';
+import { fileEvents, pathExistsSync } from './file-system-api';
 import { projectEvents } from './project-api';
 import { removeIndex, updateFileEmbeddings, updateFileFromPath } from './search/serach-api';
 
@@ -26,74 +26,70 @@ export default function InitializeCallbacks(store: Store<StoreSchema>, api: Main
 
   fileEvents.on('file-added', async (addedFilePath) => {
     if (addedFilePath.path.endsWith(`.${MetaFileExtension}`)) {
-      const filePath = {
-        projectDir: addedFilePath.projectDir,
-        path: addedFilePath.path.substring(
-          0,
-          addedFilePath.path.length - MetaFileExtension.length - 1,
-        ),
-      };
+      const filePath = addedFilePath.with(
+        addedFilePath.path.substring(0, addedFilePath.path.length - MetaFileExtension.length - 1),
+      );
       await updateFileFromPath(
         filePath.projectDir,
         filePath.path,
         (await findBundleInfoForFile(filePath)) ?? undefined,
       );
       log.log(`Added file to index ${filePath.path}`);
-    } else if (addedFilePath.path.endsWith(`${zipDelimiter}.${BundleMetaFile}`)) {
-      // add when we can accept zip files in search
-      const zipFilePath = addedFilePath.path.substring(
-        0,
-        addedFilePath.path.length - `.${BundleMetaFile}`.length,
-      );
-      api.fileChanged(zipFilePath);
     } else if (addedFilePath.path.endsWith(BundleMetaFile)) {
       // bundle js file was added
       const bundleDir = dirname(addedFilePath.path);
-      // update search index even if metadata is empty
-      await updateFileFromPath(
-        addedFilePath.projectDir,
-        bundleDir,
-        (await findBundleInfoForFile({ projectDir: addedFilePath.projectDir, path: bundleDir })) ??
-          undefined,
+      const zipPath = addedFilePath.path.substring(
+        0,
+        addedFilePath.path.length - `.${BundleMetaFile}`.length,
       );
-      api.fileChanged(bundleDir);
+
+      if (existsSync(addedFilePath.with(zipPath).absolute)) {
+        api.fileChanged(zipPath);
+      } else if (existsSync(addedFilePath.with(bundleDir).absolute)) {
+        // update search index even if metadata is empty
+        await updateFileFromPath(
+          addedFilePath.projectDir,
+          bundleDir,
+          (await findBundleInfoForFile(addedFilePath.with(bundleDir))) ?? undefined,
+        );
+        api.fileChanged(bundleDir);
+        log.log(`Added bundle to index ${bundleDir}`);
+      }
     }
   });
 
   fileEvents.on('file-removed', async (filePath) => {
     if (filePath.path.endsWith(`.${MetaFileExtension}`)) {
-      const assetPath = {
-        projectDir: filePath.projectDir,
-        path: filePath.path.substring(0, filePath.path.length - MetaFileExtension.length - 1),
-      };
+      const assetPath = filePath.with(
+        filePath.path.substring(0, filePath.path.length - MetaFileExtension.length - 1),
+      );
       await removeIndex(assetPath);
       log.log(`Removed file from index ${assetPath.path}`);
-    } else if (filePath.path.endsWith(`${zipDelimiter}.${BundleMetaFile}`)) {
-      // add when we can accept zip files in search
+    } else if (filePath.path.endsWith(BundleMetaFile)) {
+      // bundle js file was removed outside
+      const bundleDir = dirname(filePath.path);
       const zipFilePath = filePath.path.substring(
         0,
         filePath.path.length - `.${BundleMetaFile}`.length,
       );
-      api.fileChanged(zipFilePath);
-    } else if (filePath.path.endsWith(BundleMetaFile)) {
-      // bundle js file was removed outside
-      const bundleDir = dirname(filePath.path);
-      await removeIndex({
-        projectDir: filePath.projectDir,
-        path: bundleDir,
-      });
-      // file change is good enough for handling updates for UI
-      api.fileChanged(bundleDir);
-      log.log(`Removed bundle from index ${bundleDir}`);
+
+      if (pathExistsSync(filePath.with(zipFilePath))) {
+        api.fileChanged(zipFilePath);
+      } else if (pathExistsSync(filePath.with(bundleDir))) {
+        await removeIndex(filePath.with(bundleDir));
+        // file change is good enough for handling updates for UI
+        api.fileChanged(bundleDir);
+        log.log(`Removed bundle from index ${bundleDir}`);
+      }
     }
   });
 
   fileEvents.on('file-changed', async (filePath) => {
     if (filePath.path.endsWith(`.${MetaFileExtension}`)) {
-      const assetPath: FilePath = {
-        projectDir: filePath.projectDir,
-        path: filePath.path.substring(0, filePath.path.length - MetaFileExtension.length - 1),
-      };
+      const assetPath = new FilePath(
+        filePath.projectDir,
+        filePath.path.substring(0, filePath.path.length - MetaFileExtension.length - 1),
+      );
       await updateFileEmbeddings(filePath);
       await updateFileFromPath(
         filePath.projectDir,
@@ -101,20 +97,24 @@ export default function InitializeCallbacks(store: Store<StoreSchema>, api: Main
         (await findBundleInfoForFile(assetPath)) ?? undefined,
       );
       log.log(`Updated Search Index for ${assetPath.path}`);
-    } else if (filePath.path.endsWith(`${zipDelimiter}.${BundleMetaFile}`)) {
-      // add when we can accept zip files in search
     } else if (filePath.path.endsWith(BundleMetaFile)) {
-      const folderPath: FilePath = {
-        projectDir: filePath.projectDir,
-        path: dirname(filePath.path),
-      };
-      await updateFileEmbeddings(folderPath);
-      await updateFileFromPath(
-        filePath.projectDir,
-        folderPath.path,
-        (await findBundleInfoForFile(folderPath)) ?? undefined,
+      const folderPath: FilePath = filePath.with(dirname(filePath.path));
+      const zipFilePath: FilePath = filePath.with(
+        filePath.path.substring(0, filePath.path.length - `.${BundleMetaFile}`.length),
       );
-      log.log(`Updated Search Index for Bundle ${folderPath.path}`);
+
+      if (pathExistsSync(zipFilePath)) {
+        api.fileChanged(zipFilePath.path);
+      } else if (pathExistsSync(folderPath)) {
+        await updateFileEmbeddings(folderPath);
+        await updateFileFromPath(
+          filePath.projectDir,
+          folderPath.path,
+          (await findBundleInfoForFile(folderPath)) ?? undefined,
+        );
+        api.fileChanged(folderPath.path);
+        log.log(`Updated Search Index for Bundle ${folderPath.path}`);
+      }
     }
   });
 }

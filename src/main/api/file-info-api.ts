@@ -1,21 +1,25 @@
 import { existsSync } from 'fs';
 import fs, { lstat } from 'fs/promises';
-import path, { normalize } from 'path';
+import path, { basename, dirname, extname, normalize } from 'path';
 import assimpjs from 'assimpjs';
 import log from 'electron-log/main';
 import Store from 'electron-store';
 import * as mm from 'music-metadata';
 import StreamZip from 'node-stream-zip';
 import picomatch from 'picomatch';
-import { StoreSchema, MainIpcGetter, previewTypes, zipDelimiter } from '../../shared/constants';
-import { audioMediaFormatsMatch, decompressBase64ToString, mkdirs } from '../util';
+import { StoreSchema, MainIpcGetter, previewTypes } from '../../shared/constants';
+import {
+  audioMediaFormatsMatch,
+  decompressBase64ToString,
+  FilePath,
+  getZipParentFs,
+} from '../util';
 import { loadDirectoryBundle, loadZipBundle, searchParentBundle } from './bundles-api';
 import {
   findBundlePath,
   getMetadata,
+  isArchive,
   pathExistsSync,
-  pathJoin,
-  pathLstat,
   pathStat,
 } from './file-system-api';
 import { GetThumbnailPath } from './protocols';
@@ -31,11 +35,11 @@ export default function InitializeFileInfoApi(
 ): {} {
   const virtualBundles = db.getCollection<VirtualBundle>('bundles');
   async function buildFileInfo(filePath: FilePath): Promise<FileInfo> {
-    const projectDir = (store.get('projectDirectory') as string) ?? '';
     let info: FileInfo;
 
+    // Most likely a guid, so look for virtual bundles
     if (filePath.path.length === 36) {
-      const virtualBundle = await virtualBundles.findOne({ id: { $eq: filePath.path } });
+      const virtualBundle = virtualBundles.findOne({ id: filePath.path });
       if (virtualBundle) {
         return {
           isDirectory: false,
@@ -64,64 +68,64 @@ export default function InitializeFileInfoApi(
       }
     }
 
-    const lastZipIndex = filePath.path.lastIndexOf(zipDelimiter);
-    if (lastZipIndex >= 0) {
-      const zipPath = filePath.path.substring(0, lastZipIndex + zipDelimiter.length);
-      const zip = new StreamZip.async({ file: path.join(projectDir, zipPath) });
-      const localPath = filePath.path.substring(Math.min(zipPath.length + 1, filePath.path.length));
+    const zipPath = await getZipParentFs(filePath);
+    if (zipPath) {
+      const zip = new StreamZip.async({ file: zipPath.absolute });
+      const localPath = filePath.path.substring(
+        Math.min(zipPath.path.length + 1, filePath.path.length),
+      );
 
-      if (localPath) {
-        const zipEntry = await zip.entry(localPath);
+      const zipEntry = await zip.entry(localPath);
 
-        if (!zipEntry) {
-          throw new Error(`No Compressed File at ${zipPath} with local path ${localPath}`);
-        }
-
-        // Sub zip file entry
-        info = {
-          size: zipEntry.size,
-          path: filePath.path,
-          name: zipEntry.name,
-          fileExt: path.extname(filePath.path).toLowerCase(),
-          directory: path.dirname(filePath.path),
-          hasMaterialLibrary: false,
-          isDirectory: zipEntry.isDirectory,
-          isZip: true,
-          hasThumbnail: false,
-        };
-
-        info.previewPath = zipPath;
-      } else {
-        // this is the zip bundle file itself
-        const stat = await lstat(path.join(projectDir, zipPath));
-        info = {
-          size: stat.size,
-          path: zipPath,
-          name: path.basename(zipPath),
-          fileExt: path.extname(zipPath).toLowerCase(),
-          directory: path.dirname(zipPath),
-          hasMaterialLibrary: false,
-          isDirectory: true,
-          isZip: true,
-          hasThumbnail: false,
-        };
-
-        const bundle = await loadZipBundle({ projectDir, path: zipPath });
-        if (bundle) {
-          bundle.previewUrl = info.previewPath;
-          info.bundle = {
-            name: zipPath,
-            isParentBundle: false,
-            bundle,
-          };
-        }
+      if (!zipEntry) {
+        throw new Error(`No Compressed File at ${zipPath} with local path ${localPath}`);
       }
 
+      // Sub zip file entry
+      info = {
+        size: zipEntry.size,
+        path: filePath.path,
+        name: zipEntry.name,
+        fileExt: path.extname(filePath.path).toLowerCase(),
+        directory: path.dirname(filePath.path),
+        hasMaterialLibrary: false,
+        isDirectory: zipEntry.isDirectory,
+        isZip: true,
+        hasThumbnail: false,
+      };
+
+      info.previewPath = zipPath.path;
+
+      info.bundlePath = (await findBundlePath(filePath))?.path;
+    } else if (await isArchive(filePath)) {
+      // this is the zip bundle file itself
+      const stat = await lstat(filePath.absolute);
+      info = {
+        size: stat.size,
+        path: filePath.path,
+        name: basename(filePath.path),
+        fileExt: extname(filePath.path).toLowerCase(),
+        directory: dirname(filePath.path),
+        hasMaterialLibrary: false,
+        isDirectory: true,
+        isZip: true,
+        hasThumbnail: false,
+      };
+
+      const bundle = await loadZipBundle(filePath);
+      if (bundle) {
+        bundle.previewUrl = info.previewPath;
+        info.bundle = {
+          name: basename(filePath.path),
+          isParentBundle: false,
+          bundle,
+        };
+      }
       info.bundlePath = (await findBundlePath(filePath))?.path;
     } else {
       const fileStat = await pathStat(filePath);
       const materialPath = filePath.path.replace('.obj', '.mtl');
-      const matExists = !!(await fs.lstat(path.join(projectDir, materialPath)).catch((e) => false));
+      const matExists = existsSync(filePath.with(materialPath).absolute);
       info = {
         size: fileStat.size,
         path: filePath.path,
@@ -135,8 +139,8 @@ export default function InitializeFileInfoApi(
       };
 
       if (info.isDirectory) {
-        const readmePath = pathJoin(filePath, 'Readme.md');
-        const readmeStat = await pathStat(readmePath).catch((e) => null);
+        const readmePath = filePath.join('Readme.md');
+        const readmeStat = await pathStat(readmePath).catch(() => null);
         if (readmeStat) {
           const fileData = await fs.readFile(
             path.join(readmePath.projectDir, readmePath.path),
@@ -146,9 +150,9 @@ export default function InitializeFileInfoApi(
           info.readme = fileData.toString();
         }
 
-        for (let index = 0; index < previewTypes.length; index++) {
+        for (let index = 0; index < previewTypes.length; index += 1) {
           const type = previewTypes[index];
-          const previewPath = pathJoin(filePath, `Preview${type}`);
+          const previewPath = filePath.join(`Preview${type}`);
           if (pathExistsSync(previewPath)) {
             info.previewPath = previewPath.path;
             break;
@@ -163,11 +167,14 @@ export default function InitializeFileInfoApi(
             isParentBundle: false,
             bundle,
           };
+          info.bundlePath = filePath.path;
         }
       } else if (modelsToCovertMatch(filePath.path)) {
         const objContents = await fs.readFile(path.join(filePath.projectDir, filePath.path));
-        const absoluteMaterialPath = path.join(projectDir, materialPath);
-        const materialContents = matExists ? await fs.readFile(absoluteMaterialPath) : undefined;
+        const absoluteMaterialPath = filePath.with(materialPath);
+        const materialContents = matExists
+          ? await fs.readFile(absoluteMaterialPath.absolute)
+          : undefined;
 
         info.modelData = await assimpjs()
           .then((ajs: any) => {
@@ -199,7 +206,7 @@ export default function InitializeFileInfoApi(
           .catch((e: any) => e);
       } else if (audioMediaFormatsMatch(filePath.path)) {
         // Load audio metadata
-        const metadata = await mm.parseFile(path.join(filePath.projectDir, filePath.path));
+        const metadata = await mm.parseFile(filePath.absolute);
         info.audioMetadata = metadata;
         const fileMetadata = await getMetadata(filePath);
         // Regenerate peaks if they are stale
@@ -227,8 +234,7 @@ export default function InitializeFileInfoApi(
     return info;
   }
 
-  api.getFileDetails = (p) =>
-    buildFileInfo({ projectDir: store.get('projectDirectory'), path: normalize(p) });
+  api.getFileDetails = (p) => buildFileInfo(FilePath.fromStore(store, normalize(p)));
 
   return {};
 }

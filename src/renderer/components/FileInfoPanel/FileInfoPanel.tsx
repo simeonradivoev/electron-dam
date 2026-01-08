@@ -62,7 +62,7 @@ const FileInfoPanel: React.FC<FileInfoPanelProps> = ({
   );
 
   const { data: metadata } = useQuery({
-    enabled: !!item,
+    enabled: item !== undefined,
     queryKey: [QueryKeys.metadata, item],
     queryFn: async () => {
       return window.api.getMetadata(item!).catch(() => null);
@@ -74,7 +74,7 @@ const FileInfoPanel: React.FC<FileInfoPanelProps> = ({
     isPending: loadingFileInfo,
     error: fileInfoError,
   } = useQuery({
-    enabled: !!item,
+    enabled: item !== undefined,
     queryKey: [QueryKeys.fileInfo, item],
     queryFn: async () => {
       return window.api.getFileDetails(item!);
@@ -170,12 +170,8 @@ const FileInfoPanel: React.FC<FileInfoPanelProps> = ({
       text: path,
       current: index === array.length - 1,
     };
-    if (index < array.length - 1) {
-      if (bundlePath && bundlePath === selectPath) {
-        crum.icon = path.endsWith(zipDelimiter) ? 'compressed' : 'box';
-      } else {
-        crum.icon = 'folder-open';
-      }
+    if (bundlePath && bundlePath === selectPath) {
+      crum.icon = path.endsWith(zipDelimiter) ? 'compressed' : 'box';
     } else if (info.bundle && !info.bundle.isParentBundle) {
       crum.icon = 'box';
     } else if (info.isDirectory) {

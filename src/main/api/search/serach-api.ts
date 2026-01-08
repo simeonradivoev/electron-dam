@@ -5,7 +5,7 @@ import '@orama/plugin-qps';
 import log from 'electron-log/main';
 import Store from 'electron-store';
 import Loki from 'lokijs';
-import { foreachAsync } from 'main/util';
+import { FilePath, foreachAsync } from 'main/util';
 import { stringSimilarity } from 'string-similarity-js';
 import {
   StoreSchema,
@@ -44,7 +44,7 @@ export async function removeIndex(filePath: FilePath) {
  */
 export async function updateFileFromPath(projectDir: string, id: string, bundle?: BundleInfo) {
   const ext = path.extname(id).toLowerCase();
-  const meta = bundle?.isVirtual ? undefined : await getMetadata({ projectDir, path: id });
+  const meta = bundle?.isVirtual ? undefined : await getMetadata(new FilePath(projectDir, id));
 
   const entry: SearchEntrySchema = {
     id,
@@ -140,16 +140,12 @@ export function InitializeSearchApi(
   registry: FileLoaderRegistry,
 ) {
   async function generateEmbeddings(filePath: FilePath, abort: AbortSignal, fireEvents: boolean) {
-    const destinationStat = await stat(path.join(filePath.projectDir, filePath.path));
+    const destinationStat = await stat(filePath.absolute);
     if (destinationStat.isDirectory()) {
       forAllAssetsIn(
         filePath,
         async (asset) => {
-          await generateEmbeddings(
-            { projectDir: filePath.projectDir, path: asset.path },
-            abort,
-            fireEvents,
-          );
+          await generateEmbeddings(filePath.with(asset.path), abort, fireEvents);
         },
         true,
         abort,
@@ -167,9 +163,9 @@ export function InitializeSearchApi(
       await forAllAssetsInProject(
         store,
         async (file) => {
-          const meta = await getMetadata({ projectDir, path: file.path });
+          const meta = await getMetadata(new FilePath(projectDir, file.path));
           if (meta && meta.description && !meta.embeddings) {
-            await generateEmbeddings({ projectDir, path: file.path }, a, true);
+            await generateEmbeddings(new FilePath(projectDir, file.path), a, true);
           }
         },
         true,
@@ -181,8 +177,7 @@ export function InitializeSearchApi(
     projectDir,
   }: FileIndexerParams): ReturnType<FileIndexingHandler> {
     return async (node) => {
-      const filePath = { projectDir, path: node.path };
-      await updateFileEmbeddings(filePath);
+      await updateFileEmbeddings(new FilePath(projectDir, node.path));
     };
   }
 
@@ -208,7 +203,7 @@ export function InitializeSearchApi(
       let bundle: BundleInfo | undefined;
       if (node.bundlePath) {
         bundle =
-          (await tryGetBundleEntryFromFolderPath({ projectDir, path: node.bundlePath })) ??
+          (await tryGetBundleEntryFromFolderPath(new FilePath(projectDir, node.bundlePath))) ??
           undefined;
       }
       await updateFileFromPath(projectDir, node.path, bundle);
@@ -222,14 +217,11 @@ export function InitializeSearchApi(
   // Orama IPC Handlers
   api.generateEmbeddings = (asset) =>
     addTask(`Generating Embeddings ${asset}`, (a, p) =>
-      generateEmbeddings({ projectDir: store.get('projectDirectory'), path: asset }, a, true),
+      generateEmbeddings(FilePath.fromStore(store, asset), a, true),
     );
   api.generateMissingEmbeddings = () => generateMissingEmbeddings();
   api.canGenerateEmbeddings = async (assetPath) => {
-    const metadata = await getMetadata({
-      projectDir: store.get('projectDirectory'),
-      path: assetPath,
-    });
+    const metadata = await getMetadata(FilePath.fromStore(store, assetPath));
     return !!metadata?.description;
   };
 

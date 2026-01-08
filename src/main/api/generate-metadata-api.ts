@@ -19,7 +19,7 @@ import {
   ImportType,
 } from '../../shared/constants';
 import { addTask } from '../managers/task-manager';
-import { compressStringToBase64, dataUrlToBuffer, foreachAsync } from '../util';
+import { compressStringToBase64, dataUrlToBuffer, FilePath, foreachAsync } from '../util';
 import { checkMetadataIssues, findBundleInfoForFile } from './bundles-api';
 import { thumbCache } from './cache/thumbnail-cache';
 import {
@@ -60,7 +60,7 @@ export default async function InitializeGenerateMetadataApi(
             labels: z.array(z.string()).describe('Labels describing the image'),
           });
 
-          const imageBuffer = await readFile(path.join(filePath.projectDir, filePath.path));
+          const imageBuffer = await readFile(filePath.absolute);
           const encodedImage = await ollama.encodeImage(imageBuffer);
 
           const response = await ollama.chat({
@@ -120,7 +120,7 @@ export default async function InitializeGenerateMetadataApi(
           },
         );
 
-        const buffer = await readFile(path.join(filePath.projectDir, filePath.path));
+        const buffer = await readFile(filePath.absolute);
         const bufferData = new Uint8Array(buffer);
         const audioBuffer = await audioDecode(bufferData);
         let audioData = audioBuffer.getChannelData(0);
@@ -168,11 +168,9 @@ export default async function InitializeGenerateMetadataApi(
             systemContent += `\nTake into account the name of the file as it might include clues.
             Take into account the bundle information such as name and description if provided.`;
             if (bundle.previewUrl) {
-              const previewPath = { projectDir: filePath.projectDir, path: bundle.previewUrl };
+              const previewPath = filePath.with(bundle.previewUrl);
               if (pathExistsSync(previewPath)) {
-                const imageBuffer = await readFile(
-                  path.join(previewPath.projectDir, previewPath.path),
-                );
+                const imageBuffer = await readFile(previewPath.absolute);
                 images.push(await ollama.encodeImage(imageBuffer));
                 systemContent += `\nTake into account the preview of the bundle the file is from`;
               }
@@ -260,11 +258,7 @@ export default async function InitializeGenerateMetadataApi(
       destinationPath,
       async (node) => {
         if (await assetSelector(node)) {
-          await autoFileMetadata(
-            { projectDir: destinationPath.projectDir, path: node.path },
-            type,
-            abort,
-          );
+          await autoFileMetadata(destinationPath.with(node.path), type, abort);
           progress((progressValue += 1 / assetCount));
         }
       },
@@ -277,17 +271,14 @@ export default async function InitializeGenerateMetadataApi(
     await forAllAssetsIn(
       filePath,
       async (file) => {
-        await operateOnMetadata(
-          { projectDir: filePath.projectDir, path: file.path },
-          async (meta) => {
-            if (meta.description) {
-              meta.description = undefined;
-              return true;
-            }
+        await operateOnMetadata(filePath.with(file.path), async (meta) => {
+          if (meta.description) {
+            meta.description = undefined;
+            return true;
+          }
 
-            return false;
-          },
-        );
+          return false;
+        });
       },
       true,
     );
@@ -298,9 +289,8 @@ export default async function InitializeGenerateMetadataApi(
   audioDecode = module.default;
 
   api.saveAudioPeaks = async (localPath, peaks) => {
-    const filePath = { projectDir: store.get('projectDirectory'), path: normalize(localPath) };
-    const asolutePath = path.join(filePath.projectDir, filePath.path);
-    const stats = await stat(asolutePath);
+    const filePath = FilePath.fromStore(store, normalize(localPath));
+    const stats = await stat(filePath.absolute);
     await operateOnMetadata(filePath, async (meta) => {
       meta.peaks = await compressStringToBase64(peaks);
       meta.lastModified = stats.mtimeMs;
@@ -308,10 +298,9 @@ export default async function InitializeGenerateMetadataApi(
     });
   };
   api.saveAudioPreview = async (localPath, data) => {
-    const previewPath = await GetAbsoluteThumbnailPathForFile({
-      projectDir: store.get('projectDirectory'),
-      path: normalize(localPath),
-    });
+    const previewPath = await GetAbsoluteThumbnailPathForFile(
+      FilePath.fromStore(store, normalize(localPath)),
+    );
     const previewStats = await sharp(dataUrlToBuffer(data))
       .resize({ width: 256, height: 256, withoutEnlargement: true })
       .toFile(path.join(previewPath.projectDir, previewPath.path));
@@ -319,13 +308,7 @@ export default async function InitializeGenerateMetadataApi(
   };
   api.autoMetadata = (filePath, type, missingOnly) =>
     addTask('Auto Metadata ', (a, p) =>
-      autoMetadata(
-        { projectDir: store.get('projectDirectory'), path: normalize(filePath) },
-        type,
-        missingOnly,
-        a,
-        p,
-      ),
+      autoMetadata(FilePath.fromStore(store, normalize(filePath)), type, missingOnly, a, p),
     );
   api.canGenerateMetadata = async (assetPath, type) => {
     if (type === AutoTagType.Ollama) {
@@ -335,12 +318,8 @@ export default async function InitializeGenerateMetadataApi(
         return false;
       }
     }
-    const bundle = await findBundleInfoForFile({
-      projectDir: store.get('projectDirectory'),
-      path: normalize(assetPath),
-    });
+    const bundle = await findBundleInfoForFile(FilePath.fromStore(store, normalize(assetPath)));
     return !!bundle?.bundle.description;
   };
-  api.removeDescription = (p) =>
-    removeDescription({ projectDir: store.get('projectDirectory'), path: p });
+  api.removeDescription = (p) => removeDescription(FilePath.fromStore(store, p));
 }

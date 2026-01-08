@@ -1,11 +1,14 @@
+/* eslint-disable max-classes-per-file */
 /* eslint import/prefer-default-export: off */
 import { promises } from 'dns';
 import EventEmitter from 'events';
 import { existsSync, mkdirSync } from 'fs';
+import { stat } from 'fs/promises';
 import path from 'path';
 import { URL } from 'url';
 import { app, BrowserWindow, ipcMain } from 'electron';
 import log from 'electron-log/main';
+import ElectronStore from 'electron-store';
 import picomatch from 'picomatch';
 import Rand from 'rand-seed';
 import {
@@ -16,6 +19,7 @@ import {
   previewTypes,
   supportedTypesFlat,
   ImageFormat,
+  StoreSchema,
 } from '../shared/constants';
 
 export const ignoredFilesMatch = picomatch(
@@ -220,3 +224,56 @@ const RESOURCES_PATH = app.isPackaged
 export const getAssetPath = (...paths: string[]): string => {
   return path.join(RESOURCES_PATH, ...paths);
 };
+
+export class FilePath {
+  public readonly path: string;
+
+  public readonly projectDir: string;
+
+  public readonly absolute: string;
+
+  constructor(projectDir: string, filePath: string) {
+    this.path = filePath;
+    this.projectDir = projectDir;
+    this.absolute = path.join(projectDir, filePath);
+  }
+
+  public with(filePath: string) {
+    return new FilePath(this.projectDir, filePath);
+  }
+
+  public join(...paths: string[]) {
+    return new FilePath(this.projectDir, path.join(this.path, ...paths));
+  }
+
+  static fromStore(store: ElectronStore<StoreSchema>, filePath: string) {
+    return new FilePath(store.get('projectDirectory'), filePath);
+  }
+
+  static fromObject(obj: { path: string; projectDir: string }) {
+    return new FilePath(obj.projectDir, obj.path);
+  }
+}
+
+export async function getZipParentFs(p: FilePath): Promise<FilePath | undefined> {
+  let current = p.path;
+
+  while (true) {
+    const parent = path.dirname(current);
+    if (parent === current) break;
+
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      const fileStat = await stat(path.join(p.projectDir, parent));
+      if (fileStat.isFile() && parent.toLowerCase().endsWith('.zip')) {
+        return p.with(parent);
+      }
+    } catch {
+      // ignore missing paths
+    }
+
+    current = parent;
+  }
+
+  return undefined;
+}

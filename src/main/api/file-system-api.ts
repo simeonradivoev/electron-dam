@@ -6,8 +6,6 @@ import { app, shell } from 'electron';
 import log from 'electron-log/main';
 import Store from 'electron-store';
 import StreamZip from 'node-stream-zip';
-import { getZipParentFs } from 'renderer/scripts/utils';
-import { bool } from 'sharp';
 // This IS built-in to Node.js
 import {
   BundleMetaFile,
@@ -20,7 +18,14 @@ import {
   supportedTypes,
   zipDelimiter,
 } from '../../shared/constants';
-import { TypedEventEmitter, foreachAsync, ignoredFilesMatch, supportedFilesMatch } from '../util';
+import {
+  FilePath,
+  TypedEventEmitter,
+  foreachAsync,
+  getZipParentFs,
+  ignoredFilesMatch,
+  supportedFilesMatch,
+} from '../util';
 
 export type Events = {
   'file-changed': [path: FilePath];
@@ -30,12 +35,38 @@ export type Events = {
 
 export const fileEvents = new TypedEventEmitter<Events>();
 
-export function pathExistsSync(filePath: FilePath) {
-  return existsSync(path.join(filePath.projectDir, filePath.path));
+export async function isPartOfArchive(filePath: FilePath, includeZip?: boolean, fileStats?: Stats) {
+  if (!fileStats && !existsSync(filePath.absolute)) {
+    const zipArchive = getZipParentFs(filePath);
+    return zipArchive;
+  }
+
+  if (includeZip === false) {
+    return false;
+  }
+
+  const stats = fileStats ?? (await stat(filePath.absolute));
+  if (stats.isFile() && (await isArchive(filePath, stats))) {
+    return true;
+  }
+
+  return false;
 }
 
-export function pathJoin(filePath: FilePath, otherLocal: string): FilePath {
-  return { projectDir: filePath.projectDir, path: path.join(filePath.path, otherLocal) };
+export async function isArchive(filePath: FilePath, fileStats?: Stats) {
+  if (!fileStats && !existsSync(filePath.absolute)) {
+    return false;
+  }
+  const fileStatsFinal = fileStats ?? (await stat(filePath.absolute));
+  if (fileStatsFinal.isDirectory()) {
+    return false;
+  }
+
+  return filePath.path.toLocaleLowerCase().endsWith(zipDelimiter);
+}
+
+export function pathExistsSync(filePath: FilePath) {
+  return existsSync(path.join(filePath.projectDir, filePath.path));
 }
 
 export function pathReaddir(
@@ -48,7 +79,7 @@ export function pathReaddir(
 }
 
 export function pathLstat(filePath: FilePath) {
-  return lstat(path.join(filePath.projectDir, filePath.path));
+  return lstat(filePath.absolute);
 }
 
 export function pathStat(filePath: FilePath) {
@@ -56,16 +87,16 @@ export function pathStat(filePath: FilePath) {
 }
 
 export async function findBundlePath(filePath: FilePath): Promise<FilePath | undefined> {
-  if (filePath.path.endsWith(zipDelimiter)) {
+  if (await isArchive(filePath)) {
     const rootBundleMetaFile = path.join(filePath.projectDir, `${filePath.path}.${BundleMetaFile}`);
     if (existsSync(rootBundleMetaFile)) {
-      return { projectDir: filePath.projectDir, path: filePath.path };
+      return filePath;
     }
   }
 
   const rootBundleMetaFile = path.join(filePath.projectDir, filePath.path, BundleMetaFile);
   if (existsSync(rootBundleMetaFile)) {
-    return { projectDir: filePath.projectDir, path: filePath.path };
+    return filePath;
   }
 
   let currentPath = dirname(filePath.path);
@@ -74,7 +105,7 @@ export async function findBundlePath(filePath: FilePath): Promise<FilePath | und
   while (currentPath !== root) {
     let bundleMetaPath: string;
     // eslint-disable-next-line no-await-in-loop
-    const fileStat = await stat(path.join(filePath.projectDir, currentPath));
+    const fileStat = await stat(filePath.with(currentPath).absolute);
 
     if (fileStat.isFile()) {
       bundleMetaPath = `${currentPath}.${BundleMetaFile}`;
@@ -83,7 +114,7 @@ export async function findBundlePath(filePath: FilePath): Promise<FilePath | und
     }
 
     if (existsSync(path.join(filePath.projectDir, bundleMetaPath))) {
-      return { projectDir: filePath.projectDir, path: currentPath };
+      return filePath.with(currentPath);
     }
 
     // Reached the top level
@@ -105,32 +136,43 @@ export async function findBundlePath(filePath: FilePath): Promise<FilePath | und
   }
 
   if (existsSync(path.join(filePath.projectDir, rootBundleMetaPath))) {
-    return { projectDir: filePath.projectDir, path: root };
+    return filePath.with(root);
   }
   return undefined;
 }
 
 async function onOpenPath(pathToOpen: FilePath) {
-  const absolutePath = path.join(pathToOpen.projectDir, pathToOpen.path);
-  const info = await lstat(absolutePath);
+  if (!existsSync(pathToOpen.absolute)) {
+    const zipArchive = await getZipParentFs(pathToOpen);
+    if (zipArchive) {
+      shell.showItemInFolder(zipArchive.absolute);
+    }
+  }
+  const info = await lstat(pathToOpen.absolute);
   if (info) {
     if (info.isDirectory()) {
-      shell.openPath(absolutePath);
+      shell.openPath(pathToOpen.absolute);
     } else {
-      shell.showItemInFolder(absolutePath);
+      shell.showItemInFolder(pathToOpen.absolute);
     }
   }
 }
 
-export function getMetaId(filePath: string, isFolder: boolean): string {
-  if (isFolder) {
-    return path.join(filePath, BundleMetaFile);
+export async function getMetaId(filePath: FilePath, fileStats?: Stats) {
+  if (filePath.path.endsWith(BundleMetaFile) || filePath.path.endsWith(MetaFileExtension)) {
+    return filePath;
   }
 
-  if (filePath.endsWith('.zip')) {
-    return `${filePath}.${BundleMetaFile}`;
+  const stats = fileStats ?? (await stat(filePath.absolute));
+
+  if (stats.isDirectory()) {
+    return filePath.join(BundleMetaFile);
   }
-  return `${filePath}.${MetaFileExtension}`;
+
+  if (await isArchive(filePath, stats)) {
+    return filePath.with(`${filePath}.${BundleMetaFile}`);
+  }
+  return filePath.with(`${filePath}.${MetaFileExtension}`);
 }
 
 export async function getMetadata(
@@ -144,8 +186,8 @@ export async function getMetadata(
   } catch {
     return null;
   }
-  const metaPath = getMetaId(filePath.path, stats.isDirectory());
-  const metaAbsolutePath = path.join(filePath.projectDir, metaPath);
+  const metaPath = await getMetaId(filePath, stats);
+  const metaAbsolutePath = path.join(filePath.projectDir, metaPath.path);
   if (existsSync(metaAbsolutePath)) {
     try {
       const metaBuffer = await readFile(metaAbsolutePath, 'utf8');
@@ -176,8 +218,8 @@ export async function operateOnMetadata(
     if (!hadExisting && fileStat.isDirectory()) {
       throw new Error('Cannot create metadata for bundle');
     }
-    const metaPath = getMetaId(filePath.path, fileStat.isDirectory());
-    await writeFile(path.join(filePath.projectDir, metaPath), JSON.stringify(existingMeta));
+    const metaPath = await getMetaId(filePath, fileStat);
+    await writeFile(path.join(filePath.projectDir, metaPath.path), JSON.stringify(existingMeta));
   }
 
   return existingMeta;
@@ -209,13 +251,13 @@ async function allFilesRec(
 
   await Promise.all(
     dirs.map(async (dir) => {
-      const childPath = pathJoin(parentPath, dir.name);
+      const childPath = parentPath.join(dir.name);
       const childExt = extname(childPath.path);
 
       // Directory
       if (dir.isDirectory()) {
         if (includeBundles) {
-          if (pathExistsSync(pathJoin(childPath, BundleMetaFile))) {
+          if (pathExistsSync(childPath.join(BundleMetaFile))) {
             process(childPath);
           }
         }
@@ -326,12 +368,12 @@ async function forAllFilesRec(
       /* empty */
     } else if (childExt === '.zip') {
       if (recursive) {
-        const zipEntries = await getZipEntries({ projectDir, path: childPath });
+        const zipEntries = await getZipEntries(new FilePath(projectDir, childPath));
         await foreachAsync(
           Object.keys(zipEntries).filter((p) => !ignoredFilesMatch(p)),
           (p) => {
             const entry = zipEntries[p];
-            return handler(getFileNodeFromZipEntry({ projectDir, path: childPath }, p, entry));
+            return handler(getFileNodeFromZipEntry(new FilePath(projectDir, childPath), p, entry));
           },
           abort,
         );
@@ -370,7 +412,7 @@ export async function forAllAssetsIn(
   abort?: AbortSignal,
   includeBundles?: boolean,
 ) {
-  const folderStat = await stat(path.join(destinationPath.projectDir, destinationPath.path));
+  const folderStat = await stat(destinationPath.absolute);
   const bundle = await findBundlePath(destinationPath);
 
   if (folderStat.isFile() && destinationPath.path.endsWith('.zip')) {
@@ -402,7 +444,7 @@ export async function forAllAssetsIn(
       return;
     }
 
-    const dirIter = await opendir(path.join(destinationPath.projectDir, destinationPath.path), {});
+    const dirIter = await opendir(destinationPath.absolute, {});
     const { value, done } = await dirIter[Symbol.asyncIterator]().next();
     if (!done) await dirIter.close();
     parent.isEmpty = !value;
@@ -425,11 +467,7 @@ export async function forAllAssetsIn(
     const name = basename(destinationPath.path);
     const dir = dirname(destinationPath.path);
     log.log(name, dir);
-    const fileNode = await getFile(
-      name,
-      { projectDir: destinationPath.projectDir, path: dir },
-      bundle?.path,
-    );
+    const fileNode = await getFile(name, destinationPath.with(dir), bundle?.path);
     if (fileNode) {
       await handler(fileNode);
     }
@@ -463,11 +501,11 @@ export function forAllAssetsInProject(
   includeBundles?: boolean,
 ) {
   const projectDir = (store.get('projectDirectory') as string) ?? '';
-  return forAllAssetsIn({ projectDir, path: '' }, handler, parallel, abort, includeBundles);
+  return forAllAssetsIn(new FilePath(projectDir, ''), handler, parallel, abort, includeBundles);
 }
 
 async function setTags(filePath: FilePath, tags: string[]): Promise<string[] | null> {
-  const bundlePath = pathJoin(filePath, BundleMetaFile);
+  const bundlePath = filePath.join(BundleMetaFile);
   if (pathExistsSync(bundlePath)) {
     const bundle = await operateOnMetadata(bundlePath, async (b) => {
       b.tags = tags;
@@ -489,7 +527,7 @@ async function getFile(
   bundlePath?: string,
 ): Promise<FileTreeNode | null> {
   const childPath = path.join(dirPath.path, name);
-  const childAbsolutePath = path.join(dirPath.projectDir, dirPath.path, name);
+  const childAbsolutePath = dirPath.join(name).absolute;
   const childExt = extname(childPath).toLowerCase();
   const fileStats = await lstat(childAbsolutePath);
 
@@ -510,7 +548,7 @@ async function getFile(
     }
 
     if (childExt === zipDelimiter) {
-      const entries = getZipEntries({ path: childPath, projectDir: dirPath.projectDir });
+      const entries = getZipEntries(dirPath.with(childPath));
       child.isEmpty = Object.keys(entries).length <= 0;
     }
   } else if (fileStats.isDirectory()) {
@@ -550,11 +588,10 @@ export function resolveAssetPath(store: Store<StoreSchema>, p: string) {
 async function getFileFromPath(filePath: FilePath) {
   if (!pathExistsSync(filePath)) {
     // file doesn't exist so start checking alternatives
-    const zipParent = await getZipParentFs(filePath);
-    if (zipParent) {
-      const zipPath: FilePath = { projectDir: filePath.projectDir, path: zipParent };
+    const zipPath = await getZipParentFs(filePath);
+    if (zipPath) {
       const entries = await getZipEntries(zipPath);
-      const entryLocalPath = filePath.path.substring(zipParent.length + 1);
+      const entryLocalPath = filePath.path.substring(zipPath.path.length + 1);
       return getFileNodeFromZipEntry(zipPath, entryLocalPath, entries[entryLocalPath]);
     }
 
@@ -564,7 +601,7 @@ async function getFileFromPath(filePath: FilePath) {
   const bundlePath = await findBundlePath(filePath);
   return getFile(
     path.basename(filePath.path),
-    { projectDir: filePath.projectDir, path: path.dirname(filePath.path) },
+    filePath.with(path.dirname(filePath.path)),
     bundlePath?.path,
   );
 }
@@ -603,7 +640,7 @@ async function getChildrenPaths(filePath: FilePath): Promise<string[]> {
 async function getChildren(p: FilePath): Promise<FileTreeNode[]> {
   const filePath = p;
 
-  const fileStat = await lstat(path.join(filePath.projectDir, filePath.path));
+  const fileStat = await lstat(filePath.absolute);
   if (fileStat.isDirectory()) {
     const allFiles: FileTreeNode[] = [];
     await forAllFilesRec(
@@ -639,10 +676,7 @@ function setupFileWatch(api: MainIpcCallbacks, projectDir: string) {
   watcher
     .on('add', (p) => {
       const filePath = p.substring(projectDir.length + 1);
-      fileEvents.emit('file-added', {
-        projectDir,
-        path: filePath,
-      });
+      fileEvents.emit('file-added', new FilePath(projectDir, filePath));
       if (!ignoredFilesMatch(p) && supportedFilesMatch(p)) {
         api.fileAdded(filePath);
       }
@@ -659,27 +693,24 @@ function setupFileWatch(api: MainIpcCallbacks, projectDir: string) {
     })
     .on('unlink', (p) => {
       const filePath = p.substring(projectDir.length + 1);
-      fileEvents.emit('file-removed', {
-        projectDir,
-        path: filePath,
-      });
+      fileEvents.emit('file-removed', new FilePath(projectDir, filePath));
       if (!ignoredFilesMatch(p) && supportedFilesMatch(p)) {
         api.fileUnlinked(p.substring(projectDir.length + 1));
       }
     })
     .on('change', (p) => {
       const filePath = p.substring(projectDir.length + 1);
-      fileEvents.emit('file-changed', {
-        projectDir,
-        path: filePath,
-      });
+      fileEvents.emit('file-changed', new FilePath(projectDir, filePath));
       if (!ignoredFilesMatch(p) && supportedFilesMatch(p)) {
         api.fileChanged(filePath);
       }
     });
 
   return () => {
-    watcher.close().then(() => log.log('Stopped Watching ', projectDir));
+    watcher
+      .close()
+      .then(() => log.log('Stopped Watching ', projectDir))
+      .catch((e) => log.error(e));
   };
 }
 
@@ -715,7 +746,7 @@ async function getParentTags(filePath: FilePath): Promise<string[]> {
     parentStack.pop();
     const parentPath = parentStack.join(path.sep);
     // eslint-disable-next-line no-await-in-loop
-    const tags = await getTags({ projectDir: filePath.projectDir, path: parentPath });
+    const tags = await getTags(filePath.with(parentPath));
     tags?.forEach((tag: string) => parentTags.add(tag));
   }
   return Array.from(parentTags);
@@ -740,7 +771,7 @@ export default function InitializeFileSystemApi(
     const tagsSet = new Map<string, number>();
     const projectDir = (store.get('projectDirectory') as string) ?? '';
     await allFilesRec(
-      { projectDir, path: '' },
+      new FilePath(projectDir, ''),
       async (filePath) => {
         const tags = await getTags(filePath);
         tags?.forEach((t) => {
@@ -771,17 +802,14 @@ export default function InitializeFileSystemApi(
     await forAllAssetsIn(
       filePath,
       async (node) => {
-        await operateOnMetadata(
-          { projectDir: filePath.projectDir, path: node.path },
-          async (meta) => {
-            if (meta.tags) {
-              meta.tags = [];
-              return true;
-            }
+        await operateOnMetadata(filePath.with(node.path), async (meta) => {
+          if (meta.tags) {
+            meta.tags = [];
+            return true;
+          }
 
-            return false;
-          },
-        );
+          return false;
+        });
       },
       true,
     );
@@ -837,20 +865,20 @@ export default function InitializeFileSystemApi(
   };
 
   app.on('before-quit', beforeQuit);
-  api.getTags = (p) => getTags({ projectDir, path: normalize(p) });
-  api.addTags = (p, t) => addTags({ projectDir, path: normalize(p) }, t);
-  api.removeTag = (p, t) => removeTag({ projectDir, path: normalize(p) }, t);
-  api.removeAllTags = (p) => removeAllTags({ projectDir, path: normalize(p) });
-  api.getParentTags = (p) => getParentTags({ projectDir, path: normalize(p) });
+  api.getTags = (p) => getTags(new FilePath(projectDir, normalize(p)));
+  api.addTags = (p, t) => addTags(new FilePath(projectDir, normalize(p)), t);
+  api.removeTag = (p, t) => removeTag(new FilePath(projectDir, normalize(p)), t);
+  api.removeAllTags = (p) => removeAllTags(new FilePath(projectDir, normalize(p)));
+  api.getParentTags = (p) => getParentTags(new FilePath(projectDir, normalize(p)));
   api.getMetadata = (p) =>
-    p ? getMetadata({ projectDir, path: normalize(p) }) : Promise.reject(p);
-  api.getAllFiles = (p) => getAllAssetsIn({ projectDir, path: normalize(p) });
+    p ? getMetadata(new FilePath(projectDir, normalize(p))) : Promise.reject(p);
+  api.getAllFiles = (p) => getAllAssetsIn(new FilePath(projectDir, normalize(p)));
   api.getGlobalTags = getAllTags;
-  api.setTags = (p, t) => setTags({ projectDir, path: normalize(p) }, t);
-  api.getFile = (p) => getFileFromPath({ projectDir, path: normalize(p) });
-  api.getFileChildrenPaths = (p) => getChildrenPaths({ projectDir, path: normalize(p) });
-  api.getFileChildren = (p) => getChildren({ projectDir, path: normalize(p) });
-  api.openPath = (p) => onOpenPath({ projectDir, path: normalize(p) });
+  api.setTags = (p, t) => setTags(new FilePath(projectDir, normalize(p)), t);
+  api.getFile = (p) => getFileFromPath(new FilePath(projectDir, normalize(p)));
+  api.getFileChildrenPaths = (p) => getChildrenPaths(new FilePath(projectDir, normalize(p)));
+  api.getFileChildren = (p) => getChildren(new FilePath(projectDir, normalize(p)));
+  api.openPath = (p) => onOpenPath(new FilePath(projectDir, normalize(p)));
 
   const cleanup = async () => {
     app.removeListener('before-quit', beforeQuit);

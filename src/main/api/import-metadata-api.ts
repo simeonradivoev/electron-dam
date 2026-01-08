@@ -1,10 +1,11 @@
 import * as fs from 'fs';
 import * as https from 'https';
-import path from 'path';
+import path, { normalize } from 'path';
 import { setTimeout } from 'timers/promises';
 import * as cheerio from 'cheerio';
 import log from 'electron-log/main';
 import ElectronStore from 'electron-store';
+import { FilePath } from 'main/util';
 import ollama from 'ollama';
 import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
@@ -210,11 +211,7 @@ async function downloadPreview(
   abort?: AbortSignal,
   progress?: (p: number) => void,
 ): Promise<void> {
-  const previewPath = path.join(
-    bundlePath.projectDir,
-    bundlePath.path,
-    `Preview${previewTypes[0]}`,
-  );
+  const previewPath = bundlePath.join(`Preview${previewTypes[0]}`);
 
   if (url.startsWith('http')) {
     const pageHtml = await loadPageHtml(url, abort, progress);
@@ -226,7 +223,7 @@ async function downloadPreview(
         https.get(imageUrl, (res) => {
           if (res.statusCode === 200) {
             res
-              .pipe(fs.createWriteStream(previewPath))
+              .pipe(fs.createWriteStream(previewPath.absolute))
               .on('error', reject)
               .once('close', () => resolve(imageUrl));
           } else {
@@ -248,10 +245,10 @@ async function downloadPreview(
 
   // add better image detection
   if (fs.existsSync(url)) {
-    if (url === previewPath) {
+    if (url === previewPath.absolute) {
       throw new Error('Trying to use the same image as preview');
     }
-    fs.createReadStream(url).pipe(sharp().webp()).toFile(previewPath);
+    fs.createReadStream(url).pipe(sharp().webp()).toFile(previewPath.absolute);
   }
 
   progress?.(1);
@@ -280,6 +277,6 @@ export default function InitializeImportMetadataApi(
     );
   api.downloadPreview = (p, url) =>
     addTask(`Downloading Preview`, (abort, progress) =>
-      downloadPreview({ projectDir: store.get('projectDirectory'), path: p }, url, abort, progress),
+      downloadPreview(FilePath.fromStore(store, normalize(p)), url, abort, progress),
     );
 }
