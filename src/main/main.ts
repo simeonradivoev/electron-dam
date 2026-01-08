@@ -30,12 +30,11 @@ import InitializeWindowApi from './api/window-api';
 import { InitializeTasks, InitializeTasksApi } from './managers/task-manager';
 import { getAssetPath, registerMainCallbacks, registerMainHandlers, resolveHtmlPath } from './util';
 
-log.initialize();
+log.initialize({ preload: true });
 
 class AppUpdater {
   constructor() {
     log.transports.file.level = 'info';
-    autoUpdater.logger = log;
     autoUpdater.checkForUpdatesAndNotify();
   }
 }

@@ -45,20 +45,20 @@ export async function isPartOfArchive(filePath: FilePath, includeZip?: boolean, 
     return false;
   }
 
-  const stats = fileStats ?? (await stat(filePath.absolute));
-  if (stats.isFile() && (await isArchive(filePath, stats))) {
+  const stats = fileStats ?? (await pathStat(filePath));
+  if (stats.isFile() && (await isArchive(filePath, false))) {
     return true;
   }
 
   return false;
 }
 
-export async function isArchive(filePath: FilePath, fileStats?: Stats) {
-  if (!fileStats && !existsSync(filePath.absolute)) {
+export async function isArchive(filePath: FilePath, isDirectory?: boolean) {
+  if (!isDirectory && !existsSync(filePath.absolute)) {
     return false;
   }
-  const fileStatsFinal = fileStats ?? (await stat(filePath.absolute));
-  if (fileStatsFinal.isDirectory()) {
+  const finalIsDirectory = isDirectory ?? (await pathStat(filePath)).isDirectory();
+  if (finalIsDirectory) {
     return false;
   }
 
@@ -82,8 +82,12 @@ export function pathLstat(filePath: FilePath) {
   return lstat(filePath.absolute);
 }
 
-export function pathStat(filePath: FilePath) {
-  return lstat(path.join(filePath.projectDir, filePath.path));
+export async function pathStat(filePath: FilePath) {
+  try {
+    return await stat(path.join(filePath.projectDir, filePath.path));
+  } catch (e: any) {
+    throw new Error(e.message);
+  }
 }
 
 export async function findBundlePath(filePath: FilePath): Promise<FilePath | undefined> {
@@ -163,16 +167,16 @@ export async function getMetaId(filePath: FilePath, fileStats?: Stats) {
     return filePath;
   }
 
-  const stats = fileStats ?? (await stat(filePath.absolute));
+  const stats = fileStats ?? (await pathStat(filePath));
 
   if (stats.isDirectory()) {
     return filePath.join(BundleMetaFile);
   }
 
-  if (await isArchive(filePath, stats)) {
-    return filePath.with(`${filePath}.${BundleMetaFile}`);
+  if (await isArchive(filePath, stats.isDirectory())) {
+    return filePath.with(`${filePath.path}.${BundleMetaFile}`);
   }
-  return filePath.with(`${filePath}.${MetaFileExtension}`);
+  return filePath.with(`${filePath.path}.${MetaFileExtension}`);
 }
 
 export async function getMetadata(
@@ -187,10 +191,9 @@ export async function getMetadata(
     return null;
   }
   const metaPath = await getMetaId(filePath, stats);
-  const metaAbsolutePath = path.join(filePath.projectDir, metaPath.path);
-  if (existsSync(metaAbsolutePath)) {
+  if (existsSync(metaPath.absolute)) {
     try {
-      const metaBuffer = await readFile(metaAbsolutePath, 'utf8');
+      const metaBuffer = await readFile(metaPath.absolute, 'utf8');
       existingMeta = JSON.parse(metaBuffer.toString());
     } catch {
       /* empty */
@@ -219,7 +222,7 @@ export async function operateOnMetadata(
       throw new Error('Cannot create metadata for bundle');
     }
     const metaPath = await getMetaId(filePath, fileStat);
-    await writeFile(path.join(filePath.projectDir, metaPath.path), JSON.stringify(existingMeta));
+    await writeFile(metaPath.absolute, JSON.stringify(existingMeta));
   }
 
   return existingMeta;
@@ -275,6 +278,7 @@ async function allFilesRec(
 
 function getFileNodeFromZipEntry(
   zipPath: FilePath,
+  zipStats: Stats,
   entryPath: string,
   entry: StreamZip.ZipEntry,
 ): FileTreeNode {
@@ -283,14 +287,18 @@ function getFileNodeFromZipEntry(
     path: path.join(zipPath.path, entryPath),
     isDirectory: entry.isDirectory,
     isArchived: true,
-    size: entry.size,
+    stats: {
+      size: entry.size,
+      ino: zipStats.ino,
+      mtimeMs: entry.time,
+    },
     isEmpty: false,
   } satisfies FileTreeNode;
 }
 
 function getZipEntries(zipPath: FilePath) {
   // eslint-disable-next-line new-cap
-  const zip = new StreamZip.async({ file: path.join(zipPath.projectDir, zipPath.path) });
+  const zip = new StreamZip.async({ file: zipPath.absolute });
   return zip.entries();
 }
 
@@ -316,10 +324,9 @@ async function forAllFilesRec(
   const dirs = await readdir(path.join(projectDir, parent.path), { withFileTypes: true });
   async function handleDir(dir: Dirent) {
     const childPath = path.join(parent.path, dir.name);
-    const childPathAbsolute = path.join(projectDir, childPath);
     const isDirectory = dir.isDirectory();
     const childExt = extname(childPath).toLowerCase();
-    const fileStates = await lstat(childPathAbsolute);
+    const fileStates = await pathStat(new FilePath(projectDir, childPath));
 
     // Skip meta files
     if (ignoredFilesMatch(childPath)) {
@@ -331,7 +338,7 @@ async function forAllFilesRec(
       name: dir.name,
       path: childPath,
       fileType: FileFormatsToFileTypes.get(childExt),
-      size: fileStates.size,
+      stats: fileStates,
       bundlePath: parent.bundlePath,
       isEmpty: false,
       isArchived: false,
@@ -357,14 +364,14 @@ async function forAllFilesRec(
         await forAllFilesRec(projectDir, child, handler, true, parallel, abort, includeBundles);
       } else {
         await handler(child);
-        const dirIter = await opendir(childPathAbsolute);
+        const dirIter = await opendir(path.join(projectDir, childPath));
         const { value, done } = await dirIter[Symbol.asyncIterator]().next();
         if (!done) await dirIter.close();
         child.isEmpty = !value;
       }
     }
     // Non Directory
-    else if (!supportedFilesMatch(childPath.replaceAll('\\', '/'))) {
+    else if (!supportedFilesMatch(childPath)) {
       /* empty */
     } else if (childExt === '.zip') {
       if (recursive) {
@@ -373,7 +380,9 @@ async function forAllFilesRec(
           Object.keys(zipEntries).filter((p) => !ignoredFilesMatch(p)),
           (p) => {
             const entry = zipEntries[p];
-            return handler(getFileNodeFromZipEntry(new FilePath(projectDir, childPath), p, entry));
+            return handler(
+              getFileNodeFromZipEntry(new FilePath(projectDir, childPath), fileStates, p, entry),
+            );
           },
           abort,
         );
@@ -412,17 +421,17 @@ export async function forAllAssetsIn(
   abort?: AbortSignal,
   includeBundles?: boolean,
 ) {
-  const folderStat = await stat(destinationPath.absolute);
+  const folderStat = await pathStat(destinationPath);
   const bundle = await findBundlePath(destinationPath);
 
-  if (folderStat.isFile() && destinationPath.path.endsWith('.zip')) {
+  if (await isArchive(destinationPath, folderStat.isDirectory())) {
     // Handle Zip files
     const entries = await getZipEntries(destinationPath);
     await foreachAsync(
       Object.keys(entries),
       (p) => {
         const entry = entries[p];
-        const node = getFileNodeFromZipEntry(destinationPath, p, entry);
+        const node = getFileNodeFromZipEntry(destinationPath, folderStat, p, entry);
         node.bundlePath = bundle?.path;
         return handler(node);
       },
@@ -435,12 +444,16 @@ export async function forAllAssetsIn(
       bundlePath: bundle?.path,
       name: basename(destinationPath.path),
       path: destinationPath.path,
-      size: 0,
+      stats: folderStat,
       isEmpty: false,
       isArchived: false,
     };
 
     if (!pathExistsSync(destinationPath)) {
+      return;
+    }
+
+    if (ignoredFilesMatch(destinationPath.path)) {
       return;
     }
 
@@ -466,7 +479,6 @@ export async function forAllAssetsIn(
     // Just return the file straight up
     const name = basename(destinationPath.path);
     const dir = dirname(destinationPath.path);
-    log.log(name, dir);
     const fileNode = await getFile(name, destinationPath.with(dir), bundle?.path);
     if (fileNode) {
       await handler(fileNode);
@@ -536,14 +548,18 @@ async function getFile(
     name,
     path: childPath,
     fileType: FileFormatsToFileTypes.get(childExt),
-    size: fileStats.size,
+    stats: fileStats,
     bundlePath,
     isEmpty: true,
     isArchived: childExt === zipDelimiter,
   };
 
+  if (ignoredFilesMatch(child.name)) {
+    return null;
+  }
+
   if (fileStats.isFile()) {
-    if (!supportedTypes.has(childExt) || ignoredFilesMatch(child.name)) {
+    if (!supportedTypes.has(childExt)) {
       return null;
     }
 
@@ -590,9 +606,10 @@ async function getFileFromPath(filePath: FilePath) {
     // file doesn't exist so start checking alternatives
     const zipPath = await getZipParentFs(filePath);
     if (zipPath) {
+      const zipStats = await pathStat(zipPath);
       const entries = await getZipEntries(zipPath);
       const entryLocalPath = filePath.path.substring(zipPath.path.length + 1);
-      return getFileNodeFromZipEntry(zipPath, entryLocalPath, entries[entryLocalPath]);
+      return getFileNodeFromZipEntry(zipPath, zipStats, entryLocalPath, entries[entryLocalPath]);
     }
 
     return null;
@@ -659,7 +676,7 @@ async function getChildren(p: FilePath): Promise<FileTreeNode[]> {
     const zipEntries = await getZipEntries(filePath);
     return Object.keys(zipEntries)
       .filter((e) => !ignoredFilesMatch(e) && supportedFilesMatch(e))
-      .map((e) => getFileNodeFromZipEntry(filePath, e, zipEntries[e]));
+      .map((e) => getFileNodeFromZipEntry(filePath, fileStat, e, zipEntries[e]));
   }
 
   return [];
@@ -821,30 +838,48 @@ export default function InitializeFileSystemApi(
     fileWatchDispose = setupFileWatch(apiCallbacks, projectDir);
   }
 
-  const fileLoaders: FileIndexingHandler[] = [];
+  const fileIndexers: FileIndexingHandler[] = [];
+  const fileIndexersPre: FileIndexingHandler[] = [];
+
   // File index registry
   const fileIndexRegistry: FileLoaderRegistry = {
-    register: (handlers) => fileLoaders.push(handlers),
+    register: (handler) => fileIndexers.push(handler),
+    registerPre: (handler) => fileIndexersPre.push(handler),
     index: async (abort, progress) => {
-      const handlers = await Promise.all(
-        fileLoaders.map((l) =>
-          l({
-            projectDir,
-            abort,
-          }),
-        ),
-      );
+      const preHandlers = (
+        await Promise.all(
+          fileIndexersPre.map((l) =>
+            l({
+              projectDir,
+              abort,
+            }),
+          ),
+        )
+      ).filter((h) => !!h);
+
       let assetCount = 0;
       // Calculate assets counts. We need to know them in advance to show progress bar.
       await forAllAssetsInProject(
         store,
-        async () => {
+        async (node) => {
+          await Promise.all(preHandlers.map((h) => h(node)));
           assetCount += 1;
         },
         true,
         abort,
         true,
       );
+
+      const handlers = (
+        await Promise.all(
+          fileIndexers.map((l) =>
+            l({
+              projectDir,
+              abort,
+            }),
+          ),
+        )
+      ).filter((h) => !!h);
       let progressValue = 0;
       // Go over all assets
       await forAllAssetsInProject(

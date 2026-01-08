@@ -12,7 +12,7 @@ import AsyncQueue from '../managers/AsyncQueue';
 import { FilePath, imageMediaFormatsMatch, mkdirs } from '../util';
 import { findBundleInfoForFile, findFolderPreview, findZipPreviewReadable } from './bundles-api';
 import { thumbCache } from './cache/thumbnail-cache';
-import { pathExistsSync } from './file-system-api';
+import { pathExistsSync, pathStat } from './file-system-api';
 
 export function RegisterProtocols() {
   protocol.registerSchemesAsPrivileged([
@@ -63,7 +63,7 @@ export function GetThumbnailPath(filePath: FilePath, statInfo: Stats | ZipEntry)
 }
 
 export async function GetAbsoluteThumbnailPathForFile(filePath: FilePath, statInfoParam?: Stats) {
-  return GetThumbnailPath(filePath, statInfoParam ?? (await stat(filePath.absolute)));
+  return GetThumbnailPath(filePath, statInfoParam ?? (await pathStat(filePath)));
 }
 
 export default function InitializeProtocols(store: Store<StoreSchema>) {

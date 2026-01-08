@@ -1,4 +1,4 @@
-import { lstat } from 'fs/promises';
+import { lstat, stat } from 'fs/promises';
 import path from 'path';
 import log from 'electron-log/main';
 import Store from 'electron-store';
@@ -93,13 +93,19 @@ export function LoadDatabaseExact(store: Store<StoreSchema>, directory: string):
           InitializeThumbnailCache(api, store);
           InitializeFileInfoApi(api, store, database);
           InitializeBundlesApi(api, store, database);
-          InitializeSearchApi(api, store, database, fileSystemApi.fileIndexRegistry);
+          const searchApi = InitializeSearchApi(
+            api,
+            store,
+            database,
+            fileSystemApi.fileIndexRegistry,
+          );
           InitializeDatabaseCallbacks(store, database);
           api.reIndexFiles = reIndexTask;
           registerMainHandlers(api);
 
           database.on('close', () => {
             fileSystemApi.cleanup();
+            searchApi.cleanup();
             unregisterMainHandlers(api);
           });
         },
@@ -114,7 +120,7 @@ export function LoadDatabaseExact(store: Store<StoreSchema>, directory: string):
 
 export async function LoadDatabase(store: Store<StoreSchema>): Promise<Loki | undefined> {
   const projectDir = store.get('projectDirectory') as string;
-  if (projectDir && !!(await lstat(projectDir).catch(() => false))) {
+  if (projectDir && !!(await stat(projectDir).catch(() => false))) {
     return LoadDatabaseExact(store, projectDir);
   }
   return undefined;

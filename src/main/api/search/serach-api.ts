@@ -5,7 +5,7 @@ import '@orama/plugin-qps';
 import log from 'electron-log/main';
 import Store from 'electron-store';
 import Loki from 'lokijs';
-import { FilePath, foreachAsync } from 'main/util';
+import { FileHasher, FilePath } from 'main/util';
 import { stringSimilarity } from 'string-similarity-js';
 import {
   StoreSchema,
@@ -14,24 +14,25 @@ import {
   MainIpcGetter,
 } from '../../../shared/constants';
 import { addTask } from '../../managers/task-manager';
+import { getVirtualBundles, tryGetBundleEntryFromFolderPath } from '../bundles-api';
 import {
-  findBundleInfoForFile,
-  getBundles,
-  getVirtualBundles,
-  tryGetBundleEntryFromFolderPath,
-} from '../bundles-api';
-import {
-  fileEvents,
   forAllAssetsIn,
   forAllAssetsInProject,
-  getAllAssetsIn,
   getMetadata,
+  getMetaId,
   operateOnMetadata,
   pathStat,
 } from '../file-system-api';
 import { getSetting } from '../settings';
 import { generate, model } from './EmbeddingsService';
-import { clearDatabase, search, initialize as initializeOrama, remove, index } from './orama';
+import {
+  search,
+  initialize as initializeOrama,
+  remove,
+  index,
+  loadIndex,
+  persistIndex,
+} from './orama';
 
 export async function removeIndex(filePath: FilePath) {
   await remove(filePath);
@@ -173,21 +174,42 @@ export function InitializeSearchApi(
     });
   }
 
-  async function registerEmeddingGeneration({
-    projectDir,
-  }: FileIndexerParams): ReturnType<FileIndexingHandler> {
+  const cacheHash = new FileHasher();
+
+  async function registerFileIndexHashing(): ReturnType<FileIndexingHandler> {
+    const projectDir = store.get('projectDirectory');
+    const virtualBundles = db.getCollection<VirtualBundle>('bundles');
+    virtualBundles.find().forEach((b) => {
+      cacheHash.addHash(0, b.meta.revision ?? 0, b.meta.updated ?? 0);
+    });
     return async (node) => {
-      await updateFileEmbeddings(new FilePath(projectDir, node.path));
+      // eslint-disable-next-line no-bitwise
+      try {
+        const meta = await getMetaId(new FilePath(projectDir, node.path));
+        const metaStats = await pathStat(meta);
+        cacheHash.addHash(metaStats.size, metaStats.blocks, metaStats.mtimeMs);
+      } catch {
+        // empty
+      }
     };
   }
 
   async function registerVectorIndexing({
     abort,
   }: FileIndexerParams): ReturnType<FileIndexingHandler> {
-    await clearDatabase();
+    try {
+      log.log('Trying to load Orama Index from dish for hash ', cacheHash);
+      if (await loadIndex(store, cacheHash.hash)) {
+        log.log('Orama Index loaded from disk ');
+        return undefined;
+      }
+    } catch (error) {
+      log.error('Error while trying to loaded Orama index from disk ', error);
+    }
+
+    log.error('Could not find orama index on disk for  ', cacheHash.hash);
     const virtualBundles = db.getCollection<VirtualBundle>('bundles');
     const projectDir = (store.get('projectDirectory') as string) ?? '';
-
     // eslint-disable-next-line no-restricted-syntax
     for await (const bundle of await getVirtualBundles(virtualBundles)) {
       await updateFileFromPath(projectDir, bundle.id, bundle);
@@ -200,6 +222,7 @@ export function InitializeSearchApi(
       if (node.isArchived) {
         return;
       }
+      await updateFileEmbeddings(new FilePath(projectDir, node.path));
       let bundle: BundleInfo | undefined;
       if (node.bundlePath) {
         bundle =
@@ -211,14 +234,14 @@ export function InitializeSearchApi(
   }
 
   // Index files for searching
-  registry.register(registerEmeddingGeneration);
+  registry.registerPre(registerFileIndexHashing);
   registry.register(registerVectorIndexing);
 
   // Orama IPC Handlers
   api.generateEmbeddings = (asset) =>
-    addTask(`Generating Embeddings ${asset}`, (a, p) =>
-      generateEmbeddings(FilePath.fromStore(store, asset), a, true),
-    );
+    addTask(`Generating Embeddings ${asset}`, async (a, p) => {
+      await generateEmbeddings(FilePath.fromStore(store, asset), a, true);
+    });
   api.generateMissingEmbeddings = () => generateMissingEmbeddings();
   api.canGenerateEmbeddings = async (assetPath) => {
     const metadata = await getMetadata(FilePath.fromStore(store, assetPath));
@@ -246,5 +269,34 @@ export function InitializeSearchApi(
       count: results.count,
       pageSize: getSetting(store, 'searchResultsPerPage'),
     };
+  };
+
+  return {
+    cleanup: async () => {
+      const savingCacheHash = new FileHasher();
+      const projectDir = store.get('projectDirectory');
+      const virtualBundles = db.getCollection<VirtualBundle>('bundles');
+      virtualBundles.find().forEach((b) => {
+        savingCacheHash.addHash(0, b.meta.revision ?? 0, b.meta.updated ?? 0);
+      });
+      await forAllAssetsInProject(
+        store,
+        async (node) => {
+          try {
+            const meta = await getMetaId(new FilePath(projectDir, node.path));
+            const metaStat = await pathStat(meta);
+            savingCacheHash.addHash(metaStat.size, metaStat.blocks, metaStat.mtimeMs);
+          } catch {
+            // empty
+          }
+        },
+        true,
+        undefined,
+        true,
+      );
+      if (await persistIndex(store, savingCacheHash.hash)) {
+        log.log('Saved Orama to hash ', savingCacheHash);
+      }
+    },
   };
 }

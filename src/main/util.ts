@@ -2,7 +2,7 @@
 /* eslint import/prefer-default-export: off */
 import { promises } from 'dns';
 import EventEmitter from 'events';
-import { existsSync, mkdirSync } from 'fs';
+import { existsSync, mkdirSync, Stats } from 'fs';
 import { stat } from 'fs/promises';
 import path from 'path';
 import { URL } from 'url';
@@ -252,6 +252,24 @@ export class FilePath {
 
   static fromObject(obj: { path: string; projectDir: string }) {
     return new FilePath(obj.projectDir, obj.path);
+  }
+}
+
+export class FileHasher {
+  private size: number = 0;
+
+  private earliestChange: number = Number.MIN_SAFE_INTEGER;
+
+  private ino: number = 0;
+
+  public addHash(size: number, id: number, mtimeMs: number) {
+    this.ino += id;
+    this.size += size;
+    this.earliestChange = Math.max(this.earliestChange, mtimeMs);
+  }
+
+  public get hash() {
+    return this.size ^ this.earliestChange ^ this.ino;
   }
 }
 

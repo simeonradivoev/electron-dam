@@ -1,5 +1,9 @@
-import fs from 'fs';
+import fs, { createReadStream, createWriteStream, existsSync } from 'fs';
+import { readdir, readFile, rm, writeFile } from 'fs/promises';
 import path from 'path';
+import { Readable } from 'stream';
+import { pipeline } from 'stream/promises';
+import zlib from 'zlib';
 import {
   create,
   insert,
@@ -12,13 +16,17 @@ import {
   SearchParams,
   AnySchema,
   SearchableType,
+  load,
+  save,
 } from '@orama/orama';
-import { persist } from '@orama/plugin-data-persistence';
+import { persist, restore, restoreFromFile } from '@orama/plugin-data-persistence';
 import { pluginQPS } from '@orama/plugin-qps';
 import log from 'electron-log/main';
-import Store from 'electron-store';
-import { FilePath } from 'main/util';
+import ElectronStore from 'electron-store';
+import { FileHasher, FilePath } from 'main/util';
+import { number } from 'zod/v3';
 import { FileType, StoreSchema } from '../../../shared/constants';
+import { forAllAssetsInProject } from '../file-system-api';
 import { getSetting } from '../settings';
 import { generate } from './EmbeddingsService';
 
@@ -52,18 +60,67 @@ function isEmpty(): boolean {
   return db ? count(db) <= 0 : true;
 }
 
-async function persistIndex(destinationPath: string) {
-  const data = await persist(db, 'dpack');
+async function clearOldIndexes(store: ElectronStore<StoreSchema>) {
+  const cacheFolder = path.join(store.get('projectDirectory'), '.cache');
+  const files = await readdir(cacheFolder, { withFileTypes: true });
+  await Promise.all(
+    files
+      .filter((file) => file.isFile() && file.name.startsWith('searchIndex'))
+      .map(async (file) => {
+        await rm(path.join(cacheFolder, file.name));
+        log.log('Removed Old Search Index ', file.name);
+      }),
+  );
+}
+
+export async function loadIndex(store: ElectronStore<StoreSchema>, hash: number) {
+  const cacheFilePath = path.join(
+    store.get('projectDirectory'),
+    '.cache',
+    `searchIndex${hash}.json`,
+  );
+  if (existsSync(cacheFilePath)) {
+    let jsonString = '';
+    const readStream = createReadStream(cacheFilePath);
+    const gzip = readStream.pipe(zlib.createGunzip());
+    // pipeline with async iteration
+    for await (const chunk of gzip) {
+      jsonString += chunk.toString('utf-8');
+    }
+    load(db, JSON.parse(jsonString));
+    return true;
+  }
+
+  return false;
+}
+
+export async function persistIndex(store: ElectronStore<StoreSchema>, hash: number) {
+  const cacheFilePath = path.join(
+    store.get('projectDirectory'),
+    '.cache',
+    `searchIndex${hash}.json`,
+  );
+
+  if (existsSync(cacheFilePath)) {
+    return false;
+  }
+
+  await clearOldIndexes(store);
+
   try {
-    await fs.promises.writeFile(
-      path.join(destinationPath, `${indexName}.dpack`),
-      data as unknown as string,
-    );
+    const data = save(db);
+    const jsonString = JSON.stringify(data);
+    const readable = Readable.from([jsonString]);
+    const gzipStream = zlib.createGzip();
+    const writeStream = createWriteStream(cacheFilePath);
+    await pipeline(readable, gzipStream, writeStream);
     log.log('Orama index saved to disk');
+    return true;
   } catch (error) {
     log.error('Could not save orama index to disk');
     log.error(error);
   }
+  return false;
 }
 
 export async function clearDatabase() {
@@ -90,7 +147,7 @@ export async function index(entry: SearchEntrySchema) {
 }
 
 export async function search(
-  store: Store<StoreSchema>,
+  store: ElectronStore<StoreSchema>,
   query: string,
   typeFilter: FileType[],
   page: number,

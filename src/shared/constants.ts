@@ -127,7 +127,7 @@ export const channelsSchema = {
     >,
     getTasks: {} as ChannelGetter<TaskMetadata[]>,
     reIndexFiles: {} as ChannelGetter<void>,
-    generateEmbeddings: {} as ChannelGetter<AnyMetadata | null, [path: string]>,
+    generateEmbeddings: {} as ChannelGetter<void, [path: string]>,
     generateMissingEmbeddings: {} as ChannelGetter<void>,
     canGenerateEmbeddings: {} as ChannelGetter<boolean, [path: string]>,
     getSetting: {} as ChannelGetter<any, [key: keyof typeof Options]>,

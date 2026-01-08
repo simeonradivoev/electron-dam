@@ -167,7 +167,6 @@
     "@testing-library/react": "^13.3.0",
     "@trivago/prettier-plugin-sort-imports": "^6.0.0",
     "@types/jest": "^28.1.7",
-    "@types/jsonstream": "^0.8.33",
     "@types/lokijs": "^1.5.14",
     "@types/node": "^18.11.9",
     "@types/picomatch": "^4.0.2",

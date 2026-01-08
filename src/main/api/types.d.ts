@@ -1,3 +1,4 @@
+import { Stats } from 'fs';
 import { DBSchema } from 'idb';
 import { IAudioMetadata } from 'music-metadata';
 import { FileType } from 'shared/constants';
@@ -11,7 +12,11 @@ declare global {
     name: string;
     path: string;
     fileType?: FileType;
-    size: number;
+    stats: {
+      size: number;
+      ino: number;
+      mtimeMs: number;
+    };
     isArchived: boolean;
   }
 
@@ -183,13 +188,14 @@ declare global {
   type ProgressReporter = (progress: number) => void;
 
   interface FileLoaderRegistry {
+    registerPre: (...indexers: FileIndexingHandler[]) => void;
     register: (...indexers: FileIndexingHandler[]) => void;
     index: (abort: AbortSignal, progress: ProgressReporter) => Promise<void>;
   }
 
   type FileIndexingHandler = (
     params: FileIndexerParams,
-  ) => Promise<(node: FileTreeNode) => Promise<any>>;
+  ) => Promise<((node: FileTreeNode) => Promise<any>) | void>;
 
   export interface FileIndexerParams {
     projectDir: string;

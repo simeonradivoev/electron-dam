@@ -10,7 +10,7 @@ import Loki from 'lokijs';
 import StreamZip from 'node-stream-zip';
 import { BundleMetaFile, StoreSchema, MainIpcGetter, previewTypes } from '../../shared/constants';
 import { addTask } from '../managers/task-manager';
-import { FilePath, getRandom } from '../util';
+import { FilePath, getRandom, ignoredFilesMatch } from '../util';
 import {
   findBundlePath,
   forAllAssetsInProject,
@@ -74,7 +74,7 @@ export async function loadDirectoryBundle(
 
 export async function loadZipBundle(bundleDirectory: FilePath): Promise<BundleInfo | undefined> {
   const bundleAbsPath = `${path.join(bundleDirectory.projectDir, bundleDirectory.path)}.${BundleMetaFile}`;
-  const bundleStat = await lstat(bundleAbsPath).catch((e) => null);
+  const bundleStat = await stat(bundleAbsPath).catch(() => null);
   if (bundleStat) {
     const fileData = await readFile(bundleAbsPath, 'utf8');
     const entry: BundleInfo = {
@@ -188,20 +188,22 @@ async function findChildrenBundles(parent: FilePath, bundles: BundleInfo[]): Pro
   const dirs = await pathReaddir(parent, { withFileTypes: true });
 
   await Promise.all(
-    dirs.map(async (dir) => {
-      const childPath = parent.join(dir.name);
-      const isZip = isArchive(childPath);
+    dirs
+      .filter((d) => !ignoredFilesMatch(parent.join(d.name).absolute))
+      .map(async (dir) => {
+        const childPath = parent.join(dir.name);
+        const isZip = await isArchive(childPath, dir.isDirectory());
 
-      if (dir.isDirectory() || isZip) {
-        const bundle = await tryGetBundleEntryFromFolderPath(childPath);
+        if (dir.isDirectory() || isZip) {
+          const bundle = await tryGetBundleEntryFromFolderPath(childPath);
 
-        if (bundle) {
-          bundles.push(bundle);
-        } else if (!isZip) {
-          await findChildrenBundles(childPath, bundles);
+          if (bundle) {
+            bundles.push(bundle);
+          } else if (!isZip) {
+            await findChildrenBundles(childPath, bundles);
+          }
         }
-      }
-    }),
+      }),
   );
 }
 
@@ -391,7 +393,7 @@ export default function InitializeBundlesApi(
       async (node) => {
         issues.push(await checkMetadataIssues(projectDir, node));
         if (!node.isDirectory) {
-          assetsSize += node.size;
+          assetsSize += node.stats.size;
         }
       },
       true,
@@ -482,7 +484,7 @@ export default function InitializeBundlesApi(
 
   async function moveBundle(oldPath: string, newPath: string): Promise<boolean> {
     // 1. Verify newPath doesn't exist
-    if (await lstat(newPath).catch(() => false)) {
+    if (await stat(newPath).catch(() => false)) {
       throw new Error(`Destination already exists: ${newPath}`);
     }
 

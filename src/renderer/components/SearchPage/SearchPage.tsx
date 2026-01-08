@@ -164,7 +164,13 @@ function SearchPage() {
     queryKey: [SEARCH_QUERY_KEY, projectDirectory, search, typeFilter, page],
     queryFn: ({ queryKey }) =>
       fetchSearchResults(queryKey[2] as string, queryKey[3] as FileType[], queryKey[4] as number),
-    enabled: !!search && !tasks.some((t) => t.label.startsWith('Indexing Assets')),
+    enabled:
+      !!search &&
+      !tasks.some(
+        (t) =>
+          (t.status === 'RUNNING' || t.status === 'PENDING') &&
+          t.label.startsWith('Indexing Assets'),
+      ),
   });
 
   const pageCount = useMemo(() => {
