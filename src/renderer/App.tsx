@@ -1,7 +1,7 @@
 import { FocusStyleManager, PortalProvider, Spinner } from '@blueprintjs/core';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { ReactQueryDevtoolsPanel } from '@tanstack/react-query-devtools';
-import { IDBPDatabase } from 'idb/with-async-ittr';
+import { IDBPDatabase } from 'idb';
 import { useCallback } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Options } from 'shared/constants';

@@ -10,6 +10,7 @@ import ollama from 'ollama';
 import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import sharp from 'sharp';
+import { util } from 'undici';
 import zodToJsonSchema from 'zod-to-json-schema';
 import z from 'zod/v3';
 import { StoreSchema, ImportType, MainIpcGetter, previewTypes } from '../../shared/constants';
@@ -207,11 +208,16 @@ function importBundleMetadata(
 
 async function downloadPreview(
   bundlePath: FilePath,
-  url: string,
+  url: string | Uint8Array<ArrayBuffer>,
   abort?: AbortSignal,
   progress?: (p: number) => void,
 ): Promise<void> {
   const previewPath = bundlePath.join(`Preview${previewTypes[0]}`);
+
+  if (url instanceof Uint8Array) {
+    sharp(url).webp().toFile(previewPath.absolute);
+    return;
+  }
 
   if (url.startsWith('http')) {
     const pageHtml = await loadPageHtml(url, abort, progress);

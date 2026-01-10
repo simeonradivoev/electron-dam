@@ -110,7 +110,10 @@ export const channelsSchema = {
     deleteBundle: {} as ChannelGetter<void, [path: string]>,
     importBundleMetadata: {} as ChannelGetter<BundleMetadata, [url: string, type: ImportType]>,
     canImportBundleMetadata: {} as ChannelGetter<boolean, [url: string, type: ImportType]>,
-    downloadPreview: {} as ChannelGetter<void, [bundlePath: string, url: string]>,
+    downloadPreview: {} as ChannelGetter<
+      void,
+      [bundlePath: string, url: string | Uint8Array<ArrayBuffer>]
+    >,
     minimizeWindow: {} as ChannelGetter<void>,
     maximizeWindow: {} as ChannelGetter<void>,
     openPath: {} as ChannelGetter<void, [path: string]>,

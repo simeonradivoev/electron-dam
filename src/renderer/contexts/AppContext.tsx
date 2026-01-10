@@ -1,4 +1,4 @@
-import { IDBPDatabase } from 'idb/with-async-ittr';
+import { IDBPDatabase } from 'idb';
 import { normalize } from 'pathe';
 import {
   createContext,

@@ -1,6 +1,6 @@
 import { IconName, Tree, TreeNodeInfo } from '@blueprintjs/core';
 import { useQueryClient } from '@tanstack/react-query';
-import { IDBPDatabase } from 'idb/with-async-ittr';
+import { IDBPDatabase } from 'idb';
 import { extname } from 'pathe';
 import { useEffect } from 'react';
 import { AudioFileFormat, ModelFormat, ImageFormat } from 'shared/constants';

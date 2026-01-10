@@ -94,23 +94,24 @@ const BundleTop = forwardRef<HTMLDivElement, PropsTop>(
               <></>
             )}
           </div>
-          <ReactMarkdown
-            className="description css-fix"
-            skipHtml={false}
-            rehypePlugins={[rehypeRaw as any]}
-            transformImageUri={(src, _alt) => {
-              if (src.startsWith('./')) {
-                return `app://${src.replace('.', bundle?.id ?? '')}`;
-              }
-              return src;
-            }}
-          >
-            {bundle?.bundle.description
-              ? searchQuery
-                ? highlighter.highlight(bundle.bundle.description, searchQuery).HTML
-                : bundle.bundle.description
-              : ''}
-          </ReactMarkdown>
+          <div className="description css-fix">
+            <ReactMarkdown
+              skipHtml={false}
+              rehypePlugins={[rehypeRaw as any]}
+              urlTransform={(src, _alt) => {
+                if (src.startsWith('./')) {
+                  return `app://${src.replace('.', bundle?.id ?? '')}`;
+                }
+                return src;
+              }}
+            >
+              {bundle?.bundle.description
+                ? searchQuery
+                  ? highlighter.highlight(bundle.bundle.description, searchQuery).HTML
+                  : bundle.bundle.description
+                : ''}
+            </ReactMarkdown>
+          </div>
           {showInExplorerEnabled && (
             <div className="tags">
               {bundle?.bundle.tags?.map((t) => (

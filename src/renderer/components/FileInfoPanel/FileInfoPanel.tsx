@@ -113,18 +113,19 @@ const FileInfoPanel: React.FC<FileInfoPanelProps> = ({
           id="readme"
           title="Readme"
           panel={
-            <ReactMarkdown
-              className="preview-markdown-tab"
-              skipHtml={false}
-              transformImageUri={(src) => {
-                if (src.startsWith('./')) {
-                  return `app://${src.replace('.', fileInfo?.path ?? '')}`;
-                }
-                return src;
-              }}
-            >
-              {fileInfo.readme}
-            </ReactMarkdown>
+            <div className="preview-markdown-tab">
+              <ReactMarkdown
+                skipHtml={false}
+                urlTransform={(src) => {
+                  if (src.startsWith('./')) {
+                    return `app://${src.replace('.', fileInfo?.path ?? '')}`;
+                  }
+                  return src;
+                }}
+              >
+                {fileInfo.readme}
+              </ReactMarkdown>
+            </div>
           }
         />
       </Tabs>

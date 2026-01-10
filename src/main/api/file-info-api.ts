@@ -4,7 +4,7 @@ import path, { basename, dirname, extname, normalize } from 'path';
 import assimpjs from 'assimpjs';
 import log from 'electron-log/main';
 import Store from 'electron-store';
-import * as mm from 'music-metadata';
+import { parseFile as parseMusicFile } from 'music-metadata';
 import StreamZip from 'node-stream-zip';
 import picomatch from 'picomatch';
 import { StoreSchema, MainIpcGetter, previewTypes } from '../../shared/constants';
@@ -206,7 +206,7 @@ export default function InitializeFileInfoApi(
           .catch((e: any) => e);
       } else if (audioMediaFormatsMatch(filePath.path)) {
         // Load audio metadata
-        const metadata = await mm.parseFile(filePath.absolute);
+        const metadata = await parseMusicFile(filePath.absolute);
         info.audioMetadata = metadata;
         const fileMetadata = await getMetadata(filePath);
         // Regenerate peaks if they are stale

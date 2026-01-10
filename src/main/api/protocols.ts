@@ -1,15 +1,14 @@
-import { createReadStream, createWriteStream, existsSync, Stats, statSync } from 'fs';
+import { createReadStream, existsSync, Stats } from 'fs';
 import { stat } from 'fs/promises';
 import path from 'path';
-import { PassThrough, Readable } from 'stream';
+import { Readable } from 'stream';
 import { nativeImage, protocol } from 'electron';
 import log from 'electron-log/main';
 import Store from 'electron-store';
 import StreamZip, { ZipEntry } from 'node-stream-zip';
 import PQueue from 'p-queue';
-import sharp, { queue } from 'sharp';
+import sharp from 'sharp';
 import { zipDelimiter, StoreSchema } from '../../shared/constants';
-import AsyncQueue from '../managers/AsyncQueue';
 import { FilePath, imageMediaFormatsMatch, mkdirs } from '../util';
 import { findBundleInfoForFile, findFolderPreview, findZipPreviewReadable } from './bundles-api';
 import { thumbCache } from './cache/thumbnail-cache';

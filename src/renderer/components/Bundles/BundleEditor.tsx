@@ -136,9 +136,9 @@ function BundleEditor() {
 
   const { mutate: downloadPreviewMutation, isPending: isDownloadingPreview } = useMutation({
     mutationKey: ['preview-download', bundle.id],
-    mutationFn: async (filePath?: string) => {
-      if ((link || filePath) && bundle.id) {
-        await window.api.downloadPreview(bundle.id, filePath ?? link ?? '');
+    mutationFn: async (data?: Promise<Uint8Array<ArrayBuffer>>) => {
+      if ((link || data) && bundle.id) {
+        await window.api.downloadPreview(bundle.id, (await data) ?? link ?? '');
         await new Promise((r) => {
           setTimeout(r, 100);
         });
@@ -243,8 +243,8 @@ function BundleEditor() {
             e.preventDefault();
             setIsDraggingOverPreview(true);
           }}
-          onDrop={(e) => {
-            downloadPreviewMutation(e.dataTransfer?.files[0].path);
+          onDrop={async (e) => {
+            downloadPreviewMutation(e.dataTransfer?.files[0].bytes());
             setIsDraggingOverPreview(false);
           }}
         >

@@ -10,6 +10,7 @@
 // Initialize TaskManager
 import path from 'path';
 import { app, BrowserWindow, Menu, shell } from 'electron';
+import electronDebug from 'electron-debug';
 import { installExtension, REACT_DEVELOPER_TOOLS } from 'electron-extension-installer';
 import log from 'electron-log/main';
 import Store from 'electron-store';
@@ -42,10 +43,7 @@ class AppUpdater {
 let mainWindow: BrowserWindow | null = null;
 
 const isDebug = process.env.NODE_ENV === 'development' || process.env.DEBUG_PROD === 'true';
-
-if (isDebug) {
-  require('electron-debug')();
-}
+if (isDebug) electronDebug();
 
 const createWindow = async (store: Store<StoreSchema>) => {
   const windowSize = store.get('windowSize', { width: 1024, height: 728 });

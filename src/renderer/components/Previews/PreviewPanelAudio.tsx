@@ -71,7 +71,6 @@ function PreviewPanelAudio({ importedAudio, isZip, path, audioMetadata, hasThumb
     if (!waveformRef.current) {
       return undefined;
     }
-    console.log('Created');
     const wavesurfer = WaveSurfer.create({
       container: waveformRef.current!,
       cursorWidth: 2,
@@ -136,7 +135,6 @@ function PreviewPanelAudio({ importedAudio, isZip, path, audioMetadata, hasThumb
       wavesurfer.once('ready', () => wavesurfer.destroy());
       wavesurfer?.destroy();
       wavesurferRef.current = undefined;
-      console.log('Disposed');
     };
   }, [importedAudio, isZip]);
 
