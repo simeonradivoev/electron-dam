@@ -92,7 +92,7 @@ export function useSettings(category: OptionCategory) {
           Object.keys(value)
             .filter((key) => !getOption(key).localType)
             .map((key) => ({ key, v: value[key] }))
-            .filter(({ key, v }) => data?.[key] != v)
+            .filter(({ key, v }) => data?.[key] !== v)
             .map(({ key, v }) => [key as keyof typeof Options, v]),
         ),
       );

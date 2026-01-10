@@ -6,14 +6,8 @@ type Props = {
   image: UseQueryResult<string | null, unknown>;
 };
 
-const PreviewPanelImage = ({ image }: Props) => {
-  return (
-    <>
-      <PrismaZoom>
-        {image.data ? <img alt="" src={image.data} /> : <Spinner />}
-      </PrismaZoom>
-    </>
-  );
-};
+function PreviewPanelImage({ image }: Props) {
+  return <PrismaZoom>{image.data ? <img alt="" src={image.data} /> : <Spinner />}</PrismaZoom>;
+}
 
 export default PreviewPanelImage;

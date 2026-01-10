@@ -12,8 +12,9 @@ import {
   Navbar,
   NavbarGroup,
   IconSize,
+  MenuItem,
+  Popover,
 } from '@blueprintjs/core';
-import { MenuItem2, Popover2 } from '@blueprintjs/popover2';
 import { useQuery } from '@tanstack/react-query';
 import cn from 'classnames';
 import log from 'electron-log/renderer';
@@ -183,7 +184,7 @@ function SearchPage() {
   const contextMenu = (node: TreeNodeInfo<SearchEntryResult>): JSX.Element => {
     return (
       <Menu>
-        <MenuItem2
+        <MenuItem
           icon="folder-open"
           disabled={!node.nodeData}
           text="View In Explorer"
@@ -192,7 +193,7 @@ function SearchPage() {
           }}
         />
         {node.nodeData && node.nodeData?.fileType === FileType.Bundle && (
-          <MenuItem2
+          <MenuItem
             icon="projects"
             text="Inspect Bundle"
             onClick={() => {
@@ -239,7 +240,7 @@ function SearchPage() {
           />
         ))}
       </ul>
-      <ButtonGroup minimal className="pages">
+      <ButtonGroup variant="minimal" className="pages">
         {getPaginationRange(page, pageCount - 1, 10).map((p) =>
           p === 'ellipsis' ? (
             <Button>...</Button>
@@ -259,7 +260,7 @@ function SearchPage() {
         <InputGroup
           disabled={!searchQuery.isEnabled}
           type="search"
-          large
+          size="large"
           maxLength={512}
           leftIcon="search"
           placeholder="Search files..."
@@ -268,17 +269,17 @@ function SearchPage() {
           onKeyDown={handleKeyDown}
           rightElement={
             searchQuery.isEnabled ? (
-              <Popover2
+              <Popover
                 minimal
                 content={
                   <Menu>
-                    <MenuItem2 icon="refresh" text="Re-Index Assets" onClick={reIndex} />
+                    <MenuItem icon="refresh" text="Re-Index Assets" onClick={reIndex} />
                   </Menu>
                 }
                 placement="bottom"
               >
-                <Button minimal icon="settings" />
-              </Popover2>
+                <Button variant="minimal" icon="settings" />
+              </Popover>
             ) : (
               <Spinner size={IconSize.STANDARD} />
             )
@@ -307,7 +308,7 @@ function SearchPage() {
           </NavbarGroup>
           <NavbarGroup>
             {Object.values(FileType).map((type) => (
-              <ButtonGroup minimal key={type}>
+              <ButtonGroup variant="minimal" key={type}>
                 <Button
                   icon={FileTypeIcons[type]}
                   onClick={() => toggleType(type)}
@@ -320,9 +321,9 @@ function SearchPage() {
             <NavbarGroup>
               <Button
                 active={showFileView}
-                minimal
+                variant="minimal"
                 onClick={() => setShowFileView(!showFileView)}
-                rightIcon="comparison"
+                endIcon="comparison"
               >
                 Explorer View
               </Button>
@@ -348,16 +349,18 @@ function SearchPage() {
               }}
             >
               {searchResults}
-              {!!selected && selected.length > 0 && showFileView ? (
-                <FileInfoPanel
-                  allowTagEditing={false}
-                  searchQuery={search}
-                  showSource
-                  item={selected[0]}
-                />
-              ) : (
-                <NonIdealState icon="eye-open">Select asset to view</NonIdealState>
-              )}
+              <div className="search-explorer">
+                {!!selected && selected.length > 0 && showFileView ? (
+                  <FileInfoPanel
+                    allowTagEditing={false}
+                    searchQuery={search}
+                    showSource
+                    item={selected[0]}
+                  />
+                ) : (
+                  <NonIdealState icon="eye-open">Select asset to view</NonIdealState>
+                )}
+              </div>
             </Split>
           )}
         {!searchQuery.isLoading &&

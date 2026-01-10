@@ -1,29 +1,26 @@
 import {
   BreadcrumbProps,
+  Breadcrumbs,
   Button,
   ControlGroup,
   FormGroup,
   InputGroup,
   Navbar,
-  NavbarDivider,
   NavbarGroup,
   NavbarHeading,
-  Position,
   TagInput,
   TextArea,
-  Toaster,
 } from '@blueprintjs/core';
-import { Breadcrumbs2 } from '@blueprintjs/popover2';
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { isValidHttpUrl } from 'renderer/scripts/utils';
+import { AppToaster } from 'renderer/toaster';
 import { ImportType } from 'shared/constants';
 import { generateUUID } from 'three/src/math/MathUtils';
 
 type Props = {};
 
 function BundleNew(props: Props) {
-  const toasterRef = useRef<Toaster>(null);
   const [isImportingMetadata, setIsImportingMetadata] = useState<boolean>(false);
   const [isCreatingBundle, setIsCreatingBundle] = useState<boolean>(false);
   const [sourceUrl, setSourceUrl] = useState<string>('');
@@ -73,7 +70,7 @@ function BundleNew(props: Props) {
           setTags(metadata.tags);
         }
       } catch (error) {
-        toasterRef.current?.show({ message: `${error}`, intent: 'danger' });
+        AppToaster.then((t) => t.show({ message: `${error}`, intent: 'danger' }));
       } finally {
         setIsImportingMetadata(false);
       }
@@ -94,7 +91,7 @@ function BundleNew(props: Props) {
       <Navbar>
         <NavbarGroup>
           <NavbarHeading>
-            <Breadcrumbs2 className="breadcrumbs" items={breadcrumbs} />
+            <Breadcrumbs className="breadcrumbs" items={breadcrumbs} />
           </NavbarHeading>
         </NavbarGroup>
       </Navbar>
@@ -166,7 +163,6 @@ function BundleNew(props: Props) {
           >
             Cancel
           </Button>
-          <Toaster position={Position.BOTTOM_RIGHT} ref={toasterRef} />
         </form>
       </div>
     </div>

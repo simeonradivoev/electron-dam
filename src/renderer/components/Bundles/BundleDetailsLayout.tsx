@@ -1,4 +1,6 @@
 import {
+  BreadcrumbProps,
+  Breadcrumbs,
   Button,
   Navbar,
   NavbarDivider,
@@ -9,7 +11,6 @@ import {
   TabId,
   Tabs,
 } from '@blueprintjs/core';
-import { BreadcrumbProps, Breadcrumbs2 } from '@blueprintjs/popover2';
 import { QueryObserverResult, useQuery } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
 import { Outlet, useBlocker, useLocation, useNavigate } from 'react-router-dom';
@@ -68,12 +69,12 @@ function BundleDetailsLayout() {
       <Navbar>
         <NavbarGroup align="left">
           <NavbarHeading>
-            <Breadcrumbs2 className="breadcrumbs" items={BREADCRUMBS} />
+            <Breadcrumbs className="breadcrumbs" items={BREADCRUMBS} />
           </NavbarHeading>
         </NavbarGroup>
         <NavbarGroup align="right">
           <NavbarDivider />
-          <Button minimal icon="menu" />
+          <Button variant="minimal" icon="menu" />
         </NavbarGroup>
       </Navbar>
       <div className="bundle-info">

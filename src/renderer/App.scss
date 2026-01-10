@@ -2,13 +2,11 @@
  * @NOTE: Prepend a `~` to css file paths that are in your node_modules
  *        See https://github.com/webpack-contrib/sass-loader#imports
  */
-
-@import "~normalize.css";
-@import "~@blueprintjs/core/lib/css/blueprint.css";
-@import "~@blueprintjs/icons/lib/css/blueprint-icons.css";
-@import "~@blueprintjs/core/lib/scss/variables";
-@import "~@blueprintjs/popover2/lib/css/blueprint-popover2.css";
-@import "~@blueprintjs/colors/lib/scss/colors";
+@use 'sass:color';
+@use "normalize.css";
+@use "@blueprintjs/core/lib/css/blueprint.css";
+@use "@blueprintjs/icons/lib/scss/blueprint-icons-16" as *;
+@use "@blueprintjs/core/lib/scss/variables" as *;
 
 body {
   position: relative;
@@ -20,16 +18,16 @@ body {
   margin: 0;
 }
 
-.bp4-navbar {
+.bp6-navbar {
   height: 3em;
   padding: 0 0.5em;
 
-  .bp4-navbar-group {
+  .bp6-navbar-group {
     height: 3em;
   }
 }
 
-.bp4-popover-wrapper {
+.bp6-popover-wrapper {
   flex: 0;
 }
 
@@ -58,32 +56,32 @@ div[class^="style_MenuList"] {
 }
 
 .setting-group input {
-    margin-left: 0.25em;
+  margin-left: 0.25em;
 }
 
-.bp4-form-group.changed {
+.bp6-form-group.changed {
   color: $pt-intent-primary;
 }
 
 input.changed {
-    border-left-width: 0.5em;
-    border-left-color: $pt-intent-primary;
-    border-left-style: solid;
-    margin-left: -0.2em;
-  }
-
-textarea.changed {
-    border-left-width: 0.5em;
-    border-left-color: $pt-intent-primary;
-    border-left-style: solid;
-    margin-left: -0.2em;
+  border-left-width: 0.5em;
+  border-left-color: $pt-intent-primary;
+  border-left-style: solid;
+  margin-left: -0.2em;
 }
 
-.bp4-html-select.changed {
-    border-left-width: 0.5em;
-    border-left-color: $pt-intent-primary;
-    border-left-style: solid;
-    margin-left: -0.2em;
+textarea.changed {
+  border-left-width: 0.5em;
+  border-left-color: $pt-intent-primary;
+  border-left-style: solid;
+  margin-left: -0.2em;
+}
+
+.bp6-html-select.changed {
+  border-left-width: 0.5em;
+  border-left-color: $pt-intent-primary;
+  border-left-style: solid;
+  margin-left: -0.2em;
 }
 
 .dark {
@@ -94,7 +92,7 @@ textarea.changed {
     color: $pt-dark-code-text-color !important;
 
     &:hover {
-      background-color: $dark-gray4  !important;
+      background-color: $dark-gray4 !important;
 
       .preview {
         background: transparent !important;
@@ -110,7 +108,7 @@ textarea.changed {
   .home {
     background-color: $pt-dark-app-background-color !important;
 
-    .bp4-card {
+    .bp6-card {
       box-shadow: none !important;
     }
   }
@@ -123,7 +121,7 @@ textarea.changed {
     background: linear-gradient(135deg, $dark-gray1 0%, $dark-gray2 100%) !important;
   }
 
-    .gutter {
+  .gutter {
     background-color: $dark-gray4;
 
     &:hover {
@@ -270,12 +268,12 @@ textarea.changed {
       overflow: hidden;
       padding: 0;
 
-      .bp4-button-text {
+      .bp6-button-text {
         display: flex;
         justify-content: center;
       }
 
-      .bp4-icon {
+      .bp6-icon {
         align-self: center;
       }
 
@@ -296,7 +294,7 @@ textarea.changed {
 
         span {
           color: $pt-app-background-color;
-          background-color: fade-out($color: $pt-text-color, $amount: 0.3);
+          background-color: color.adjust($color: $pt-text-color, $alpha: -0.3);
           border-radius: 0.2em;
           padding: 0.2em;
         }
@@ -320,7 +318,7 @@ textarea.changed {
         pointer-events: none;
       }
 
-      .bp4-button-text {
+      .bp6-button-text {
         width: 100%;
         height: 100%;
       }
@@ -470,6 +468,7 @@ textarea.changed {
       }
     }
   }
+
   .asset {
     width: 8em;
     height: 8em;
@@ -503,7 +502,7 @@ textarea.changed {
       margin-bottom: 0;
     }
 
-    .bp4-icon svg {
+    .bp6-icon svg {
       width: 4em;
       height: 4em;
       color: $pt-icon-color;
@@ -560,8 +559,8 @@ textarea.changed {
 
   background-color: $pt-app-background-color;
 
-  &:focus{
-    box-shadow: 1px 0 0 transparentize($color: $pt-intent-primary, $amount: 0) inset;
+  &:focus {
+    box-shadow: 1px 0 0 color.scale($color: $pt-intent-primary, $alpha: 0%) inset;
   }
 }
 
@@ -589,7 +588,7 @@ textarea.changed {
   flex-direction: column;
   height: 100%;
 
-  .bp4-navbar {
+  .bp6-navbar {
     height: fit-content;
     padding-top: 0.25em;
     padding-bottom: 0.25em;
@@ -656,7 +655,7 @@ textarea.changed {
 }
 
 .orama-highlight {
-  background-color: transparentize($gold5, 0.6);
+  background-color: color.scale($color: $gold5, $alpha: 60%);
 
 }
 
@@ -678,7 +677,7 @@ textarea.changed {
     max-width: 100%;
     margin-right: auto;
 
-    .bp4-navbar-group {
+    .bp6-navbar-group {
       max-width: 100%;
     }
   }
@@ -742,7 +741,7 @@ textarea.changed {
     }
   }
 
-  .bp4-tabs {
+  .bp6-tabs {
     flex-grow: 1;
     overflow: auto;
   }
@@ -895,7 +894,7 @@ textarea.changed {
   cursor: ns-resize;
 }
 
-.bp4-breadcrumb {
+.bp6-breadcrumb {
   white-space: nowrap;
 }
 
@@ -973,7 +972,7 @@ textarea.changed {
     text-align: center;
     padding: 60px 30px;
 
-    .bp4-icon {
+    .bp6-icon {
       opacity: 0.5;
       margin-bottom: 20px;
     }
@@ -1005,7 +1004,7 @@ textarea.changed {
           align-items: center;
           gap: 12px;
 
-          .bp4-heading {
+          .bp6-heading {
             margin: 0;
             font-size: 16px;
           }
@@ -1099,7 +1098,7 @@ textarea.changed {
   }
 }
 
-.bp4-toast {
+.bp6-toast {
 
   .task-card {
 
@@ -1109,7 +1108,7 @@ textarea.changed {
       margin-bottom: 5px;
       gap: 10px;
 
-      .bp4-heading {
+      .bp6-heading {
         margin: 0;
         font-size: 14px;
         flex: 1;
@@ -1120,7 +1119,7 @@ textarea.changed {
         align-items: center;
         gap: 8px;
 
-        .bp4-progress-bar {
+        .bp6-progress-bar {
           flex: 1;
           min-width: 80px;
         }
@@ -1174,7 +1173,7 @@ textarea.changed {
 
     padding-top: 1em;
 
-    .bp4-input-group {
+    .bp6-input-group {
       max-width: 48em;
       margin: 0 auto;
     }
@@ -1223,7 +1222,7 @@ textarea.changed {
         }
       }
 
-      .bp4-progress-bar {
+      .bp6-progress-bar {
         width: 200px;
       }
     }
@@ -1249,41 +1248,41 @@ textarea.changed {
     }
 
     .search-results-list {
+      display: flex;
+      flex-direction: column;
+      gap: 1em;
+      padding: 1em 1em;
+      margin: 0 auto;
+      width: 100%;
+      align-items: center;
+      flex-grow: 1;
+      min-height: auto;
+      background: linear-gradient(135deg, $light-gray3 0%, $light-gray5 100%);
+
+      ul {
         display: flex;
-        flex-direction: column;
-        gap: 1em;
-        padding: 1em 1em;
-        margin: 0 auto;
-        width: 100%;
-        align-items: center;
-        flex-grow: 1;
-        min-height: auto;
-        background: linear-gradient(135deg, $light-gray3 0%, $light-gray5 100%);
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 0.5em;
+        width: fit-content;
+        justify-content: center;
+        margin-bottom: auto;
+      }
 
-        ul {
-          display: flex;
-          flex-direction: row;
-          flex-wrap: wrap;
-          gap: 0.5em;
-          width: fit-content;
-          justify-content: center;
-          margin-bottom: auto;
-        }
+      .bp6-button-group {
+        width: fit-content;
+      }
 
-        .bp4-button-group {
-          width: fit-content;
-        }
+      .pages {
+        flex-wrap: wrap;
+        justify-content: center;
+        row-gap: 0.5em;
 
-        .pages {
-          flex-wrap: wrap;
-          justify-content: center;
-          row-gap: 0.5em;
-
-          .active {
-            background-color: $light-gray1;
-          }
+        .active {
+          background-color: $light-gray1;
         }
       }
+    }
 
     .search-empty {
       display: flex;
@@ -1362,7 +1361,7 @@ textarea.changed {
         flex-wrap: wrap;
         max-height: 2em;
 
-        .bp4-tag {
+        .bp6-tag {
           min-width: fit-content;
         }
       }
@@ -1383,10 +1382,10 @@ textarea.changed {
   }
 }
 
-.bp4-tree-node:not(.bp4-tree-node-selected) {
+.bp6-tree-node:not(.bp6-tree-node-selected) {
   &.multi-selection {
-    background-color: mix($pt-intent-primary, $pt-app-background-color, 10%);
-    border-color: transparentize($pt-intent-primary, 0.8);
+    background-color: color.mix($pt-intent-primary, $pt-app-background-color, 10%);
+    border-color: color.scale($color: $pt-intent-primary, $alpha: 80%);
     border-width: 1px;
     border-style: solid;
     margin-left: -1px;
@@ -1395,14 +1394,14 @@ textarea.changed {
 }
 
 
-.bp4-tree-node.multi-selection:not(.bp4-tree-node-selected):not(.multi-selection + .bp4-tree-node) {
+.bp6-tree-node.multi-selection:not(.bp6-tree-node-selected):not(.multi-selection + .bp6-tree-node) {
   border-top-width: 2px;
   border-top-style: dashed;
   border-top-color: $pt-intent-primary;
   margin-top: -2px;
 }
 
-.bp4-tree-node.multi-selection:not(.bp4-tree-node-selected):not(:has(+ .multi-selection)) {
+.bp6-tree-node.multi-selection:not(.bp6-tree-node-selected):not(:has(+ .multi-selection)) {
   border-bottom-width: 2px;
   border-bottom-style: dashed;
   border-bottom-color: $pt-intent-primary;
@@ -1414,12 +1413,12 @@ textarea.changed {
   flex-direction: row;
   width: 100%;
 
-  .bp4-tab-list {
+  .bp6-tab-list {
     padding-top: 1em;
   }
 
   .settings-content-tabs {
-    .bp4-tab-list {
+    .bp6-tab-list {
       display: none;
     }
   }
@@ -1446,89 +1445,90 @@ $icon-size: 16px;
 // Titlebar Root
 // ================================
 .titlebar {
-    height: $titlebar-height;
-    min-height: $titlebar-height;
-    width: 100%;
+  height: $titlebar-height;
+  min-height: $titlebar-height;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  background: $titlebar-bg;
+  color: $titlebar-fg;
+
+  user-select: none;
+  -webkit-app-region: drag;
+
+  // ----------------------------
+  // Left section
+  // ----------------------------
+  .left {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    gap: 8px;
+    padding-left: 10px;
+  }
 
-    background: $titlebar-bg;
-    color: $titlebar-fg;
+  .icon {
+    width: $icon-size;
+    height: $icon-size;
+    flex-shrink: 0;
+  }
 
-    user-select: none;
-    -webkit-app-region: drag;
+  .title {
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-right: 1em;
+  }
 
-    // ----------------------------
-    // Left section
-    // ----------------------------
-    .left {
+  .path {
+    text-overflow: ellipsis;
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  // ----------------------------
+  // Window controls
+  // ----------------------------
+  .controls {
+    display: flex;
+    height: 100%;
+
+    -webkit-app-region: no-drag;
+
+    .bp6-button {
+      width: $control-width;
+      height: 100%;
+      border-radius: 0;
+
       display: flex;
       align-items: center;
-      gap: 8px;
-      padding-left: 10px;
-    }
+      justify-content: center;
 
-    .icon {
-      width: $icon-size;
-      height: $icon-size;
-      flex-shrink: 0;
-    }
+      transition: background-color 120ms ease;
 
-    .title {
-      font-size: 13px;
-      font-weight: 500;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      margin-right: 1em;
-    }
+      &:hover {
+        background-color: $titlebar-hover;
+      }
 
-    .path {
-      text-overflow: ellipsis;
-      overflow-x: auto;
-      overflow-y: hidden;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
+      &:active {
+        background-color: rgba(255, 255, 255, 0.15);
+      }
 
-    // ----------------------------
-    // Window controls
-    // ----------------------------
-    .controls {
-      display: flex;
-      height: 100%;
+      &#close:hover {
+        background-color: $pt-intent-danger;
 
-      -webkit-app-region: no-drag;
-
-      .bp4-button {
-        width: $control-width;
-        height: 100%;
-        border-radius: 0;
-
-        display: flex;
-        align-items: center;
-        justify-content: center;
-
-        transition: background-color 120ms ease;
-
-        &:hover {
-          background-color: $titlebar-hover;
-        }
-
-        &:active {
-          background-color: rgba(255, 255, 255, 0.15);
-        }
-
-        &#close:hover {
-          background-color: $pt-intent-danger;
-          span {
-            color: $pt-dark-text-color;
-          }
+        span {
+          color: $pt-dark-text-color;
         }
       }
     }
+  }
 }
 
 /* Notification badge for Blueprint.js v4 buttons - just add class to button */
@@ -1548,7 +1548,7 @@ $badge-size-large: 24px;
 $badge-dot-size: 8px;
 
 // Base badge
-.bp4-button {
+.bp6-button {
   &.has-badge::after {
     content: attr(data-badge);
     position: absolute;
@@ -1593,7 +1593,8 @@ $badge-dot-size: 8px;
   }
 
   // Small button size
-  &.bp4-small {
+  &.bp6-small {
+
     &.has-badge::after,
     &.has-badge-dot::after {
       top: -6px;
@@ -1605,7 +1606,8 @@ $badge-dot-size: 8px;
   }
 
   // Large button size
-  &.bp4-large {
+  &.bp6-large {
+
     &.has-badge::after,
     &.has-badge-dot::after {
       top: -10px;

@@ -1,6 +1,4 @@
 /* eslint-disable react/no-children-prop */
-import { Button, Classes, ControlGroup, Divider, FormGroup, Icon } from '@blueprintjs/core';
-import z from 'zod/v3';
 import { OptionCategory, Options, OptionType } from '../../../shared/constants';
 import { useSettings } from './Form';
 

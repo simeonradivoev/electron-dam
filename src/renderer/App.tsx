@@ -1,9 +1,9 @@
-import { Dialog, FocusStyleManager, PortalProvider, Spinner } from '@blueprintjs/core';
+import { FocusStyleManager, PortalProvider, Spinner } from '@blueprintjs/core';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { ReactQueryDevtoolsPanel } from '@tanstack/react-query-devtools';
 import { IDBPDatabase } from 'idb/with-async-ittr';
-import { useCallback, useEffect, useState } from 'react';
-import { Outlet, useBlocker } from 'react-router-dom';
+import { useCallback } from 'react';
+import { Outlet } from 'react-router-dom';
 import { Options } from 'shared/constants';
 import { useLocalStorage, useSessionStorage } from 'usehooks-ts';
 import '../../node_modules/file-icons-js/css/style.css';
@@ -62,7 +62,7 @@ function App({ database }: { database: Promise<IDBPDatabase<FilesDB>> }) {
         >
           <TasksProvider>
             <PortalProvider portalClassName="app-portal">
-              <div className={`theme-wrapper ${darkMode ? 'bp4-dark dark' : ''}`}>
+              <div className={`theme-wrapper ${darkMode ? 'bp6-dark dark' : ''}`}>
                 {projectDirectory && (
                   <>
                     <SideMenu />

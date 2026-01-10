@@ -1,15 +1,18 @@
 import {
   Alert,
   Button,
+  ContextMenu,
   ControlGroup,
   FormGroup,
   InputGroup,
   Menu,
+  MenuItem,
+  Popover,
   TagInput,
   TagInputAddMethod,
   TextArea,
+  Tooltip,
 } from '@blueprintjs/core';
-import { ContextMenu2, MenuItem2, Popover2, Tooltip2 } from '@blueprintjs/popover2';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import cn from 'classnames';
 import React, { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -101,7 +104,7 @@ function BundleEditor() {
 
         queryClient.invalidateQueries({ queryKey: ['bundle', bundle?.id] });
       } catch (error: any) {
-        AppToaster.show({ message: error.message, intent: 'danger' });
+        AppToaster.then((t) => t.show({ message: error.message, intent: 'danger' }));
       }
     },
     [bundle, tags, queryClient, description, link, name, preview],
@@ -143,7 +146,7 @@ function BundleEditor() {
         throw new Error('No Bundle or link');
       }
     },
-    onError: (error) => AppToaster.show({ message: `${error}`, intent: 'danger' }),
+    onError: (error) => AppToaster.then((t) => t.show({ message: `${error}`, intent: 'danger' })),
     onSuccess() {
       queryClient
         .refetchQueries({ queryKey: ['bundle', bundle.id] })
@@ -155,7 +158,7 @@ function BundleEditor() {
   const importMutation = useMutation({
     mutationKey: ['auto-metadata', bundle.id],
     mutationFn: async (type: ImportType) => window.api.importBundleMetadata(link ?? '', type),
-    onError: (error) => AppToaster?.show({ message: `${error}`, intent: 'danger' }),
+    onError: (error) => AppToaster?.then((t) => t.show({ message: `${error}`, intent: 'danger' })),
     onSuccess: (metadata) => {
       if (metadata.description) {
         setDescription(metadata.description);
@@ -245,10 +248,10 @@ function BundleEditor() {
             setIsDraggingOverPreview(false);
           }}
         >
-          <ContextMenu2
+          <ContextMenu
             content={
               <Menu>
-                <MenuItem2
+                <MenuItem
                   text="Show In Windows Explorer"
                   icon="folder-shared-open"
                   onClick={() => bundle.previewUrl && window.api.openPath(bundle.previewUrl)}
@@ -265,7 +268,7 @@ function BundleEditor() {
                 }
               />
             </div>
-          </ContextMenu2>
+          </ContextMenu>
           <InputGroup
             inputRef={previewInputRef}
             id="preview-input"
@@ -295,7 +298,6 @@ function BundleEditor() {
         <TextArea
           name="description"
           id="description"
-          growVertically
           maxLength={512}
           className={description !== bundle.bundle.description ? 'changed' : undefined}
           fill
@@ -335,43 +337,43 @@ function BundleEditor() {
       <Button disabled={!changed} icon="reset" type="reset">
         Reset
       </Button>
-      <Popover2
+      <Popover
         minimal
         position="bottom"
         content={
           <Menu>
-            <Tooltip2
+            <Tooltip
               targetTagName="li"
               content="Download metadata from the link"
               hoverOpenDelay={2000}
             >
-              <MenuItem2
+              <MenuItem
                 disabled={importMutation.isPending}
                 onClick={() => importMutation.mutate(ImportType.OpenGraph)}
                 icon="import"
                 text="Open Graph"
               />
-            </Tooltip2>
+            </Tooltip>
 
-            <Tooltip2
+            <Tooltip
               targetTagName="li"
               hoverOpenDelay={2000}
               content="Use Ollama llm to generate all the metadata based on the link page's contents. This is the most advanced and slow option. You need to have ollama running"
             >
-              <MenuItem2
+              <MenuItem
                 disabled={!canImportWithOllama || importMutation.isPending}
                 onClick={() => importMutation.mutate(ImportType.Ollama)}
                 icon="predictive-analysis"
                 text="Ollama"
               />
-            </Tooltip2>
+            </Tooltip>
           </Menu>
         }
       >
-        <Button rightIcon="caret-down" disabled={!link || importMutation.isPending}>
+        <Button endIcon="caret-down" disabled={!link || importMutation.isPending}>
           Import
         </Button>
-      </Popover2>
+      </Popover>
       <Button icon="trash" onClick={handleDeleteButton} intent="danger">
         Delete
       </Button>

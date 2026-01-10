@@ -49,19 +49,19 @@ function ExplorerBarSearch({ tree, refresh }: Props) {
           type="search"
         />
 
-        <Button onClick={refresh} minimal icon="refresh" />
+        <Button onClick={refresh} variant="minimal" icon="refresh" />
         <Divider />
         <Button
           onClick={toggleExpanded}
-          minimal
+          variant="minimal"
           icon="menu"
           className={cn({ 'has-badge-dot': typeFilter.length > 0 && !filteringExpanded })}
-          rightIcon={filteringExpanded ? 'caret-up' : 'caret-down'}
+          endIcon={filteringExpanded ? 'caret-up' : 'caret-down'}
         />
       </ControlGroup>
       <Collapse isOpen={filteringExpanded}>
         {Object.values(FileType).map((type) => (
-          <ButtonGroup minimal key={type}>
+          <ButtonGroup variant="minimal" key={type}>
             <Button
               icon={FileTypeIcons[type]}
               onClick={() => toggleType(type)}

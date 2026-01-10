@@ -15,6 +15,7 @@ function FolderFileGrid({ path, className }: Props) {
   const [parentWidth, setParentWidth] = useState<number | undefined>(undefined);
 
   const { data: files } = useQuery({
+    enabled: !!path,
     queryKey: ['grid-files', path],
     queryFn: () => window.api.getAllFiles(path),
     refetchOnWindowFocus: false,
@@ -47,12 +48,13 @@ function FolderFileGrid({ path, className }: Props) {
     gap,
   });
 
-  useLayoutEffect(() => {
-    setParentWidth(parentRef.current?.offsetWidth);
-  }, [count]);
-
   return files ? (
-    <ResizeSensor onResize={(e) => setParentWidth(e[0].contentRect.width)}>
+    <ResizeSensor
+      targetRef={parentRef}
+      onResize={(e) => {
+        setParentWidth(e[0].contentRect.width);
+      }}
+    >
       <div
         ref={parentRef}
         style={{

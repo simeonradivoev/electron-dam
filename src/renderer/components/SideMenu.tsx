@@ -64,7 +64,7 @@ function SideMenu() {
     <ButtonGroup onFocus={() => {}} large vertical className="side-menu">
       <Button
         title="Home"
-        minimal
+        variant="minimal"
         active={!!useMatch('')}
         onClick={() => {
           navigate('/');
@@ -73,7 +73,7 @@ function SideMenu() {
       />
       <Button
         title={focusedBundle ? `Bundle (${focusedBundle})` : `Bundles`}
-        minimal
+        variant="minimal"
         active={!!isBundles}
         onClick={() => {
           navigate(
@@ -84,7 +84,7 @@ function SideMenu() {
       />
       <Button
         title={`Explorer (${focusedItem})`}
-        minimal
+        variant="minimal"
         className={cn({ active: focusedItem })}
         active={!!useMatch('explorer/*')}
         onClick={() => {
@@ -96,7 +96,7 @@ function SideMenu() {
       />
       <Button
         title="Tasks"
-        minimal
+        variant="minimal"
         active={!!useMatch('tasks')}
         onClick={() => {
           navigate('/tasks');
@@ -105,7 +105,7 @@ function SideMenu() {
       />
       <Button
         title={`Search (${searchQuery})`}
-        minimal
+        variant="minimal"
         active={!!useMatch('search/*')}
         onClick={() => {
           navigate(searchQuery ? `/search/${searchQuery}/${searchPage}` : '/search');
@@ -114,7 +114,7 @@ function SideMenu() {
       />
       <Button
         title={`Settings (${settingsTab})`}
-        minimal
+        variant="minimal"
         active={!!isSettings}
         onClick={() => {
           navigate({ pathname: `/settings/${settingsTab}` });

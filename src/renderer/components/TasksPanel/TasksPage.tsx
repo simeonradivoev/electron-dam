@@ -26,7 +26,7 @@ function TasksPage() {
 
       {tasks.length === 0 ? (
         <Card className="tasks-empty">
-          <Icon icon="inbox" iconSize={48} />
+          <Icon icon="inbox" size={48} />
           <Text>No active tasks</Text>
         </Card>
       ) : (
@@ -61,7 +61,7 @@ function TasksPage() {
               <div className="task-actions">
                 {(task.status === 'PENDING' || task.status === 'RUNNING') && (
                   <Button
-                    small
+                    size="small"
                     intent={Intent.DANGER}
                     onClick={() => cancelTask(task.id)}
                     text="Cancel"

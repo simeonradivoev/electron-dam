@@ -1,8 +1,7 @@
-import { Button, Icon, Menu } from '@blueprintjs/core';
-import { MenuItem2, showContextMenu, Tooltip2 } from '@blueprintjs/popover2';
+import { Button, Icon, Menu, MenuItem, showContextMenu } from '@blueprintjs/core';
 import { useQueryClient } from '@tanstack/react-query';
 import { normalize } from 'pathe';
-import { memo, useCallback, useContext, useMemo, useState } from 'react';
+import { memo, useCallback, useState } from 'react';
 import { useApp } from 'renderer/contexts/AppContext';
 import { AppToaster } from 'renderer/toaster';
 
@@ -49,14 +48,14 @@ const Bundle = memo(
 
     const contextMenu = (
       <Menu>
-        <MenuItem2
+        <MenuItem
           disabled={bundle.isVirtual}
           icon="folder-open"
           text="View In Explorer"
           onClick={handleView}
         />
         {bundle.isVirtual && (
-          <MenuItem2
+          <MenuItem
             icon="import"
             text="Convert to Local"
             onClick={async () => {
@@ -65,16 +64,18 @@ const Bundle = memo(
                 queryClient.invalidateQueries({ queryKey: ['bundles'] });
               } catch (error: unknown) {
                 const message = error instanceof Error ? error.message : String(error);
-                AppToaster.show({
-                  message: `Failed to convert bundle: ${message}`,
-                  intent: 'danger',
-                });
+                AppToaster.then((t) =>
+                  t.show({
+                    message: `Failed to convert bundle: ${message}`,
+                    intent: 'danger',
+                  }),
+                );
               }
             }}
           />
         )}
         {allowDelete && (
-          <MenuItem2 intent="danger" icon="trash" text="Delete" onClick={handleDelete} />
+          <MenuItem intent="danger" icon="trash" text="Delete" onClick={handleDelete} />
         )}
       </Menu>
     );

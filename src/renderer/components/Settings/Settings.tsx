@@ -15,7 +15,7 @@ function Settings() {
         vertical
         onChange={(tab) => navigate(`/settings/${tab}`)}
         selectedTabId={tabMatch?.params.tab}
-        large
+        size="large"
       >
         <Tab icon="settings" id="general" title="General" />
         <Tab icon="search-template" id="metadata" title="Metadata" />

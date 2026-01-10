@@ -1,5 +1,4 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { openDB } from 'idb';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -16,7 +15,6 @@ import { NavigationSaver, NavigationRestorer } from './components/NavigationSave
 import SearchPage from './components/SearchPage/SearchPage';
 import Settings from './components/Settings/Settings';
 import TasksPage from './components/TasksPanel/TasksPage';
-import TitleBar from './components/TitleBar';
 
 const container = document.getElementById('root')!;
 const root = createRoot(container);
@@ -73,10 +71,7 @@ route.subscribe((state) => localStorage.setItem('lastRoute', state.location.path
 root.render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <RouterProvider router={route}>
-        <NavigationRestorer />
-        <NavigationSaver />
-      </RouterProvider>
+      <RouterProvider router={route} />
     </QueryClientProvider>
   </StrictMode>,
 );

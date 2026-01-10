@@ -7,10 +7,9 @@ import {
   IconSize,
   InputGroup,
   Spinner,
-  Switch,
   Tag,
+  Tooltip,
 } from '@blueprintjs/core';
-import { Tooltip2 } from '@blueprintjs/popover2';
 import { useQuery } from '@tanstack/react-query';
 import { useApp } from 'renderer/contexts/AppContext';
 import { humanFileSize } from 'renderer/scripts/utils';
@@ -36,10 +35,10 @@ export default function General() {
     <>
       <FormGroup label="Application Information">
         <ButtonGroup className="app-info">
-          <Tooltip2 position="bottom" content="App Version">
+          <Tooltip position="bottom" content="App Version">
             <Tag icon="application">{version?.version}</Tag>
-          </Tooltip2>
-          <Tooltip2 position="bottom" content="Cache Size">
+          </Tooltip>
+          <Tooltip position="bottom" content="Cache Size">
             <Tag icon="outdated">
               {cacheSize.isFetching ? (
                 <Spinner size={IconSize.STANDARD} />
@@ -47,7 +46,7 @@ export default function General() {
                 !!cacheSize.data && humanFileSize(cacheSize.data)
               )}
             </Tag>
-          </Tooltip2>
+          </Tooltip>
         </ButtonGroup>
       </FormGroup>
 

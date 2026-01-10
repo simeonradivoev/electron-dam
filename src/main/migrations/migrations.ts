@@ -1,5 +1,4 @@
 import Store from 'electron-store';
-import { parse, SemVer } from 'semver';
 import { RunnableMigration } from 'umzug';
 import { StoreSchema } from '../../shared/constants';
 

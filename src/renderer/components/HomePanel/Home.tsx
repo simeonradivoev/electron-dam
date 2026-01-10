@@ -1,7 +1,6 @@
 /* eslint-disable prettier/prettier */
 // src/renderer/components/HomePanel/Home.tsx
-import { Card, Classes, Icon, NonIdealState, Spinner, Tag, Text } from '@blueprintjs/core';
-import { Tooltip2 } from '@blueprintjs/popover2';
+import { Card, Classes, Icon, NonIdealState, Spinner, Tag, Text, Tooltip } from '@blueprintjs/core';
 import { useQuery } from '@tanstack/react-query';
 import classNames from 'classnames';
 import { useCallback, useContext } from 'react';
@@ -92,7 +91,7 @@ function Home(props: Props) {
           </p>
           <ul className={classNames(Classes.LIST, Classes.LIST_UNSTYLED, Classes.TEXT_MUTED)}>
             <li>
-              <Tooltip2 content="How many files have no description or that can be used to derive embeddings.">
+              <Tooltip content="How many files have no description or that can be used to derive embeddings.">
                 <Text>
                   Metadata: {stats?.data?.stats.missingMetadataCount} (
                   {(
@@ -102,15 +101,15 @@ function Home(props: Props) {
                   ).toLocaleString(undefined, { style: 'percent' })}
                   )
                 </Text>
-              </Tooltip2>
+              </Tooltip>
             </li>
             <li>
-              <Tooltip2 content="How many assets have metadata such as a description but have no generated embeddings for it">
+              <Tooltip content="How many assets have metadata such as a description but have no generated embeddings for it">
                 <Text>Embeddings: {stats?.data?.stats.missingEmbeddingsCount}</Text>
-              </Tooltip2>
+              </Tooltip>
             </li>
             <li>
-              <Tooltip2 content="How many files are not in a bundle">
+              <Tooltip content="How many files are not in a bundle">
                 <Text>
                   Loose: {stats?.data?.stats.missingBundlesCount} (
                   {(
@@ -120,7 +119,7 @@ function Home(props: Props) {
                   ).toLocaleString(undefined, { style: 'percent' })}
                   )
                 </Text>
-              </Tooltip2>
+              </Tooltip>
             </li>
           </ul>
         </Card>

@@ -24,8 +24,8 @@ function PreviewPanelAudio({ importedAudio, isZip, path, audioMetadata, hasThumb
   const [playing, setPlay] = useState(false);
   const [volume, setVolume] = useLocalStorage('volume', 0.5);
 
-  const [loop, setLoop] = useState(!!localStorage.getItem('loop'));
-  const [muted, setMuted] = useState(!!localStorage.getItem('muted'));
+  const [loop, setLoop] = useLocalStorage('loop', false);
+  const [muted, setMuted] = useLocalStorage('muted', false);
 
   const updatePlay = (wave: WaveSurfer, play: boolean) => {
     if (play) {
@@ -48,13 +48,12 @@ function PreviewPanelAudio({ importedAudio, isZip, path, audioMetadata, hasThumb
   }, [playing]);
 
   useEffect(() => {
-    wavesurferRef.current?.setVolume(muted ? 0 : volume);
-    if (muted) localStorage.setItem('muted', 'true');
-    else localStorage.removeItem('muted');
-    localStorage.setItem('volume', volume.toString());
-    if (loop) localStorage.setItem('loop', 'true');
-    else localStorage.removeItem('loop');
-  }, [muted, volume, loop]);
+    wavesurferRef.current?.setVolume(volume);
+  }, [volume]);
+
+  useEffect(() => {
+    wavesurferRef.current?.setMuted(muted);
+  }, [muted]);
 
   const handlePlay = useCallback(() => {
     try {
@@ -72,6 +71,7 @@ function PreviewPanelAudio({ importedAudio, isZip, path, audioMetadata, hasThumb
     if (!waveformRef.current) {
       return undefined;
     }
+    console.log('Created');
     const wavesurfer = WaveSurfer.create({
       container: waveformRef.current!,
       cursorWidth: 2,
@@ -92,23 +92,24 @@ function PreviewPanelAudio({ importedAudio, isZip, path, audioMetadata, hasThumb
       peaks: audioMetadata?.peaks ? decodePeaks(audioMetadata.peaks) : undefined,
     });
     wavesurfer.setVolume(volume);
+
     wavesurfer.on('finish', () => {
-      if (localStorage.getItem('loop')) {
-        wavesurferRef.current?.play();
+      if (localStorage.getItem('loop') === 'true') {
+        // Only timeout works, if you play directly nothing happens
+        setTimeout(() => wavesurfer.play());
       }
     });
     wavesurfer.on('play', () => {
       setPlay(true);
     });
     wavesurfer.on('pause', () => setPlay(false));
+
     wavesurfer.on('error', (e) => {
       if (e.name === 'AbortError') {
         return;
       }
-      AppToaster.show({ message: e.name, intent: 'danger' });
+      AppToaster.then((toaster) => toaster.show({ message: e.name, intent: 'danger' }));
     });
-
-    wavesurfer.on('load', () => {});
 
     wavesurfer.on('ready', (e) => {
       wavesurfer.setMuted(muted);
@@ -118,7 +119,7 @@ function PreviewPanelAudio({ importedAudio, isZip, path, audioMetadata, hasThumb
             .exportImage('image/webp', 0.8, 'dataURL')
             .then((blob) => window.api.saveAudioPreview(path, blob[0]))
             .catch((e) => {
-              AppToaster.show({ message: e.message, intent: 'danger' });
+              AppToaster.then((t) => t.show({ message: e.message, intent: 'danger' }));
             });
         }
 
@@ -132,11 +133,12 @@ function PreviewPanelAudio({ importedAudio, isZip, path, audioMetadata, hasThumb
     return () => {
       wavesurfer.unAll();
       wavesurfer.stop();
-      wavesurfer.on('ready', () => wavesurfer.destroy());
+      wavesurfer.once('ready', () => wavesurfer.destroy());
       wavesurfer?.destroy();
       wavesurferRef.current = undefined;
+      console.log('Disposed');
     };
-  }, [waveformRef, importedAudio, isZip]);
+  }, [importedAudio, isZip]);
 
   useEffect(() => wavesurferRef.current && updatePlay(wavesurferRef.current, playing), [playing]);
 

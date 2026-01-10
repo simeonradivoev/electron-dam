@@ -1,7 +1,5 @@
 /* eslint-disable react/no-children-prop */
-import { Alert, Button, ButtonGroup, Classes, Icon, Tag } from '@blueprintjs/core';
-import { Tooltip2 } from '@blueprintjs/popover2';
-import cn from 'classnames';
+import { Alert, Button, ButtonGroup, Classes, Icon, Tag, Tooltip } from '@blueprintjs/core';
 import { useBlocker } from 'react-router-dom';
 import { useFormContext } from './Form';
 
@@ -57,7 +55,7 @@ export default function OptionsForm({ children, isFetching }: Props) {
                   Reset
                 </Button>
                 {errors && (
-                  <Tooltip2
+                  <Tooltip
                     intent="danger"
                     content={
                       <ul className={Classes.LIST_UNSTYLED}>
@@ -72,7 +70,7 @@ export default function OptionsForm({ children, isFetching }: Props) {
                     }
                   >
                     <Tag intent="danger" icon="error" />
-                  </Tooltip2>
+                  </Tooltip>
                 )}
               </ButtonGroup>
               <Alert

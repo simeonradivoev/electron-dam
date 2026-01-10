@@ -48,8 +48,8 @@ export function LoadDatabaseExact(store: Store<StoreSchema>, directory: string):
       const apiCallback = {} as MainIpcCallbacks;
       registerMainCallbacks(apiCallback);
       let migrationsToRun = migrations
-        .filter((m) => m.since && appVersion && satisfies(database.name ?? '0.0.0', m.since))
-        .map((m) => m.name);
+        .filter((m: any) => m.since && appVersion && satisfies(database.name ?? '0.0.0', m.since))
+        .map((m: any) => m.name);
       if (migrationsToRun.length > 0) {
         await addTask(
           `Migration From ${database.name ?? '0.0.0'} to ${appVersion}`,

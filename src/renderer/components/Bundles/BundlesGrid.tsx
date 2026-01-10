@@ -114,39 +114,44 @@ function BundlesGrid() {
   });
 
   return (
-    <ResizeSensor onResize={(e) => setParentWidth(e[0].contentRect.width)}>
-      <div className="bundles-grid">
-        <Navbar>
-          <NavbarGroup align="left">
-            <Button onClick={handleNew} title="Create New Virtual Bundle" minimal icon="add" />
-            {selectedBundles.length > 0 && (
-              <Button
-                onClick={handleMassDelete}
-                title={`Delete ${selectedBundles.length} items`}
-                minimal
-                icon="trash"
-                intent="danger"
-              />
-            )}
-          </NavbarGroup>
-          <NavbarGroup align="right">
-            <InputGroup
-              inputRef={(element) => {
-                ((element ?? {}) as any).onsearch = handleSearchSubmit;
-              }}
-              name="search"
-              fill
-              className="search"
-              leftIcon="search"
-              placeholder="Search"
-              type="search"
-              defaultValue={filter}
+    <div className="bundles-grid">
+      <Navbar>
+        <NavbarGroup align="left">
+          <Button onClick={handleNew} title="Create New Virtual Bundle" minimal icon="add" />
+          {selectedBundles.length > 0 && (
+            <Button
+              onClick={handleMassDelete}
+              title={`Delete ${selectedBundles.length} items`}
+              variant="minimal"
+              icon="trash"
+              intent="danger"
             />
-            <Button disabled={isFetchingBundles} onClick={handleRefresh} minimal icon="refresh" />
-            <NavbarDivider />
-            <Button minimal icon="menu" rightIcon="caret-down" />
-          </NavbarGroup>
-        </Navbar>
+          )}
+        </NavbarGroup>
+        <NavbarGroup align="right">
+          <InputGroup
+            inputRef={(element) => {
+              ((element ?? {}) as any).onsearch = handleSearchSubmit;
+            }}
+            name="search"
+            fill
+            className="search"
+            leftIcon="search"
+            placeholder="Search"
+            type="search"
+            defaultValue={filter}
+          />
+          <Button
+            disabled={isFetchingBundles}
+            onClick={handleRefresh}
+            variant="minimal"
+            icon="refresh"
+          />
+          <NavbarDivider />
+          <Button variant="minimal" icon="menu" rightIcon="caret-down" />
+        </NavbarGroup>
+      </Navbar>
+      <ResizeSensor targetRef={parentRef} onResize={(e) => setParentWidth(e[0].contentRect.width)}>
         <div
           ref={parentRef}
           style={{
@@ -220,8 +225,8 @@ function BundlesGrid() {
               })}
           </div>
         </div>
-      </div>
-    </ResizeSensor>
+      </ResizeSensor>
+    </div>
   );
 }
 

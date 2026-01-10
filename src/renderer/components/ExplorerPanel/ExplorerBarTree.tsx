@@ -1,6 +1,5 @@
 import { Icon, IconName } from '@blueprintjs/core';
-import { Popover2 } from '@blueprintjs/popover2';
-import { HotkeysConfig, HotkeysCoreDataRef, ItemInstance, TreeInstance } from '@headless-tree/core';
+import { HotkeysCoreDataRef, ItemInstance, TreeInstance } from '@headless-tree/core';
 import { useVirtualizer, Virtualizer } from '@tanstack/react-virtual';
 import cn from 'classnames';
 import React, {
@@ -81,7 +80,7 @@ const TreeItem = memo(
       return (
         <Icon
           intent={searchMatch ? 'primary' : 'none'}
-          className="bp4-tree-node-icon"
+          className="bp6-tree-node-icon"
           icon={icon}
         />
       );
@@ -116,21 +115,22 @@ const TreeItem = memo(
           });
         }}
         onDoubleClick={onDoubleClick}
-        className={cn('bp4-tree-node', {
-          'bp4-tree-node-selected': isFocused,
-          'bp4-disabled': isSearching && !searchMatch,
+        className={cn('bp6-tree-node', {
+          'bp6-tree-node-selected': isFocused,
+          'bp6-disabled': isSearching && !searchMatch,
           'multi-selection': isSelected,
         })}
       >
-        <div className={cn(`bp4-tree-node-content bp4-tree-node-content-${indent}`, {})}>
+        <div className={cn(`bp6-tree-node-content bp6-tree-node-content-${indent}`, {})}>
           {nodeData.isDirectory ? (
             <>
-              <span
+              <Icon
+                icon="chevron-right"
                 role="presentation"
-                className={cn('bp4-icon-standard', {
-                  'bp4-tree-node-caret-open': !nodeData.isEmpty && isExpanded,
-                  'bp4-tree-node-caret': !nodeData.isEmpty,
-                  'bp4-tree-node-caret-none': nodeData.isEmpty,
+                className={cn({
+                  'bp6-tree-node-caret-open': !nodeData.isEmpty && isExpanded,
+                  'bp6-tree-node-caret': !nodeData.isEmpty,
+                  'bp6-tree-node-caret-none': nodeData.isEmpty,
                 })}
                 onClick={
                   nodeData.isEmpty
@@ -146,12 +146,12 @@ const TreeItem = memo(
             </>
           ) : (
             <>
-              <span className="bp4-tree-node-caret-none" />
+              <span className="bp6-tree-node-caret-none" />
               {iconElement}
             </>
           )}
 
-          <span className="bp4-tree-node-label">{name}</span>
+          <span className="bp6-tree-node-label">{name}</span>
           {searchMatch && <Icon icon="search" />}
         </div>
         <div style={dragLineStyle} className="dragline" />
@@ -208,9 +208,9 @@ const Inner = forwardRef<Virtualizer<HTMLDivElement, Element>, Props>(
             height: `${virtualizer.getTotalSize()}px`,
             position: 'relative',
           }}
-          className="bp4-tree tree bp4-elevation-0"
+          className="bp6-tree tree bp6-elevation-0"
         >
-          <ul className="bp4-tree-node-list bp4-tree-root" {...tree.getContainerProps('files')}>
+          <ul className="bp6-tree-node-list bp6-tree-root" {...tree.getContainerProps('files')}>
             {virtualizer.getVirtualItems().map((virtualItem) => {
               const item = tree.getItems()[virtualItem.index];
               return (

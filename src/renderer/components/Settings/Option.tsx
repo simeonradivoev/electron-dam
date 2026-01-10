@@ -9,8 +9,10 @@ import {
   NumericInput,
   Switch,
   Tag,
+  Tooltip,
+  showContextMenu,
+  MenuItem,
 } from '@blueprintjs/core';
-import { MenuItem2, showContextMenu, Tooltip2 } from '@blueprintjs/popover2';
 import { useQueryClient } from '@tanstack/react-query';
 import cn from 'classnames';
 import { useCallback } from 'react';
@@ -31,7 +33,7 @@ export default function Option({ isFetching, defaultValue, instantSubmit }: Prop
 
   const warning =
     field.state.meta.errors.length > 0 ? (
-      <Tooltip2
+      <Tooltip
         intent="danger"
         content={
           <ul className={Classes.LIST_UNSTYLED}>
@@ -42,7 +44,7 @@ export default function Option({ isFetching, defaultValue, instantSubmit }: Prop
         }
       >
         <Tag minimal intent="danger" icon="error" />
-      </Tooltip2>
+      </Tooltip>
     ) : undefined;
 
   const handleChange = useCallback(
@@ -59,12 +61,12 @@ export default function Option({ isFetching, defaultValue, instantSubmit }: Prop
   const label = (
     <div
       onContextMenu={
-        optionDefault != defaultValue
+        optionDefault !== defaultValue
           ? (e) =>
               showContextMenu({
                 content: (
                   <Menu>
-                    <MenuItem2
+                    <MenuItem
                       icon="reset"
                       text="Reset"
                       onClick={(e) => {
@@ -88,14 +90,14 @@ export default function Option({ isFetching, defaultValue, instantSubmit }: Prop
         />
       )}{' '}
       {option.label}
-      {optionDefault != defaultValue && (
+      {optionDefault !== defaultValue && (
         <Icon intent="primary" title={`Default value (${optionDefault})`} icon="dot" />
       )}
     </div>
   );
   const { subLabel } = option;
   const labelClass = cn('setting-group', {
-    changed: optionDefault != defaultValue,
+    changed: optionDefault !== defaultValue,
   });
 
   let control: JSX.Element | undefined;

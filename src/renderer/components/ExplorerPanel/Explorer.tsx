@@ -1,4 +1,4 @@
-import { Popover2, PopupKind } from '@blueprintjs/popover2';
+import { Popover, PopupKind } from '@blueprintjs/core';
 import { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Split from 'react-split';
@@ -22,7 +22,7 @@ function Explorer() {
   return (
     <>
       {contextMenuTarget && (
-        <Popover2
+        <Popover
           content={<FileContextMenu assetPath={contextMenuTarget.id} navigate={navigate} />}
           isOpen={!!contextMenuTarget}
           popupKind={PopupKind.MENU}
@@ -44,7 +44,7 @@ function Explorer() {
           }}
         >
           <div id="context-menu-target" />
-        </Popover2>
+        </Popover>
       )}
       <Split
         direction="horizontal"

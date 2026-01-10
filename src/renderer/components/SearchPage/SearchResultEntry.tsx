@@ -7,8 +7,8 @@ import {
   IconName,
   MaybeElement,
   Intent,
+  showContextMenu,
 } from '@blueprintjs/core';
-import { showContextMenu } from '@blueprintjs/popover2';
 import cn from 'classnames';
 import {
   useRef,

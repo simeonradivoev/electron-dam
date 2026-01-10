@@ -54,6 +54,7 @@ export const QueryKeys = {
   metadata: 'metadata',
   tags: 'tags',
   fileInfo: 'fileInfo',
+  embeddings: 'embeddings',
 };
 
 export function isValidHttpUrl(string: string) {

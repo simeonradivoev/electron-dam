@@ -1,6 +1,5 @@
 import {
   Button,
-  Card,
   H5,
   IconName,
   IconSize,
@@ -8,7 +7,6 @@ import {
   NonIdealState,
   ProgressBar,
   Spinner,
-  Text,
   ToastProps,
 } from '@blueprintjs/core';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -63,66 +61,69 @@ export function TasksProvider({ children }: { children: ReactNode | ReactNode[] 
 
   useEffect(() => {
     if (tasks) {
-      const existinToastKeys = AppToaster.getToasts().map((t) => t.key);
-      const taskSet = new Set(tasks.map((t) => t.id));
-      existinToastKeys
-        .filter((t) => t.startsWith('task-') && !taskSet.has(t.substring('task-'.length)))
-        .forEach((t) => AppToaster.dismiss(t));
-      tasks.forEach((task) => {
-        const props: ToastProps = {
-          timeout: 0,
-          intent: task.error ? 'danger' : 'none',
-          icon: task.options.icon as IconName,
-          isCloseButtonShown: false,
-          message: (
-            <div className="task-card">
-              <div className="task-header">
-                <H5>{task.label}</H5>
+      // eslint-disable-next-line promise/always-return
+      AppToaster.then((toaster) => {
+        const existinToastKeys = toaster.getToasts().map((t) => t.key);
+        const taskSet = new Set(tasks.map((t) => t.id));
+        existinToastKeys
+          .filter((t) => t.startsWith('task-') && !taskSet.has(t.substring('task-'.length)))
+          .forEach((t) => toaster.dismiss(t));
+        tasks.forEach((task) => {
+          const props: ToastProps = {
+            timeout: 0,
+            intent: task.error ? 'danger' : 'none',
+            icon: task.options.icon as IconName,
+            isCloseButtonShown: false,
+            message: (
+              <div className="task-card">
+                <div className="task-header">
+                  <H5>{task.label}</H5>
+                </div>
+
+                {task.error}
+
+                <div className="task-actions">
+                  {(task.status === 'PENDING' || task.status === 'RUNNING') && (
+                    <Button
+                      small
+                      minimal
+                      intent={Intent.DANGER}
+                      onClick={() => cancelTask(task.id)}
+                      text="Cancel"
+                    />
+                  )}
+                </div>
               </div>
+            ),
+          };
+          switch (task.status) {
+            case 'CANCELED':
+              props.action = { icon: 'disable' };
+              break;
+            case 'FAILED':
+              props.action = { icon: 'cross' };
+              break;
+            case 'COMPLETED':
+              props.action = { icon: 'tick' };
+              break;
+            case 'PENDING':
+            case 'RUNNING':
+              props.action = {
+                icon: task.progress ? (
+                  <Spinner size={IconSize.STANDARD} value={task.progress} />
+                ) : (
+                  <Spinner size={IconSize.STANDARD} />
+                ),
+                disabled: true,
+              };
+              break;
+            default:
+              break;
+          }
 
-              {task.error}
-
-              <div className="task-actions">
-                {(task.status === 'PENDING' || task.status === 'RUNNING') && (
-                  <Button
-                    small
-                    minimal
-                    intent={Intent.DANGER}
-                    onClick={() => cancelTask(task.id)}
-                    text="Cancel"
-                  />
-                )}
-              </div>
-            </div>
-          ),
-        };
-        switch (task.status) {
-          case 'CANCELED':
-            props.action = { icon: 'disable' };
-            break;
-          case 'FAILED':
-            props.action = { icon: 'cross' };
-            break;
-          case 'COMPLETED':
-            props.action = { icon: 'tick' };
-            break;
-          case 'PENDING':
-          case 'RUNNING':
-            props.action = {
-              icon: task.progress ? (
-                <Spinner size={IconSize.STANDARD} value={task.progress} />
-              ) : (
-                <Spinner size={IconSize.STANDARD} />
-              ),
-              disabled: true,
-            };
-            break;
-          default:
-            break;
-        }
-
-        AppToaster.show(props, `task-${task.id}`);
-      });
+          toaster.show(props, `task-${task.id}`);
+        });
+      }).catch(() => {});
     }
   }, [tasks]);
 

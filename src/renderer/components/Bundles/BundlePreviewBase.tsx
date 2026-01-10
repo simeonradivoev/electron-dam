@@ -1,5 +1,4 @@
-import { Button, Classes, Divider, ResizeSensor, Tag, TagInput } from '@blueprintjs/core';
-import { Tooltip2 } from '@blueprintjs/popover2';
+import { Button, Classes, Divider, ResizeSensor, Tag, TagInput, Tooltip } from '@blueprintjs/core';
 import { useQuery } from '@tanstack/react-query';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import classNames from 'classnames';
@@ -60,10 +59,10 @@ const BundleTop = forwardRef<HTMLDivElement, PropsTop>(
             <h1 className={bundle ? '' : Classes.SKELETON}>
               {bundle?.name ?? 'Bundle Loading Placeholder Text'}
             </h1>
-            {!!(bundle?.bundle as any).embeddings && (
-              <Tooltip2 content="Embeddings">
+            {!!(bundle?.bundle as any)?.embeddings && (
+              <Tooltip content="Embeddings">
                 <Tag minimal icon="heatmap" />
-              </Tooltip2>
+              </Tooltip>
             )}
             {!showInExplorerEnabled || bundle?.isVirtual ? (
               <></>
@@ -71,7 +70,7 @@ const BundleTop = forwardRef<HTMLDivElement, PropsTop>(
               <Button
                 onClick={() => select(bundle!.id)}
                 intent="primary"
-                small
+                size="small"
                 icon="folder-open"
                 title="View In Explorer"
               />
@@ -79,7 +78,7 @@ const BundleTop = forwardRef<HTMLDivElement, PropsTop>(
             <Button
               onClick={() => edit(bundle!.id)}
               intent="primary"
-              small
+              size="small"
               icon="edit"
               title="Edit"
             />
@@ -88,7 +87,7 @@ const BundleTop = forwardRef<HTMLDivElement, PropsTop>(
                 onClick={() => window.open(bundle.bundle.sourceUrl, '_blank')}
                 title={bundle.bundle.sourceUrl}
                 intent="primary"
-                small
+                size="small"
                 icon="link"
               />
             ) : (
@@ -176,12 +175,8 @@ function BundlePreviewBase({
 
   const firstItem = rowVirtualizer.getVirtualItems()?.[0];
 
-  useLayoutEffect(() => {
-    setParentWidth(parentRef.current?.offsetWidth);
-  }, [count]);
-
   return (
-    <ResizeSensor onResize={(e) => setParentWidth(e[0].contentRect.width)}>
+    <ResizeSensor targetRef={parentRef} onResize={(e) => setParentWidth(e[0].contentRect.width)}>
       <div
         ref={parentRef}
         style={{
@@ -266,8 +261,3 @@ function BundlePreviewBase({
 }
 
 export default BundlePreviewBase;
-
-BundlePreviewBase.defaultProps = {
-  showFiles: false,
-  showInExplorerEnabled: false,
-};

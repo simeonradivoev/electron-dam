@@ -1,9 +1,5 @@
-import { Classes, Divider, Spinner, Tag } from '@blueprintjs/core';
-import { useQuery } from '@tanstack/react-query';
 import { useCallback } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
-import { humanFileSize } from 'renderer/scripts/utils';
-import FolderFileGrid from '../FileInfoPanel/FolderFileGrid';
 import { BundleDetailsContextType } from './BundleDetailsLayout';
 import BundlePreview from './BundlePreviewBase';
 

@@ -20,9 +20,9 @@ function TitleBar() {
 
       {/* Right side */}
       <div className="controls">
-        <Button minimal icon="minus" onClick={() => window.api.minimizeWindow()} />
-        <Button minimal icon="maximize" onClick={() => window.api.maximizeWindow()} />
-        <Button minimal id="close" icon="cross" onClick={() => window.close()} />
+        <Button variant="minimal" icon="minus" onClick={() => window.api.minimizeWindow()} />
+        <Button variant="minimal" icon="maximize" onClick={() => window.api.maximizeWindow()} />
+        <Button variant="minimal" id="close" icon="cross" onClick={() => window.close()} />
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import {
-  Divider,
+  Breadcrumbs,
   BreadcrumbProps,
   Tabs,
   Tab,
@@ -12,15 +12,17 @@ import {
   NavbarDivider,
   NonIdealState,
   Classes,
+  Tooltip,
+  Popover,
 } from '@blueprintjs/core';
-import { Breadcrumbs2, Popover2, Tooltip2 } from '@blueprintjs/popover2';
 import { Canvas } from '@react-three/fiber';
-import { keepPreviousData, useIsMutating, useQuery } from '@tanstack/react-query';
+import { useIsMutating, useQuery } from '@tanstack/react-query';
 import { join, normalize } from 'pathe';
 import { useCallback, useMemo, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from 'renderer/contexts/AppContext';
+import { getIcon } from 'renderer/scripts/file-tree';
 import { ImportMedia } from 'renderer/scripts/loader';
 import { humanFileSize, formatDuration, QueryKeys } from 'renderer/scripts/utils';
 import { BundleMetaFile, zipDelimiter } from 'shared/constants';
@@ -152,42 +154,53 @@ const FileInfoPanel: React.FC<FileInfoPanelProps> = ({
     previewPanel = <NonIdealState icon="eye-open">Select Asset to Preview</NonIdealState>;
   }
 
-  function createBreadCrum(
-    info: FileInfo,
-    bundlePath: string | undefined,
-    path: string,
-    index: number,
-    array: string[],
-  ) {
-    const selectPath = join(...array.slice(0, index + 1));
-    const crum: BreadcrumbProps = {
-      onClick:
-        index < array.length - 1
-          ? () => {
-              viewInExplorer(selectPath);
-            }
-          : undefined,
-      text: path,
-      current: index === array.length - 1,
-    };
-    if (bundlePath && bundlePath === selectPath) {
-      crum.icon = path.endsWith(zipDelimiter) ? 'compressed' : 'box';
-    } else if (info.bundle && !info.bundle.isParentBundle) {
-      crum.icon = 'box';
-    } else if (info.isDirectory) {
-      crum.icon = path.endsWith(zipDelimiter) ? 'compressed' : 'folder-open';
-    } else {
-      crum.icon = 'document';
-    }
-    return crum;
-  }
+  const createBreadCrum = useCallback(
+    (
+      info: FileInfo,
+      bundlePath: string | undefined,
+      path: string,
+      index: number,
+      array: string[],
+    ) => {
+      const selectPath = join(...array.slice(0, index + 1));
+      const crumb: BreadcrumbProps = {
+        onClick:
+          index < array.length - 1
+            ? () => {
+                viewInExplorer(selectPath);
+              }
+            : undefined,
+        text: path,
+        current: index === array.length - 1,
+      };
+      if (bundlePath && bundlePath === selectPath) {
+        crumb.icon = path.endsWith(zipDelimiter) ? 'compressed' : 'box';
+      } else if (info.bundle && !info.bundle.isParentBundle) {
+        crumb.icon = 'box';
+      } else if (info.isDirectory) {
+        crumb.icon = path.endsWith(zipDelimiter) ? 'compressed' : 'folder-open';
+      } else if (index === array.length - 1) {
+        crumb.icon = getIcon(selectPath);
+      } else {
+        crumb.icon = 'folder-open';
+      }
+      return crumb;
+    },
+    [viewInExplorer],
+  );
 
-  const sourceUrl =
-    fileInfo?.bundle?.bundle.bundle.sourceUrl && new URL(fileInfo.bundle.bundle.bundle.sourceUrl);
-  const fileInfoPath =
-    (showSource || fileInfo?.bundle?.bundle.isVirtual) && sourceUrl
-      ? [sourceUrl.host]
-      : normalize(fileInfo?.path ?? '').split('/');
+  const sourceUrl = useMemo(
+    () =>
+      fileInfo?.bundle?.bundle.bundle.sourceUrl && new URL(fileInfo.bundle.bundle.bundle.sourceUrl),
+    [fileInfo?.bundle?.bundle.bundle.sourceUrl],
+  );
+  const fileInfoPath = useMemo(
+    () =>
+      (showSource || fileInfo?.bundle?.bundle.isVirtual) && sourceUrl
+        ? [sourceUrl.host]
+        : normalize(fileInfo?.path ?? '').split('/'),
+    [fileInfo?.bundle?.bundle.isVirtual, fileInfo?.path, showSource, sourceUrl],
+  );
 
   const BREADCRUMBS = useMemo((): BreadcrumbProps[] => {
     if (!fileInfo || !fileInfoPath) {
@@ -195,10 +208,7 @@ const FileInfoPanel: React.FC<FileInfoPanelProps> = ({
     }
 
     const info = fileInfo;
-    const normalizedBundlePath = info.bundlePath && normalize(info.bundlePath);
-    const bundlePath =
-      normalizedBundlePath &&
-      normalizedBundlePath.substring(0, normalizedBundlePath.length - BundleMetaFile.length - 1);
+    const normalizedBundlePath = info.bundlePath ? normalize(info.bundlePath) : '';
     let crums: BreadcrumbProps[] =
       info.bundle && info.bundle.isParentBundle
         ? [
@@ -210,18 +220,13 @@ const FileInfoPanel: React.FC<FileInfoPanelProps> = ({
         : [];
 
     crums = crums.concat(
-      fileInfoPath.map((p, index, array) => createBreadCrum(info, bundlePath, p, index, array)),
+      fileInfoPath.map((p, index, array) =>
+        createBreadCrum(info, normalizedBundlePath, p, index, array),
+      ),
     );
 
     return crums;
-  }, [
-    fileInfoPath,
-    !fileInfo,
-    fileInfo?.bundlePath,
-    fileInfo?.bundle,
-    fileInfo?.path,
-    viewInExplorer,
-  ]);
+  }, [fileInfo, fileInfoPath, createBreadCrum]);
 
   let fileSizeTag: JSX.Element | undefined;
   if (fileInfo && fileInfo.size) {
@@ -242,12 +247,12 @@ const FileInfoPanel: React.FC<FileInfoPanelProps> = ({
     <div className="file-info-panel">
       <Navbar className="header">
         <NavbarGroup>
-          <Breadcrumbs2 className="breadcrumbs" collapseFrom="start" items={BREADCRUMBS} />
+          <Breadcrumbs className="breadcrumbs" collapseFrom="start" items={BREADCRUMBS} />
         </NavbarGroup>
         <NavbarGroup align="right">
           <NavbarDivider />
           {!!fileInfo && (
-            <Popover2
+            <Popover
               interactionKind="click"
               placement="bottom"
               portalContainer={contextPortal}
@@ -262,8 +267,8 @@ const FileInfoPanel: React.FC<FileInfoPanelProps> = ({
                 />
               }
             >
-              <Button minimal icon="menu" />
-            </Popover2>
+              <Button variant="minimal" icon="menu" />
+            </Popover>
           )}
         </NavbarGroup>
       </Navbar>
@@ -301,7 +306,7 @@ const FileInfoPanel: React.FC<FileInfoPanelProps> = ({
         <ul className="file-stats">
           {fileSizeTag}
           {metadata?.description && (
-            <Tooltip2 content={<ReactMarkdown>{metadata?.description}</ReactMarkdown>}>
+            <Tooltip content={<ReactMarkdown>{metadata?.description}</ReactMarkdown>}>
               <Tag
                 className="description-tag"
                 style={{ maxWidth: 128 }}
@@ -316,41 +321,41 @@ const FileInfoPanel: React.FC<FileInfoPanelProps> = ({
                   </div>
                 )}
               </Tag>
-            </Tooltip2>
+            </Tooltip>
           )}
           {metadata?.embeddings && (
-            <Tooltip2 content="Embeddings">
+            <Tooltip content="Embeddings">
               <Tag style={{ maxWidth: 128 }} icon="heatmap" minimal>
                 {isGeneratingMetadata ? <Spinner size={16} /> : ''}
               </Tag>
-            </Tooltip2>
+            </Tooltip>
           )}
           {fileInfo?.isZip && <Tag style={{ maxWidth: 128 }} icon="compressed" minimal />}
           {fileInfo?.audioMetadata?.format.duration && (
-            <Tooltip2 content="Duration">
+            <Tooltip content="Duration">
               <Tag style={{ maxWidth: 128 }} icon="time" minimal>
                 {formatDuration(Math.round(fileInfo?.audioMetadata?.format?.duration) * 1000)}
               </Tag>
-            </Tooltip2>
+            </Tooltip>
           )}
           {fileInfo?.audioMetadata?.format?.bitrate && (
-            <Tooltip2 content="Bitrate (kilobits per second)">
+            <Tooltip content="Bitrate (kilobits per second)">
               <Tag icon="regression-chart" minimal>
                 {Math.round((fileInfo?.audioMetadata?.format?.bitrate ?? 0) * 0.001)} kbps
               </Tag>
-            </Tooltip2>
+            </Tooltip>
           )}
           {fileInfo?.audioMetadata?.common.bpm && (
-            <Tooltip2 content="Beats per minute">
+            <Tooltip content="Beats per minute">
               <Tag icon="one-to-one" minimal>
                 {fileInfo?.audioMetadata?.common.bpm} bpm
               </Tag>
-            </Tooltip2>
+            </Tooltip>
           )}
           {fileInfo?.audioMetadata?.format.lossless && (
-            <Tooltip2 content="Lossless">
+            <Tooltip content="Lossless">
               <Tag icon="flame" minimal />
-            </Tooltip2>
+            </Tooltip>
           )}
         </ul>
       )}

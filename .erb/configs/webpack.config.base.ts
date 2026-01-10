@@ -1,6 +1,7 @@
 /**
  * Base webpack config used across other specific configs
  */
+import TsconfigPathsPlugins from 'tsconfig-paths-webpack-plugin';
 import webpack from 'webpack';
 import { dependencies as externals } from '../../release/app/package.json';
 import webpackPaths from './webpack.paths';
@@ -40,6 +41,7 @@ const configuration: webpack.Configuration = {
   resolve: {
     extensions: ['.js', '.jsx', '.json', '.ts', '.tsx'],
     modules: [webpackPaths.srcPath, 'node_modules'],
+    plugins: [new TsconfigPathsPlugins()],
     fallback: {
       fs: false,
       path: false,

@@ -6,7 +6,8 @@ import { nativeImage, protocol } from 'electron';
 import log from 'electron-log/main';
 import Store from 'electron-store';
 import StreamZip, { ZipEntry } from 'node-stream-zip';
-import sharp from 'sharp';
+import PQueue from 'p-queue';
+import sharp, { queue } from 'sharp';
 import { zipDelimiter, StoreSchema } from '../../shared/constants';
 import AsyncQueue from '../managers/AsyncQueue';
 import { FilePath, imageMediaFormatsMatch, mkdirs } from '../util';
@@ -40,7 +41,7 @@ export function RegisterProtocols() {
 }
 
 const activeFileOperations = new Map<string, Promise<any>>();
-const thumbQueue = new AsyncQueue(4);
+const thumbQueue = new PQueue({ concurrency: 4, timeout: 2000 });
 
 export function GetThumbnailPath(filePath: FilePath, statInfo: Stats | ZipEntry): FilePath {
   if (statInfo instanceof Stats) {
@@ -134,169 +135,144 @@ export default function InitializeProtocols(store: Store<StoreSchema>) {
   });
 
   protocol.registerStreamProtocol('thumb', async (request, callback) => {
-    thumbQueue.run(async () => {
-      try {
-        const url = new URL(request.url);
+    thumbQueue
+      .add(
+        async () => {
+          try {
+            const url = new URL(request.url);
 
-        const projectDir = store.get('projectDirectory');
+            const projectDir = store.get('projectDirectory');
 
-        let maxSize = 128;
-        if (url.searchParams.has('maxSize')) {
-          maxSize = Number.parseInt(url.searchParams.get('maxSize')!, 10);
-        }
+            let maxSize = 128;
+            if (url.searchParams.has('maxSize')) {
+              maxSize = Number.parseInt(url.searchParams.get('maxSize')!, 10);
+            }
 
-        const fileLocalPath = path.join(
-          decodeURIComponent(url.host),
-          decodeURIComponent(url.pathname.substring(1)),
-        );
+            const fileLocalPath = path.join(
+              decodeURIComponent(url.host),
+              decodeURIComponent(url.pathname.substring(1)),
+            );
 
-        const absoluteFilePath = path.join(projectDir, fileLocalPath);
-        let statInfo: Stats | ZipEntry | undefined;
-        try {
-          statInfo = await stat(absoluteFilePath);
-        } catch {
-          if (imageMediaFormatsMatch(fileLocalPath)) {
-            // Zip entry inside a zip file
-            // TODO: cache to file system
-            const lastZipIndex = fileLocalPath.lastIndexOf(zipDelimiter);
-            if (lastZipIndex >= 0) {
-              const zipPath = fileLocalPath.substring(0, lastZipIndex + zipDelimiter.length);
-              const zip = new StreamZip.async({ file: path.join(projectDir, zipPath) });
-              const entryPath = fileLocalPath.substring(
-                Math.min(zipPath.length + 1, fileLocalPath.length),
-              );
-              statInfo = await zip.entry(entryPath);
-              if (statInfo) {
-                const zipCachePreviewPath = await GetThumbnailPath(
-                  new FilePath(projectDir, fileLocalPath),
-                  statInfo,
-                );
-
-                if (pathExistsSync(zipCachePreviewPath)) {
-                  thumbCache?.get(zipCachePreviewPath.path);
-                  const stream = createReadStream(
-                    path.join(zipCachePreviewPath.projectDir, zipCachePreviewPath.path),
+            const absoluteFilePath = path.join(projectDir, fileLocalPath);
+            let statInfo: Stats | ZipEntry | undefined;
+            try {
+              statInfo = await stat(absoluteFilePath);
+            } catch {
+              if (imageMediaFormatsMatch(fileLocalPath)) {
+                // Zip entry inside a zip file
+                // TODO: cache to file system
+                const lastZipIndex = fileLocalPath.lastIndexOf(zipDelimiter);
+                if (lastZipIndex >= 0) {
+                  const zipPath = fileLocalPath.substring(0, lastZipIndex + zipDelimiter.length);
+                  const zip = new StreamZip.async({ file: path.join(projectDir, zipPath) });
+                  const entryPath = fileLocalPath.substring(
+                    Math.min(zipPath.length + 1, fileLocalPath.length),
                   );
-                  callback({
-                    statusCode: 200,
-                    mimeType: 'image/webp',
-                    data: stream,
-                  });
-                  return;
+                  statInfo = await zip.entry(entryPath);
+                  if (statInfo) {
+                    const zipCachePreviewPath = await GetThumbnailPath(
+                      new FilePath(projectDir, fileLocalPath),
+                      statInfo,
+                    );
+
+                    if (pathExistsSync(zipCachePreviewPath)) {
+                      thumbCache?.get(zipCachePreviewPath.path);
+                      const stream = createReadStream(
+                        path.join(zipCachePreviewPath.projectDir, zipCachePreviewPath.path),
+                      );
+                      callback({
+                        statusCode: 200,
+                        mimeType: 'image/webp',
+                        data: stream,
+                      });
+                      return;
+                    }
+
+                    mkdirs(new FilePath(projectDir, path.join('.cache', 'thumbnails')));
+
+                    const zipStream = await zip.stream(entryPath);
+                    const previewStats = await zipStream
+                      .pipe(sharp().resize(maxSize).webp())
+                      .toFile(path.join(zipCachePreviewPath.projectDir, zipCachePreviewPath.path));
+                    thumbCache?.set(zipCachePreviewPath.path, previewStats.size);
+                    callback({
+                      mimeType: 'image/webp',
+                      data: createReadStream(
+                        path.join(zipCachePreviewPath.projectDir, zipCachePreviewPath.path),
+                      ),
+                    });
+                    return;
+                  }
                 }
+              }
 
-                mkdirs(new FilePath(projectDir, path.join('.cache', 'thumbnails')));
+              callback({
+                statusCode: 404,
+                data: Readable.from([]),
+              });
+              return;
+            }
 
-                const zipStream = await zip.stream(entryPath);
-                const previewStats = await zipStream
-                  .pipe(sharp().resize(maxSize).webp())
-                  .toFile(path.join(zipCachePreviewPath.projectDir, zipCachePreviewPath.path));
-                thumbCache?.set(zipCachePreviewPath.path, previewStats.size);
+            let cachePreviewPath = await GetThumbnailPath(
+              new FilePath(projectDir, fileLocalPath),
+              statInfo,
+            );
+            if (pathExistsSync(cachePreviewPath)) {
+              thumbCache?.get(cachePreviewPath.path);
+              const stream = createReadStream(
+                path.join(cachePreviewPath.projectDir, cachePreviewPath.path),
+              );
+              callback({
+                statusCode: 200,
+                mimeType: 'image/webp',
+                data: stream,
+              });
+              return;
+            }
+
+            if (statInfo.isDirectory()) {
+              const preview = findFolderPreview(new FilePath(projectDir, fileLocalPath));
+              if (preview) {
+                const previewReadable = createReadStream(path.join(projectDir, preview));
                 callback({
+                  statusCode: 200,
                   mimeType: 'image/webp',
-                  data: createReadStream(
-                    path.join(zipCachePreviewPath.projectDir, zipCachePreviewPath.path),
-                  ),
+                  data: previewReadable.pipe(sharp().resize(maxSize).webp()),
+                });
+                return;
+              }
+            } else if (fileLocalPath.endsWith('.zip')) {
+              const zipPreview = await findZipPreviewReadable(
+                new FilePath(projectDir, fileLocalPath),
+              );
+              if (zipPreview) {
+                callback({
+                  statusCode: 200,
+                  mimeType: 'image/webp',
+                  data: zipPreview.pipe(sharp().resize(maxSize).webp()),
                 });
                 return;
               }
             }
-          }
 
-          callback({
-            statusCode: 404,
-            data: Readable.from([]),
-          });
-          return;
-        }
+            mkdirs(new FilePath(projectDir, path.join('.cache', 'thumbnails')));
 
-        let cachePreviewPath = await GetThumbnailPath(
-          new FilePath(projectDir, fileLocalPath),
-          statInfo,
-        );
-        if (pathExistsSync(cachePreviewPath)) {
-          thumbCache?.get(cachePreviewPath.path);
-          const stream = createReadStream(
-            path.join(cachePreviewPath.projectDir, cachePreviewPath.path),
-          );
-          callback({
-            statusCode: 200,
-            mimeType: 'image/webp',
-            data: stream,
-          });
-          return;
-        }
+            const thumbnail = await nativeImage
+              .createThumbnailFromPath(absoluteFilePath, {
+                width: maxSize,
+                height: maxSize,
+              })
+              .catch((e) => undefined);
 
-        if (statInfo.isDirectory()) {
-          const preview = findFolderPreview(new FilePath(projectDir, fileLocalPath));
-          if (preview) {
-            const previewReadable = createReadStream(path.join(projectDir, preview));
-            callback({
-              statusCode: 200,
-              mimeType: 'image/webp',
-              data: previewReadable.pipe(sharp().resize(maxSize).webp()),
-            });
-            return;
-          }
-        } else if (fileLocalPath.endsWith('.zip')) {
-          const zipPreview = await findZipPreviewReadable(new FilePath(projectDir, fileLocalPath));
-          if (zipPreview) {
-            callback({
-              statusCode: 200,
-              mimeType: 'image/webp',
-              data: zipPreview.pipe(sharp().resize(maxSize).webp()),
-            });
-            return;
-          }
-        }
-
-        mkdirs(new FilePath(projectDir, path.join('.cache', 'thumbnails')));
-
-        const thumbnail = await nativeImage
-          .createThumbnailFromPath(absoluteFilePath, {
-            width: maxSize,
-            height: maxSize,
-          })
-          .catch((e) => undefined);
-
-        if (!thumbnail) {
-          // Generate preview straight from the image
-          if (imageMediaFormatsMatch(absoluteFilePath)) {
-            const fileStat = await sharp(absoluteFilePath)
-              .resize(maxSize)
-              .webp()
-              .toFile(path.join(cachePreviewPath.projectDir, cachePreviewPath.path));
-            thumbCache?.set(cachePreviewPath.path, fileStat.size);
-            callback({
-              mimeType: 'image/webp',
-              data: createReadStream(path.join(cachePreviewPath.projectDir, cachePreviewPath.path)),
-            });
-            return;
-          }
-
-          const bunlde = await findBundleInfoForFile(new FilePath(projectDir, fileLocalPath));
-
-          if (bunlde?.previewUrl) {
-            const bundlePreviewAbsolutePath = path.join(projectDir, bunlde?.previewUrl);
-
-            // just show the bundle preview if it exists
-            if (existsSync(bundlePreviewAbsolutePath)) {
-              const bundlePreviewStat = await stat(bundlePreviewAbsolutePath);
-
-              cachePreviewPath = await GetThumbnailPath(
-                new FilePath(projectDir, bunlde.previewUrl),
-                bundlePreviewStat,
-              );
-
-              // we might be creating the bundle preview for other files
-              if (activeFileOperations.has(cachePreviewPath.path)) {
-                await activeFileOperations.get('absoluteCachePreviewPath');
-              }
-
-              // thumbnail for the bundle preview exists, get it back
-              if (pathExistsSync(cachePreviewPath)) {
+            if (!thumbnail) {
+              // Generate preview straight from the image
+              if (imageMediaFormatsMatch(absoluteFilePath)) {
+                const fileStat = await sharp(absoluteFilePath)
+                  .resize(maxSize)
+                  .webp()
+                  .toFile(path.join(cachePreviewPath.projectDir, cachePreviewPath.path));
+                thumbCache?.set(cachePreviewPath.path, fileStat.size);
                 callback({
-                  statusCode: 200,
                   mimeType: 'image/webp',
                   data: createReadStream(
                     path.join(cachePreviewPath.projectDir, cachePreviewPath.path),
@@ -305,54 +281,95 @@ export default function InitializeProtocols(store: Store<StoreSchema>) {
                 return;
               }
 
-              // bundle preview was not made yet, create it
-              const readStream = createReadStream(bundlePreviewAbsolutePath);
-              const writePromise = readStream
-                .pipe(sharp().resize(maxSize).webp())
-                .toFile(path.join(cachePreviewPath.projectDir, cachePreviewPath.path))
-                .then((s) => {
-                  activeFileOperations.delete(bundlePreviewAbsolutePath);
-                  return s;
+              const bunlde = await findBundleInfoForFile(new FilePath(projectDir, fileLocalPath));
+
+              if (bunlde?.previewUrl) {
+                const bundlePreviewAbsolutePath = path.join(projectDir, bunlde?.previewUrl);
+
+                // just show the bundle preview if it exists
+                if (existsSync(bundlePreviewAbsolutePath)) {
+                  const bundlePreviewStat = await stat(bundlePreviewAbsolutePath);
+
+                  cachePreviewPath = await GetThumbnailPath(
+                    new FilePath(projectDir, bunlde.previewUrl),
+                    bundlePreviewStat,
+                  );
+
+                  // we might be creating the bundle preview for other files
+                  if (activeFileOperations.has(cachePreviewPath.path)) {
+                    await activeFileOperations.get('absoluteCachePreviewPath');
+                  }
+
+                  // thumbnail for the bundle preview exists, get it back
+                  if (pathExistsSync(cachePreviewPath)) {
+                    callback({
+                      statusCode: 200,
+                      mimeType: 'image/webp',
+                      data: createReadStream(
+                        path.join(cachePreviewPath.projectDir, cachePreviewPath.path),
+                      ),
+                    });
+                    return;
+                  }
+
+                  // bundle preview was not made yet, create it
+                  const readStream = createReadStream(bundlePreviewAbsolutePath);
+                  const writePromise = readStream
+                    .pipe(sharp().resize(maxSize).webp())
+                    .toFile(path.join(cachePreviewPath.projectDir, cachePreviewPath.path))
+                    .then((s) => {
+                      activeFileOperations.delete(bundlePreviewAbsolutePath);
+                      return s;
+                    });
+                  activeFileOperations.set(bundlePreviewAbsolutePath, writePromise);
+                  const previewStats = await writePromise;
+                  thumbCache?.set(cachePreviewPath.path, previewStats.size);
+                  callback({
+                    statusCode: 200,
+                    mimeType: 'image/webp',
+                    data: createReadStream(
+                      path.join(cachePreviewPath.projectDir, cachePreviewPath.path),
+                    ),
+                  });
+                  return;
+                }
+              } else {
+                callback({
+                  statusCode: 204,
+                  data: Readable.from([]),
                 });
-              activeFileOperations.set(bundlePreviewAbsolutePath, writePromise);
-              const previewStats = await writePromise;
-              thumbCache?.set(cachePreviewPath.path, previewStats.size);
-              callback({
-                statusCode: 200,
-                mimeType: 'image/webp',
-                data: createReadStream(
-                  path.join(cachePreviewPath.projectDir, cachePreviewPath.path),
-                ),
-              });
-              return;
+                return;
+              }
             }
-          } else {
+
+            const previewStat = await sharp(thumbnail?.toPNG())
+              .webp()
+              .toFile(path.join(cachePreviewPath.projectDir, cachePreviewPath.path));
+            thumbCache?.set(cachePreviewPath.path, previewStat.size);
+
             callback({
-              statusCode: 204,
+              statusCode: 200,
+              mimeType: 'image/webp',
+              data: createReadStream(path.join(cachePreviewPath.projectDir, cachePreviewPath.path)),
+            });
+          } catch (error) {
+            log.error(error);
+            callback({
+              statusCode: 404,
+              mimeType: 'image/png',
               data: Readable.from([]),
             });
-            return;
           }
-        }
-
-        const previewStat = await sharp(thumbnail?.toPNG())
-          .webp()
-          .toFile(path.join(cachePreviewPath.projectDir, cachePreviewPath.path));
-        thumbCache?.set(cachePreviewPath.path, previewStat.size);
-
-        callback({
-          statusCode: 200,
-          mimeType: 'image/webp',
-          data: createReadStream(path.join(cachePreviewPath.projectDir, cachePreviewPath.path)),
-        });
-      } catch (error) {
-        log.error(error);
+        },
+        { priority: Date.now() },
+      )
+      .catch((e) => {
         callback({
           statusCode: 404,
           mimeType: 'image/png',
+          error: e,
           data: Readable.from([]),
         });
-      }
-    });
+      });
   });
 }
