@@ -2,7 +2,7 @@ import { existsSync } from 'fs';
 import { dirname } from 'path';
 import log from 'electron-log/main';
 import Store from 'electron-store';
-import { FilePath } from 'main/util';
+import { FilePath, getProjectDir } from 'main/util';
 import {
   BundleMetaFile,
   MainIpcCallbacks,
@@ -122,7 +122,7 @@ export default function InitializeCallbacks(store: Store<StoreSchema>, api: Main
 export async function InitializeDatabaseCallbacks(store: Store<StoreSchema>, db: Loki) {
   const virtualBundles = db.getCollection<VirtualBundle>('bundles');
   virtualBundles.on('update', async (obj: VirtualBundle & LokiObj) => {
-    await updateFileFromPath(store.get('projectDirectory'), obj.id, {
+    await updateFileFromPath(getProjectDir(store) ?? '', obj.id, {
       id: obj.id,
       isVirtual: true,
       bundle: obj,
@@ -132,7 +132,7 @@ export async function InitializeDatabaseCallbacks(store: Store<StoreSchema>, db:
     log.log(`Updated Search Index for ${obj.id}  (${obj.name})`);
   });
   virtualBundles.on('insert', async (obj: VirtualBundle & LokiObj) => {
-    await updateFileFromPath(store.get('projectDirectory'), obj.id, {
+    await updateFileFromPath(getProjectDir(store) ?? '', obj.id, {
       id: obj.id,
       isVirtual: true,
       bundle: obj,

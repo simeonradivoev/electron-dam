@@ -9,7 +9,7 @@ import StreamZip, { ZipEntry } from 'node-stream-zip';
 import PQueue from 'p-queue';
 import sharp from 'sharp';
 import { zipDelimiter, StoreSchema } from '../../shared/constants';
-import { FilePath, imageMediaFormatsMatch, mkdirs } from '../util';
+import { FilePath, getProjectDir, imageMediaFormatsMatch, mkdirs } from '../util';
 import { findBundleInfoForFile, findFolderPreview, findZipPreviewReadable } from './bundles-api';
 import { thumbCache } from './cache/thumbnail-cache';
 import { pathExistsSync, pathStat } from './file-system-api';
@@ -68,7 +68,14 @@ export async function GetAbsoluteThumbnailPathForFile(filePath: FilePath, statIn
 
 export default function InitializeProtocols(store: Store<StoreSchema>) {
   protocol.registerStreamProtocol('app', async (request, callback) => {
-    const projectDir = store.get('projectDirectory');
+    const projectDir = getProjectDir(store);
+    if (!projectDir) {
+      callback({
+        statusCode: 404,
+        data: Readable.from([]),
+      });
+      return;
+    }
     const localRequestPath = decodeURIComponent(request.url.substring('app://'.length));
     const absoluteFilePath = path.join(projectDir, localRequestPath);
     const lastZipIndex = localRequestPath.lastIndexOf(zipDelimiter);
@@ -140,7 +147,15 @@ export default function InitializeProtocols(store: Store<StoreSchema>) {
           try {
             const url = new URL(request.url);
 
-            const projectDir = store.get('projectDirectory');
+            const projectDir = getProjectDir(store);
+
+            if (!projectDir) {
+              callback({
+                statusCode: 404,
+                data: Readable.from([]),
+              });
+              return;
+            }
 
             let maxSize = 128;
             if (url.searchParams.has('maxSize')) {

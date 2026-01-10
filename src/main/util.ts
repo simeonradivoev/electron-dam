@@ -225,6 +225,14 @@ export const getAssetPath = (...paths: string[]): string => {
   return path.join(RESOURCES_PATH, ...paths);
 };
 
+export function getProjectDir(store: ElectronStore<StoreSchema>) {
+  if (process.env.DAM_PROJECT_DIR) {
+    return process.env.DAM_PROJECT_DIR;
+  }
+  if (!store.has('projectDirectory')) return undefined;
+  return store.get('projectDirectory');
+}
+
 export class FilePath {
   public readonly path: string;
 
@@ -247,7 +255,7 @@ export class FilePath {
   }
 
   static fromStore(store: ElectronStore<StoreSchema>, filePath: string) {
-    return new FilePath(store.get('projectDirectory'), filePath);
+    return new FilePath(getProjectDir(store) ?? '', filePath);
   }
 
   static fromObject(obj: { path: string; projectDir: string }) {

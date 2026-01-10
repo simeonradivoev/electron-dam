@@ -19,7 +19,9 @@
           "$loki": 1
         }
       ],
-      "idIndex": null,
+      "idIndex": [
+        1
+      ],
       "binaryIndices": {
         "id": {
           "name": "id",
@@ -51,11 +53,15 @@
       "serializableIndices": true,
       "disableFreeze": true,
       "ttl": null,
-      "maxId": 1,
+      "maxId": 5,
       "DynamicViews": [],
       "events": {
-        "insert": [],
-        "update": [],
+        "insert": [
+          null
+        ],
+        "update": [
+          null
+        ],
         "pre-insert": [],
         "pre-update": [],
         "close": [],
@@ -100,5 +106,6 @@
     "changes": [],
     "warning": []
   },
-  "ENV": "NODEJS"
+  "ENV": "NODEJS",
+  "name": "39.2.7"
 }

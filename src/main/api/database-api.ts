@@ -10,6 +10,7 @@ import { MainIpcCallbacks, MainIpcGetter, StoreSchema } from '../../shared/const
 import migrations, { MigrationContext } from '../migrations/migrations';
 import {
   appVersion,
+  getProjectDir,
   registerMainCallbacks,
   registerMainHandlers,
   unregisterMainHandlers,
@@ -119,9 +120,13 @@ export function LoadDatabaseExact(store: Store<StoreSchema>, directory: string):
 }
 
 export async function LoadDatabase(store: Store<StoreSchema>): Promise<Loki | undefined> {
-  const projectDir = store.get('projectDirectory') as string;
-  if (projectDir && !!(await stat(projectDir).catch(() => false))) {
-    return LoadDatabaseExact(store, projectDir);
+  const projectDir = getProjectDir(store);
+  if (projectDir) {
+    if (!!(await stat(projectDir).catch(() => false))) {
+      return LoadDatabaseExact(store, projectDir);
+    } else {
+      log.error(`Project at ${projectDir} did not exist`);
+    }
   }
   return undefined;
 }

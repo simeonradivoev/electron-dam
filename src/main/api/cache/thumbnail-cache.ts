@@ -4,6 +4,7 @@ import path from 'path';
 import ElectronStore from 'electron-store';
 import { LRUCache } from 'lru-cache';
 import { addTask } from 'main/managers/task-manager';
+import { getProjectDir } from 'main/util';
 import { MainIpcGetter, StoreSchema } from 'shared/constants';
 
 export let thumbCache: LRUCache<string, number> | undefined;
@@ -12,7 +13,7 @@ export default function InitializeThumbnailCache(
   api: MainIpcGetter,
   store: ElectronStore<StoreSchema>,
 ) {
-  const cacheProjectDir = path.join(store.get('projectDirectory'), '.cache', 'thumbnails');
+  const cacheProjectDir = path.join(getProjectDir(store) ?? '', '.cache', 'thumbnails');
   async function rebuildCache(abort: AbortSignal, progress: ProgressReporter) {
     const cache = new LRUCache<string, number>({
       maxSize: store.get('cachedStorageSize') * 1024 * 1024,

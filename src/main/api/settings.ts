@@ -1,7 +1,7 @@
 import { app, shell } from 'electron';
 import log from 'electron-log/main';
 import Store from 'electron-store';
-import { appVersion } from 'main/util';
+import { appVersion, getProjectDir } from 'main/util';
 import z from 'zod/v3';
 import { getOption, MainIpcGetter, Options, OptionType, StoreSchema } from '../../shared/constants';
 
@@ -64,7 +64,7 @@ export default function InitializeSettingsApi(api: MainIpcGetter, store: Store<S
         shell.showItemInFolder(log.transports.file.getFile().path);
         break;
       case 'project':
-        shell.openPath(store.get('projectDirectory'));
+        getProjectDir(store) && shell.openPath(getProjectDir(store)!);
         break;
       case 'user':
         shell.openPath(app.getPath('userData'));

@@ -10,20 +10,34 @@ import ipcMainApiInvokeHandler from './utils';
 test.describe.serial(() => {
   let page: Page;
   let electronApp: ElectronApplication;
-  test.beforeAll(async () => {
+  test.beforeAll('Setup', async () => {
     electronApp = await electron.launch({
       args: [path.join(__dirname, '..', '..', '..', 'release', 'app', 'dist', 'main', 'main.js')],
       env: {
         DAM_PROJECT_DIR: path.join(__dirname, '..', 'assets'),
+        NODE_ENV: 'development',
+        START_MINIMIZED: 'true',
       },
     });
     page = await electronApp.firstWindow();
+    await page.evaluate(
+      () =>
+        new Promise<void>((resolve) =>
+          window.addEventListener('app:ready' as any, resolve, { once: true }),
+        ),
+    );
     // Direct Electron console to Node terminal.
     page.on('console', console.log);
   });
 
   test.afterAll(async () => {
     await electronApp.close();
+  });
+
+  test('Loaded Project Dir', async () => {
+    expect(await ipcMainApiInvokeHandler(electronApp, 'getProjectDirectory')).toBe(
+      path.join(__dirname, '..', 'assets'),
+    );
   });
 
   test('Check Bundles Load', async () => {

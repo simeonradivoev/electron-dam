@@ -23,7 +23,7 @@ import { persist, restore, restoreFromFile } from '@orama/plugin-data-persistenc
 import { pluginQPS } from '@orama/plugin-qps';
 import log from 'electron-log/main';
 import ElectronStore from 'electron-store';
-import { FileHasher, FilePath } from 'main/util';
+import { FileHasher, FilePath, getProjectDir } from 'main/util';
 import { number } from 'zod/v3';
 import { FileType, StoreSchema } from '../../../shared/constants';
 import { forAllAssetsInProject } from '../file-system-api';
@@ -61,7 +61,7 @@ function isEmpty(): boolean {
 }
 
 async function clearOldIndexes(store: ElectronStore<StoreSchema>) {
-  const cacheFolder = path.join(store.get('projectDirectory'), '.cache');
+  const cacheFolder = path.join(getProjectDir(store) ?? '', '.cache');
   const files = await readdir(cacheFolder, { withFileTypes: true });
   await Promise.all(
     files
@@ -74,11 +74,7 @@ async function clearOldIndexes(store: ElectronStore<StoreSchema>) {
 }
 
 export async function loadIndex(store: ElectronStore<StoreSchema>, hash: number) {
-  const cacheFilePath = path.join(
-    store.get('projectDirectory'),
-    '.cache',
-    `searchIndex${hash}.json`,
-  );
+  const cacheFilePath = path.join(getProjectDir(store) ?? '', '.cache', `searchIndex${hash}.json`);
   if (existsSync(cacheFilePath)) {
     let jsonString = '';
     const readStream = createReadStream(cacheFilePath);
@@ -95,11 +91,7 @@ export async function loadIndex(store: ElectronStore<StoreSchema>, hash: number)
 }
 
 export async function persistIndex(store: ElectronStore<StoreSchema>, hash: number) {
-  const cacheFilePath = path.join(
-    store.get('projectDirectory'),
-    '.cache',
-    `searchIndex${hash}.json`,
-  );
+  const cacheFilePath = path.join(getProjectDir(store) ?? '', '.cache', `searchIndex${hash}.json`);
 
   if (existsSync(cacheFilePath)) {
     return false;

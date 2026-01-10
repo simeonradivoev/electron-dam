@@ -4,7 +4,7 @@ import { ipcMain, BrowserWindow, dialog } from 'electron';
 import Store from 'electron-store';
 import { StoreSchema, MainIpcGetter } from '../../shared/constants';
 import { addTask } from '../managers/task-manager';
-import { TypedEventEmitter } from '../util';
+import { getProjectDir, TypedEventEmitter } from '../util';
 
 type Events = {
   projectChange: [path: string];
@@ -35,18 +35,17 @@ export async function SelectProjectDirectory(
 }
 
 export default function InstallProjectDirectoryApi(api: MainIpcGetter, store: Store<StoreSchema>) {
-  const getProjectDir = async () => {
-    if (process.env.DAM_PROJECT_DIR) {
-      return process.env.DAM_PROJECT_DIR;
+  const handleGetProjectDir = async () => {
+    const dir = getProjectDir(store);
+    if (!dir) {
+      return null;
     }
-    if (!store.has('projectDirectory')) return null;
-    const dir = store.get('projectDirectory') as string;
     return (await lstat(dir).catch((e) => false)) ? dir : null;
   };
   const selectProjectDirectory = async () => {
     return SelectProjectDirectory(store, BrowserWindow.getAllWindows()[0]);
   };
 
-  api.getProjectDirectory = getProjectDir;
+  api.getProjectDirectory = handleGetProjectDir;
   api.selectProjectDirectory = selectProjectDirectory;
 }

@@ -164,6 +164,7 @@ app
 
     mainWindow.on('ready-to-show', async () => {
       const database = await LoadDatabase(context.store);
+      mainWindow!.webContents.send('app:ready');
       // this is mainly for handling page reloads, dispose old database
       mainWindow!.once('ready-to-show', () => {
         database?.close();

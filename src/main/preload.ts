@@ -33,3 +33,7 @@ export const APICallbacks = createRendererCallbacks();
 
 contextBridge.exposeInMainWorld('api', APIGetters);
 contextBridge.exposeInMainWorld('apiCallbacks', APICallbacks);
+
+ipcRenderer.on('app:ready', () => {
+  window.dispatchEvent(new CustomEvent('app:ready'));
+});

@@ -5,7 +5,7 @@ import '@orama/plugin-qps';
 import log from 'electron-log/main';
 import Store from 'electron-store';
 import Loki from 'lokijs';
-import { FileHasher, FilePath } from 'main/util';
+import { FileHasher, FilePath, getProjectDir } from 'main/util';
 import { stringSimilarity } from 'string-similarity-js';
 import {
   StoreSchema,
@@ -159,7 +159,8 @@ export function InitializeSearchApi(
   }
 
   function generateMissingEmbeddings() {
-    const projectDir = store.get('projectDirectory');
+    const projectDir = getProjectDir(store);
+    if (!projectDir) return Promise.reject();
     return addTask('Generating Missing Embeddings', async (a) => {
       await forAllAssetsInProject(
         store,
@@ -177,7 +178,8 @@ export function InitializeSearchApi(
   const cacheHash = new FileHasher();
 
   async function registerFileIndexHashing(): ReturnType<FileIndexingHandler> {
-    const projectDir = store.get('projectDirectory');
+    const projectDir = getProjectDir(store);
+    if (!projectDir) return;
     const virtualBundles = db.getCollection<VirtualBundle>('bundles');
     virtualBundles.find().forEach((b) => {
       cacheHash.addHash(0, b.meta.revision ?? 0, b.meta.updated ?? 0);
@@ -209,7 +211,7 @@ export function InitializeSearchApi(
 
     log.error('Could not find orama index on disk for  ', cacheHash.hash);
     const virtualBundles = db.getCollection<VirtualBundle>('bundles');
-    const projectDir = (store.get('projectDirectory') as string) ?? '';
+    const projectDir = getProjectDir(store) ?? '';
     // eslint-disable-next-line no-restricted-syntax
     for await (const bundle of await getVirtualBundles(virtualBundles)) {
       await updateFileFromPath(projectDir, bundle.id, bundle);
@@ -274,7 +276,8 @@ export function InitializeSearchApi(
   return {
     cleanup: async () => {
       const savingCacheHash = new FileHasher();
-      const projectDir = store.get('projectDirectory');
+      const projectDir = getProjectDir(store);
+      if (!projectDir) return;
       const virtualBundles = db.getCollection<VirtualBundle>('bundles');
       virtualBundles.find().forEach((b) => {
         savingCacheHash.addHash(0, b.meta.revision ?? 0, b.meta.updated ?? 0);

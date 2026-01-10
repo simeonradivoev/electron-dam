@@ -22,6 +22,7 @@ import {
   FilePath,
   TypedEventEmitter,
   foreachAsync,
+  getProjectDir,
   getZipParentFs,
   ignoredFilesMatch,
   supportedFilesMatch,
@@ -512,7 +513,7 @@ export function forAllAssetsInProject(
   abort?: AbortSignal,
   includeBundles?: boolean,
 ) {
-  const projectDir = (store.get('projectDirectory') as string) ?? '';
+  const projectDir = getProjectDir(store) ?? '';
   return forAllAssetsIn(new FilePath(projectDir, ''), handler, parallel, abort, includeBundles);
 }
 
@@ -580,7 +581,7 @@ async function getFile(
 /** Get Format the asset path to be absolute */
 export function resolveAssetPath(store: Store<StoreSchema>, p: string) {
   let filePath: string;
-  const projectDir = store.get('projectDirectory') as string;
+  const projectDir = getProjectDir(store);
   if (!projectDir) {
     throw new Error('Project Directory Not Set');
   }
@@ -786,7 +787,7 @@ export default function InitializeFileSystemApi(
 
   async function getAllTags(limit?: number) {
     const tagsSet = new Map<string, number>();
-    const projectDir = (store.get('projectDirectory') as string) ?? '';
+    const projectDir = getProjectDir(store) ?? '';
     await allFilesRec(
       new FilePath(projectDir, ''),
       async (filePath) => {
@@ -832,7 +833,7 @@ export default function InitializeFileSystemApi(
     );
   }
 
-  const projectDir = store.get('projectDirectory') as string;
+  const projectDir = getProjectDir(store) ?? '';
   let fileWatchDispose: (() => void) | undefined;
   if (projectDir) {
     fileWatchDispose = setupFileWatch(apiCallbacks, projectDir);

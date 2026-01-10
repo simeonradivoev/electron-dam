@@ -10,7 +10,7 @@ import Loki from 'lokijs';
 import StreamZip from 'node-stream-zip';
 import { BundleMetaFile, StoreSchema, MainIpcGetter, previewTypes } from '../../shared/constants';
 import { addTask } from '../managers/task-manager';
-import { FilePath, getRandom, ignoredFilesMatch } from '../util';
+import { FilePath, getProjectDir, getRandom, ignoredFilesMatch } from '../util';
 import {
   findBundlePath,
   forAllAssetsInProject,
@@ -228,7 +228,7 @@ export async function getBundles(
   virtualBundles: Collection<VirtualBundle>,
 ): Promise<BundleInfo[]> {
   const bundles: BundleInfo[] = [];
-  const projectDir = store.get('projectDirectory') as string | undefined;
+  const projectDir = getProjectDir(store);
   if (projectDir) {
     await findChildrenBundles(new FilePath(projectDir, ''), bundles);
   }
@@ -267,7 +267,7 @@ export async function convertBundleToLocal(
   }
 
   const zipPath = filePaths[0];
-  const projectDir = store.get('projectDirectory') as string | undefined;
+  const projectDir = getProjectDir(store);
 
   if (!projectDir) {
     return false;
@@ -387,7 +387,8 @@ export default function InitializeBundlesApi(
   async function getHomeBundles(): Promise<HomePageBundles | undefined> {
     const issues: MetadataIssues[] = [];
     let assetsSize = 0;
-    const projectDir = store.get('projectDirectory');
+    const projectDir = getProjectDir(store);
+    if (!projectDir) return undefined;
     await forAllAssetsInProject(
       store,
       async (node) => {
@@ -457,9 +458,7 @@ export default function InitializeBundlesApi(
       virtualBundles.findAndRemove({ id: bundleId });
       return;
     }
-    const bundlePath = normalize(
-      path.join(store.get('projectDirectory'), bundleId, BundleMetaFile),
-    );
+    const bundlePath = normalize(path.join(getProjectDir(store) ?? '', bundleId, BundleMetaFile));
     if (await stat(bundlePath).catch((e) => false)) {
       await rm(bundlePath);
     }

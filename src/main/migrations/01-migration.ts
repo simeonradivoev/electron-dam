@@ -3,7 +3,7 @@ import { stat } from 'fs/promises';
 import path, { normalize } from 'path';
 import log from 'electron-log/main';
 import { operateOnMetadata } from 'main/api/file-system-api';
-import { FilePath, foreachAsync } from 'main/util';
+import { FilePath, foreachAsync, getProjectDir } from 'main/util';
 import { BundleMetaFile } from 'shared/constants';
 import { MigrationParams } from 'umzug';
 import { MigrationContext } from './migrations';
@@ -16,7 +16,8 @@ interface Metadata {
 }
 
 export async function up({ context }: MigrationParams<MigrationContext>) {
-  const projectDir = normalize(context.store.get('projectDirectory'));
+  const projectDir = getProjectDir(context.store);
+  if (!projectDir) return;
   const filesCollection = context.db.getCollection<Metadata>('files');
   if (filesCollection) {
     const files = filesCollection.find().filter((file) => {
