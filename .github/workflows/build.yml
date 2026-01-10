@@ -24,12 +24,12 @@ jobs:
         cache: 'npm'
 
     - name: Install Dependencies Linux
-      if: runner.os == 'Linux'
+      if: matrix.os == 'ubuntu-latest'
       run: |
-        npm install --cpu=x64 --os=linux --libc=glibc --save node-addon-api node-gyp sharp
+        npm install --cpu=x64 --os=linux --libc=glibc --save sharp
 
     - name: Install Dependencies
-      if: runner.os != 'Linux'
+      if: matrix.os != 'ubuntu-latest'
       run: |
         npm install
 
