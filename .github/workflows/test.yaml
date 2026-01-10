@@ -26,7 +26,7 @@ jobs:
           npm install --cpu=x64 --os=linux --libc=glibc --save sharp
 
       - name: Install Dependencies Windows
-        if: matrix.os != 'windows-latest'
+        if: matrix.os == 'windows-latest'
         run: |
           npm install --cpu=x64 --os=windows --save sharp
 
