@@ -20,6 +20,11 @@ jobs:
           node-version: 24
           cache: npm
 
+      - name: Install Linux Sharp
+        if: runner.os == 'Linux'
+        run: |
+          npm install --cpu=x64 --os=linux --libc=glibc sharp
+
       - name: npm install
         run: |
           npm install
