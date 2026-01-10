@@ -23,12 +23,13 @@ jobs:
         node-version: 24
         cache: 'npm'
 
-    - name: Install Linux Sharp
+    - name: Install Dependencies Linux
       if: runner.os == 'Linux'
       run: |
-        npm install --cpu=x64 --os=linux --libc=glibc sharp
+        npm install --cpu=x64 --os=linux --libc=glibc --save node-addon-api node-gyp sharp
 
     - name: Install Dependencies
+      if: runner.os != 'Linux'
       run: |
         npm install
 
