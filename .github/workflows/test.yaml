@@ -20,14 +20,15 @@ jobs:
           node-version: 24
           cache: npm
 
-      - name: Install Linux Sharp
-        if: runner.os == 'Linux'
+      - name: Install Dependencies Linux
+        if: matrix.os == 'ubuntu-latest'
         run: |
-          npm install --cpu=x64 --os=linux --libc=glibc sharp
+          npm install --cpu=x64 --os=linux --libc=glibc --save sharp
 
-      - name: npm install
+      - name: Install Dependencies Windows
+        if: matrix.os != 'windows-latest'
         run: |
-          npm install
+          npm install --cpu=x64 --os=windows --save sharp
 
       - name: npm test
         env:
