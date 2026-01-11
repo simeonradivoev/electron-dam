@@ -34,7 +34,7 @@ export const formatDuration = (msi: number) => {
     .join(', ');
 };
 
-export function toggleElementMutable(array: unknown[], element: unknown) {
+export function toggleElementMutable<T>(array: T[], element: T) {
   const newArray = Array.from(array);
 
   const index = array.indexOf(element);

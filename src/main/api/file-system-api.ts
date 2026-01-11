@@ -778,7 +778,7 @@ export default function InitializeFileSystemApi(
   db: Loki,
 ) {
   function beforeQuit() {
-    db.save((saveError: any) => {
+    db.save((saveError: Error) => {
       if (saveError) {
         log.error(saveError);
       }

@@ -108,7 +108,7 @@ function loadFbxModel(info: FileInfo): Promise<any | undefined> {
     return;
   }*/
 
-  const loadPromise = new Promise<Object3DEventMap | undefined>((resolve, reject) => {
+  const loadPromise = new Promise<Group<Object3DEventMap> | undefined>((resolve, reject) => {
     fbxLoader.load(
       info?.path,
       (obj) => {

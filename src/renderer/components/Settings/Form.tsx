@@ -61,7 +61,7 @@ export function useSettings(category: OptionCategory) {
           return {
             ...localData,
             ...d,
-          } as { [key: string]: string | null | undefined };
+          } as { [key: string]: string | boolean | number | null | undefined };
         })
         .catch((e) => log.error(e)),
   });
@@ -84,7 +84,9 @@ export function useSettings(category: OptionCategory) {
           if (option.localType === 'local')
             localStorage.setItem(key, JSON.stringify(option.schema.parse(v)));
           else sessionStorage.setItem(key, JSON.stringify(option.schema.parse(v)));
-          window.dispatchEvent(new StorageEvent('storage', { key, newValue: v }));
+          window.dispatchEvent(
+            new StorageEvent('storage', { key, newValue: JSON.stringify(option.schema.parse(v)) }),
+          );
         });
       // Save remote
       await window.api.setSettings(
@@ -102,13 +104,15 @@ export function useSettings(category: OptionCategory) {
     },
   });
 
-  const instantSubmit = (key: string, value: string | null | undefined) => {
+  const instantSubmit = (key: string, value: string | number | boolean | null | undefined) => {
     const option = getOption(key);
     if (option && option.localType) {
       if (option.localType === 'local')
         localStorage.setItem(key, JSON.stringify(option.schema.parse(value)));
       else sessionStorage.setItem(key, JSON.stringify(option.schema.parse(value)));
-      window.dispatchEvent(new StorageEvent('storage', { key, newValue: value }));
+      window.dispatchEvent(
+        new StorageEvent('storage', { key, newValue: JSON.stringify(option.schema.parse(value)) }),
+      );
       if (data) {
         data[key] = value;
       }

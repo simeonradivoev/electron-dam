@@ -19,6 +19,8 @@ jobs:
     steps:
       - name: Check out Git repository
         uses: actions/checkout@v3
+        with:
+          lfs: true
 
       # Cache electron + electron-builder
       - name: Cache electron and builder

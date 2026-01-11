@@ -92,7 +92,7 @@ export const channelsSchema = {
     getFileChildren: {} as ChannelGetter<FileTreeNode[], [path: string]>,
     addTags: {} as ChannelGetter<string[] | null, [path: string, tags: string[]]>,
     removeTag: {} as ChannelGetter<string[] | null, [path: string, tag: string]>,
-    removeAllTags: {} as ChannelGetter<void>,
+    removeAllTags: {} as ChannelGetter<void, [path: string]>,
     autoMetadata: {} as ChannelGetter<
       void,
       [path: string, type: AutoTagType, missingOnly: boolean]
@@ -197,8 +197,8 @@ export type OptionType = {
   schema: z.ZodTypeAny;
   type: 'string' | 'number' | 'bool' | 'enum';
   category: OptionCategory;
-  default?: unknown;
-  options?: unknown[];
+  default?: string | number | boolean;
+  options?: string[];
   hintValue?: string;
   localType?: 'local' | 'session';
   min?: number;

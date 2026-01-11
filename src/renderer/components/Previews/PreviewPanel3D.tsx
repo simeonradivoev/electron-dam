@@ -26,17 +26,15 @@ function PrimitiveComponent({ importedMesh }: Props) {
     // bounds.refresh(new THREE.Box3()).clip().fit()
   }, [bounds, importedMesh]);
 
-  return (
-    importedMesh.data && (
-      <primitive
-        ref={primitiveRef}
-        // eslint-disable-next-line react/no-unknown-property
-        visible={!importedMesh.isPlaceholderData}
-        // eslint-disable-next-line react/no-unknown-property
-        object={importedMesh.data}
-      />
-    )
-  );
+  return importedMesh.data ? (
+    <primitive
+      ref={primitiveRef}
+      // eslint-disable-next-line react/no-unknown-property
+      visible={!importedMesh.isPlaceholderData}
+      // eslint-disable-next-line react/no-unknown-property
+      object={importedMesh.data}
+    />
+  ) : undefined;
 }
 
 function PreviewPanel3D({ importedMesh }: Props) {

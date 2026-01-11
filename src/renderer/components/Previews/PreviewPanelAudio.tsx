@@ -33,7 +33,9 @@ function PreviewPanelAudio({ importedAudio, isZip, path, audioMetadata, hasThumb
     }
   };
 
-  useEvent(document, 'quickAction', (e: KeyboardEvent) => handlePlay());
+  useEvent(document, 'quickAction', () => {
+    handlePlay();
+  });
 
   useEffect(() => {}, [loop]);
 

@@ -22,12 +22,12 @@ import { useFieldContext } from './Form';
 interface Props {
   isFetching?: boolean;
   defaultValue: unknown;
-  instantSubmit?: (key: string, value: unknown) => void;
+  instantSubmit?: (key: string, value: string | number | boolean) => void;
 }
 
 export default function Option({ isFetching, defaultValue, instantSubmit }: Props) {
   const queryClient = useQueryClient();
-  const field = useFieldContext<unknown>();
+  const field = useFieldContext<string | number | boolean>();
   const option = Options[field.name as keyof typeof Options] as OptionType;
   const optionDefault = option.default ? option.default : option.schema.safeParse(undefined).data;
 
@@ -37,7 +37,7 @@ export default function Option({ isFetching, defaultValue, instantSubmit }: Prop
         intent="danger"
         content={
           <ul className={Classes.LIST_UNSTYLED}>
-            {field.state.meta.errors.map((e: unknown) => (
+            {field.state.meta.errors.map((e: Error) => (
               <li>{e.message}</li>
             ))}
           </ul>
@@ -48,7 +48,7 @@ export default function Option({ isFetching, defaultValue, instantSubmit }: Prop
     ) : undefined;
 
   const handleChange = useCallback(
-    (value: unknown) => {
+    (value: string | number | boolean) => {
       if (instantSubmit && option.instant === true) {
         instantSubmit(field.name, value);
       } else {
@@ -115,7 +115,7 @@ export default function Option({ isFetching, defaultValue, instantSubmit }: Prop
               changed: !field.state.meta.isDefaultValue,
               [Classes.SKELETON]: isFetching,
             })}
-            value={field.state.value || ''}
+            value={(field.state.value as string) || ''}
             placeholder={option.hintValue}
             onBlur={field.handleBlur}
             onChange={(e) => handleChange(e.target.value)}
@@ -137,7 +137,7 @@ export default function Option({ isFetching, defaultValue, instantSubmit }: Prop
               changed: !field.state.meta.isDefaultValue,
               [Classes.SKELETON]: isFetching,
             })}
-            value={field.state.value || 0}
+            value={field.state.value as number | string}
             placeholder={option.hintValue}
             onBlur={field.handleBlur}
             min={option.min}
@@ -152,14 +152,14 @@ export default function Option({ isFetching, defaultValue, instantSubmit }: Prop
     control = (
       <FormGroup label={label} className={labelClass}>
         <Switch
-          large
+          size="large"
           id={field.name}
           label={subLabel}
           className={cn({
             changed: !field.state.meta.isDefaultValue,
             [Classes.SKELETON]: isFetching,
           })}
-          checked={field.state.value || 0}
+          checked={!!field.state.value}
           placeholder={option.hintValue}
           onBlur={field.handleBlur}
           onChange={(v) => handleChange((v.target as HTMLInputElement).checked)}
@@ -175,7 +175,7 @@ export default function Option({ isFetching, defaultValue, instantSubmit }: Prop
             changed: !field.state.meta.isDefaultValue,
             [Classes.SKELETON]: isFetching,
           })}
-          value={field.state.value}
+          value={field.state.value as string | number}
           onChange={(e) => handleChange(e.target.value)}
         />
       </FormGroup>
