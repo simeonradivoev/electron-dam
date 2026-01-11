@@ -1,6 +1,10 @@
 name: Build
 
-on: [workflow_dispatch]
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
 
 jobs:
   build:
@@ -61,7 +65,9 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: electron-dam-windows
-        path: release/build/*.{exe,blockmap}
+        path: |
+          release/build/*.exe
+          release/build/*.blockmap
 
     - name: Upload Linux artifact
       if: matrix.os == 'ubuntu-latest'
