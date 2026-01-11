@@ -255,9 +255,9 @@
     "appId": "com.simeonradivoev.ElectronDam",
     "asar": true,
     "asarUnpack": [
-      "**\\*.{node,dll,exe}",
-      "**/node_modules/sharp/**/*",
-      "**/node_modules/@img/**/*"
+      "**/*.{node,dll,exe}",
+      "node_modules/sharp/**",
+      "node_modules/@img/**"
     ],
     "files": [
       "dist",

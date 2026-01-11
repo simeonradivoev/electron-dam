@@ -17,6 +17,14 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
+    - name: Cache Electron
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/electron
+          ~/.cache/electron-builder
+        key: ${{ runner.os }}-electron-${{ hashFiles('**/package-lock.json') }}
+
     - name: Use Node.js
       uses: actions/setup-node@v4
       with:
@@ -25,7 +33,7 @@ jobs:
 
     - name: Install Dependencies
       run: |
-        npm install node-addon-api node-gyp
+        npm ci --include=optional node-addon-api node-gyp
 
     - name: Build
       run: |
