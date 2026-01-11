@@ -33,7 +33,7 @@ jobs:
 
     - name: Install Dependencies
       run: |
-        npm ci --include=optional node-addon-api node-gyp
+        npm ci --include=optional
 
     - name: Build
       run: |

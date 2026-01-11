@@ -33,6 +33,8 @@
   },
   "dependencies": {
     "@huggingface/transformers": "^3.8.1",
+    "node-addon-api": "^8.5.0",
+    "node-gyp": "^12.1.0",
     "puppeteer-extra": "^3.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2",
     "sharp": "^0.34.5"
