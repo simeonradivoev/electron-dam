@@ -18,7 +18,7 @@ import cn from 'classnames';
 import React, { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useBlocker, useOutletContext } from 'react-router-dom';
 import { arraysEqual, QueryKeys } from 'renderer/scripts/utils';
-import { AppToaster } from 'renderer/toaster';
+import { AppToaster, ShowAppToaster } from 'renderer/toaster';
 import { ImportType } from 'shared/constants';
 import { BundleDetailsContextType } from './BundleDetailsLayout';
 
@@ -146,7 +146,7 @@ function BundleEditor() {
         throw new Error('No Bundle or link');
       }
     },
-    onError: (error) => AppToaster.then((t) => t.show({ message: `${error}`, intent: 'danger' })),
+    onError: (error) => ShowAppToaster({ message: `${error}`, intent: 'danger' }),
     onSuccess() {
       queryClient
         .refetchQueries({ queryKey: ['bundle', bundle.id] })
@@ -158,7 +158,7 @@ function BundleEditor() {
   const importMutation = useMutation({
     mutationKey: ['auto-metadata', bundle.id],
     mutationFn: async (type: ImportType) => window.api.importBundleMetadata(link ?? '', type),
-    onError: (error) => AppToaster?.then((t) => t.show({ message: `${error}`, intent: 'danger' })),
+    onError: (error) => ShowAppToaster({ message: `${error}`, intent: 'danger' }),
     onSuccess: (metadata) => {
       if (metadata.description) {
         setDescription(metadata.description);

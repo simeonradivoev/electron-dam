@@ -2,7 +2,7 @@ import { Button, ButtonGroup, Spinner, SpinnerSize } from '@blueprintjs/core';
 import { useIsFetching } from '@tanstack/react-query';
 import cn from 'classnames';
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useMatch, useBlocker } from 'react-router-dom';
+import { useNavigate, useMatch } from 'react-router-dom';
 import { useApp } from 'renderer/contexts/AppContext';
 import { useTasks } from 'renderer/contexts/TasksContext';
 import { useLocalStorage } from 'usehooks-ts';

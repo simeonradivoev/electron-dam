@@ -21,13 +21,13 @@ import { useFieldContext } from './Form';
 
 interface Props {
   isFetching?: boolean;
-  defaultValue: any;
-  instantSubmit?: (key: string, value: any) => void;
+  defaultValue: unknown;
+  instantSubmit?: (key: string, value: unknown) => void;
 }
 
 export default function Option({ isFetching, defaultValue, instantSubmit }: Props) {
   const queryClient = useQueryClient();
-  const field = useFieldContext<any>();
+  const field = useFieldContext<unknown>();
   const option = Options[field.name as keyof typeof Options] as OptionType;
   const optionDefault = option.default ? option.default : option.schema.safeParse(undefined).data;
 
@@ -37,7 +37,7 @@ export default function Option({ isFetching, defaultValue, instantSubmit }: Prop
         intent="danger"
         content={
           <ul className={Classes.LIST_UNSTYLED}>
-            {field.state.meta.errors.map((e: any) => (
+            {field.state.meta.errors.map((e: unknown) => (
               <li>{e.message}</li>
             ))}
           </ul>
@@ -48,7 +48,7 @@ export default function Option({ isFetching, defaultValue, instantSubmit }: Prop
     ) : undefined;
 
   const handleChange = useCallback(
-    (value: any) => {
+    (value: unknown) => {
       if (instantSubmit && option.instant === true) {
         instantSubmit(field.name, value);
       } else {
@@ -69,7 +69,7 @@ export default function Option({ isFetching, defaultValue, instantSubmit }: Prop
                     <MenuItem
                       icon="reset"
                       text="Reset"
-                      onClick={(e) => {
+                      onClick={() => {
                         window.api.setSetting(field.name as keyof typeof Options, optionDefault);
                         queryClient.refetchQueries({ queryKey: ['options'] });
                       }}
@@ -182,5 +182,5 @@ export default function Option({ isFetching, defaultValue, instantSubmit }: Prop
     );
   }
 
-  return <>{control}</>;
+  return control;
 }

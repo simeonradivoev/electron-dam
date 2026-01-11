@@ -21,7 +21,7 @@ export default function Metadata() {
                 children={(field) => (
                   <field.Option defaultValue={data?.[o]} isFetching={isFetching} />
                 )}
-                name={o as any}
+                name={o}
               />
             ))}
         </form.OptionsForm>

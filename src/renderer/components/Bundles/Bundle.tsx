@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { normalize } from 'pathe';
 import { memo, useCallback, useState } from 'react';
 import { useApp } from 'renderer/contexts/AppContext';
-import { AppToaster } from 'renderer/toaster';
+import { AppToaster, ShowAppToaster } from 'renderer/toaster';
 
 interface Props {
   bundle: BundleInfo;
@@ -64,12 +64,10 @@ const Bundle = memo(
                 queryClient.invalidateQueries({ queryKey: ['bundles'] });
               } catch (error: unknown) {
                 const message = error instanceof Error ? error.message : String(error);
-                AppToaster.then((t) =>
-                  t.show({
-                    message: `Failed to convert bundle: ${message}`,
-                    intent: 'danger',
-                  }),
-                );
+                ShowAppToaster({
+                  message: `Failed to convert bundle: ${message}`,
+                  intent: 'danger',
+                });
               }
             }}
           />

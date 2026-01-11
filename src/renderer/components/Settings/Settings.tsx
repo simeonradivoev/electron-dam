@@ -1,5 +1,4 @@
-import { Divider, Tab, TabId, Tabs } from '@blueprintjs/core';
-import { useState } from 'react';
+import { Divider, Tab, Tabs } from '@blueprintjs/core';
 import { useMatch, useNavigate } from 'react-router-dom';
 import Debug from './Debug';
 import General from './General';

@@ -1,8 +1,7 @@
 import { Button, ButtonGroup, ControlGroup, Divider, Slider } from '@blueprintjs/core';
-import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { decodePeaks, encodePeaks, useEvent } from 'renderer/scripts/utils';
-import { AppToaster } from 'renderer/toaster';
+import { AppToaster, ShowAppToaster } from 'renderer/toaster';
 import { useLocalStorage } from 'usehooks-ts';
 import WaveSurfer from 'wavesurfer.js';
 import Hover from 'wavesurfer.js/dist/plugins/hover';
@@ -20,7 +19,6 @@ type Props = {
 function PreviewPanelAudio({ importedAudio, isZip, path, audioMetadata, hasThumbnail }: Props) {
   const waveformRef = useRef<HTMLDivElement>(null);
   const wavesurferRef = useRef<WaveSurfer>();
-  const queryClient = useQueryClient();
   const [playing, setPlay] = useState(false);
   const [volume, setVolume] = useLocalStorage('volume', 0.5);
 
@@ -64,7 +62,9 @@ function PreviewPanelAudio({ importedAudio, isZip, path, audioMetadata, hasThumb
         wavesurferRef.current?.play();
         localStorage.setItem('continuePlaying', 'true');
       }
-    } catch (error) {}
+    } catch {
+      // empty
+    }
   }, []);
 
   useEffect(() => {
@@ -107,18 +107,18 @@ function PreviewPanelAudio({ importedAudio, isZip, path, audioMetadata, hasThumb
       if (e.name === 'AbortError') {
         return;
       }
-      AppToaster.then((toaster) => toaster.show({ message: e.name, intent: 'danger' }));
+      ShowAppToaster({ message: e.name, intent: 'danger' });
     });
 
-    wavesurfer.on('ready', (e) => {
+    wavesurfer.on('ready', () => {
       wavesurfer.setMuted(muted);
       if (path && !isZip) {
         if (!hasThumbnail) {
           wavesurfer
             .exportImage('image/webp', 0.8, 'dataURL')
             .then((blob) => window.api.saveAudioPreview(path, blob[0]))
-            .catch((e) => {
-              AppToaster.then((t) => t.show({ message: e.message, intent: 'danger' }));
+            .catch((e: Error) => {
+              ShowAppToaster({ message: e.message, intent: 'danger' });
             });
         }
 
@@ -136,6 +136,7 @@ function PreviewPanelAudio({ importedAudio, isZip, path, audioMetadata, hasThumb
       wavesurfer?.destroy();
       wavesurferRef.current = undefined;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [importedAudio, isZip]);
 
   useEffect(() => wavesurferRef.current && updatePlay(wavesurferRef.current, playing), [playing]);

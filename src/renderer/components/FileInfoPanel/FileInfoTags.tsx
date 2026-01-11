@@ -75,7 +75,7 @@ function FileInfoTags({
 
   return (
     <>
-      {tags.isError ? <>{tags.error}</> : <></>}
+      {tags.isError ? tags.error : undefined}
       <TagInput
         fill
         leftIcon="tag"

@@ -4,7 +4,7 @@ import { normalize } from 'pathe';
 import { useCallback } from 'react';
 import { NavigateFunction } from 'react-router-dom';
 import { QueryKeys } from 'renderer/scripts/utils';
-import { AppToaster } from 'renderer/toaster';
+import { AppToaster, ShowAppToaster } from 'renderer/toaster';
 import { AutoTagType } from 'shared/constants';
 
 interface Params {
@@ -85,12 +85,10 @@ export default function FileContextMenu({
         context.client.invalidateQueries({ queryKey: ['bundles'] });
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error);
-        AppToaster.then((t) =>
-          t.show({
-            message: `Failed to move bundle: ${message}`,
-            intent: 'danger',
-          }),
-        );
+        ShowAppToaster({
+          message: `Failed to move bundle: ${message}`,
+          intent: 'danger',
+        });
       }
     },
   });
@@ -116,7 +114,7 @@ export default function FileContextMenu({
     mutationFn: async ({ type, missingOnly }: { type: AutoTagType; missingOnly: boolean }) =>
       assetPath ? window.api.autoMetadata(assetPath, type, missingOnly) : Promise.reject(),
     onError: (o) => {
-      AppToaster.then((t) => t.show({ message: o.message, intent: 'danger' }));
+      ShowAppToaster({ message: o.message, intent: 'danger' });
     },
     onSuccess: (_d, v, r, context) => {
       if (assetPath) {
@@ -131,7 +129,7 @@ export default function FileContextMenu({
     mutationFn: async () =>
       assetPath ? window.api.removeDescription(assetPath) : Promise.reject(),
     onError: (o) => {
-      AppToaster.then((t) => t.show({ message: o.message, intent: 'danger' }));
+      ShowAppToaster({ message: o.message, intent: 'danger' });
     },
     onSuccess: (_d, v, r, context) => {
       if (assetPath) {
@@ -144,7 +142,7 @@ export default function FileContextMenu({
     mutationKey: [QueryKeys.metadata, assetPath, 'remove', QueryKeys.tags],
     mutationFn: async () => (assetPath ? window.api.removeAllTags(assetPath) : Promise.reject()),
     onError: (o) => {
-      AppToaster.then((t) => t.show({ message: o.message, intent: 'danger' }));
+      ShowAppToaster({ message: o.message, intent: 'danger' });
     },
     onSuccess: (_d, v, r, context) => {
       if (assetPath) {

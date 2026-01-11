@@ -1,7 +1,7 @@
 /**
  * Webpack config for development electron main process
  */
-import path, { normalize } from 'path';
+import path from 'path';
 import CopyPlugin from 'copy-webpack-plugin';
 import ForkTsCheckerWebpackPlugin from 'fork-ts-checker-webpack-plugin';
 import webpack from 'webpack';

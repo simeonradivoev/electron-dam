@@ -11,7 +11,6 @@ import BundleNew from './components/Bundles/BundleNew';
 import BundlesGrid from './components/Bundles/BundlesGrid';
 import Explorer from './components/ExplorerPanel/Explorer';
 import Home from './components/HomePanel/Home';
-import { NavigationSaver, NavigationRestorer } from './components/NavigationSaver';
 import SearchPage from './components/SearchPage/SearchPage';
 import Settings from './components/Settings/Settings';
 import TasksPage from './components/TasksPanel/TasksPage';

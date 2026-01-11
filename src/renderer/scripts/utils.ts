@@ -11,12 +11,16 @@ export function humanFileSize(size: number) {
   const i = Math.floor(Math.log(size) / Math.log(1024));
   const num = size / 1024 ** i;
   const round = Math.round(num);
-  const numString = round < 10 ? num.toFixed(2) : round < 100 ? num.toFixed(1) : round.toString();
+  let numString: string;
+  if (round < 10) numString = num.toFixed(2);
+  else if (round < 100) numString = num.toFixed(1);
+  else numString = round.toString();
   return `${numString} ${'KMGTPEZY'[i - 1]}B`;
 }
 
-export const formatDuration = (ms: number) => {
-  if (ms < 0) ms = -ms;
+export const formatDuration = (msi: number) => {
+  let ms = msi;
+  if (msi < 0) ms = -ms;
   const time = {
     day: Math.floor(ms / 86400000),
     hour: Math.floor(ms / 3600000) % 24,
@@ -30,7 +34,7 @@ export const formatDuration = (ms: number) => {
     .join(', ');
 };
 
-export function toggleElementMutable(array: any[], element: any) {
+export function toggleElementMutable(array: unknown[], element: unknown) {
   const newArray = Array.from(array);
 
   const index = array.indexOf(element);
@@ -61,7 +65,7 @@ export function isValidHttpUrl(string: string) {
   let url;
   try {
     url = new URL(string);
-  } catch (_) {
+  } catch {
     return false;
   }
   return url.protocol === 'http:' || url.protocol === 'https:';
@@ -76,6 +80,7 @@ export function useObserveQueryCache() {
     const unsubscribe = queryCache.subscribe((event) => {
       const { meta, state, queryKey } = event.query;
       if (event.type === 'removed' && meta?.onRemoveFromCache) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (meta as any).onRemoveFromCache(state, queryKey);
       }
     });
@@ -125,10 +130,11 @@ export function useQueryData<T>(queryKey: readonly unknown[]): T | undefined {
   );
 }
 
-export function useEvent(element: Document, channel: string, callback: (e: any) => void) {
+export function useEvent(element: Document, channel: string, callback: (e: unknown) => void) {
   useEffect(() => {
     element.addEventListener(channel, callback);
-    return () => element.removeEventListener(channel, callback as any);
+    return () =>
+      element.removeEventListener(channel, callback as EventListenerOrEventListenerObject);
   });
 }
 
@@ -147,7 +153,7 @@ function base64ToUint8(base64: string): Uint8Array {
   const binary = atob(base64);
   const bytes = new Uint8Array(binary.length);
 
-  for (let i = 0; i < binary.length; i++) {
+  for (let i = 0; i < binary.length; i += 1) {
     bytes[i] = binary.charCodeAt(i);
   }
 
@@ -156,7 +162,7 @@ function base64ToUint8(base64: string): Uint8Array {
 
 export function encodePeaks(peaks: number[][]): string {
   const channels = peaks.length;
-  const length = peaks[0].length;
+  const { length } = peaks[0];
 
   // Header: [channels (1 byte), length (4 bytes)]
   const header = new Uint8Array(5);
@@ -167,11 +173,11 @@ export function encodePeaks(peaks: number[][]): string {
   const data = new Uint8Array(channels * length);
   let offset = 0;
 
-  for (const channel of peaks) {
-    for (const v of channel) {
-      data[offset++] = Math.round(v * 127 + 128);
-    }
-  }
+  peaks.forEach((c) => {
+    c.forEach((v) => {
+      data[(offset += 1)] = Math.round(v * 127 + 128);
+    });
+  });
 
   // Combine
   const combined = new Uint8Array(header.length + data.length);
@@ -190,10 +196,10 @@ export function decodePeaks(encoded: string): number[][] {
   let offset = 5;
   const peaks: number[][] = [];
 
-  for (let c = 0; c < channels; c++) {
+  for (let c = 0; c < channels; c += 1) {
     const channel = new Array<number>(length);
-    for (let i = 0; i < length; i++) {
-      channel[i] = (bytes[offset++] - 128) / 127;
+    for (let i = 0; i < length; i += 1) {
+      channel[i] = (bytes[(offset += 1)] - 128) / 127;
     }
     peaks.push(channel);
   }

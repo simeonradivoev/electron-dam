@@ -9,7 +9,6 @@ import {
   Tag,
   ButtonGroup,
   Divider,
-  Navbar,
   NavbarGroup,
   IconSize,
   MenuItem,
@@ -133,7 +132,7 @@ function SearchPage() {
   const handleKeyDown = useCallback(
     async (e: React.KeyboardEvent<HTMLInputElement>) => {
       if (e.key === 'Enter') {
-        const { value } = e.target as any;
+        const { value } = e.target as never;
         navigate({ pathname: `/search/${value}/0` });
       }
     },

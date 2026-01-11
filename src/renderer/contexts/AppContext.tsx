@@ -9,7 +9,7 @@ import {
   useMemo,
   useState,
 } from 'react';
-import { useMatch, useNavigate, useSearchParams } from 'react-router-dom';
+import { useMatch, useNavigate } from 'react-router-dom';
 import { BuildNodeQueries } from 'renderer/scripts/file-tree';
 import {
   GetSelectedTags,

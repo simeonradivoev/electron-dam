@@ -1,9 +1,10 @@
+/* eslint-disable react/no-unknown-property */
 /* eslint-disable no-restricted-syntax */
-import { keepPreviousData, useQuery, UseQueryResult } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import log from 'electron-log/renderer';
 import { normalize } from 'pathe';
-import { useCallback, useState } from 'react';
-import * as three from 'three';
+import { useState } from 'react';
+import { Group, Object3DEventMap } from 'three';
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { MTLLoader } from 'three/examples/jsm/loaders/MTLLoader';
@@ -14,7 +15,7 @@ const gltfLoader = new GLTFLoader();
 const stlLoader = new STLLoader();
 const fbxLoader = new FBXLoader();
 
-function loadAssimpModel(info: FileInfo, setImportedMesh: (mesh: any) => void): boolean {
+function loadAssimpModel(info: FileInfo, setImportedMesh: (mesh: unknown) => void): boolean {
   if (!info.modelData) {
     return false;
   }
@@ -33,7 +34,7 @@ function loadAssimpModel(info: FileInfo, setImportedMesh: (mesh: any) => void): 
   return true;
 }
 
-function loadObjModel(info: FileInfo, setImportedMesh: (mesh: any) => void) {
+function loadObjModel(info: FileInfo, setImportedMesh: (mesh: unknown) => void) {
   if (loadAssimpModel(info, setImportedMesh)) {
     return;
   }
@@ -44,22 +45,22 @@ function loadObjModel(info: FileInfo, setImportedMesh: (mesh: any) => void) {
     const mtlLoader = new MTLLoader();
     mtlLoader.load(
       info?.path.replace('.obj', '.mtl'),
-      (loadedMats: any) => {
+      (loadedMats) => {
         objLoader.setMaterials(loadedMats);
         objLoader.load(
           info.path,
-          (loadedObj: any) => {
+          (loadedObj) => {
             setImportedMesh(<primitive object={loadedObj} />);
           },
-          (progress: any) => {},
-          (error: any) => {
+          (progress) => {},
+          (error) => {
             log.error(error);
             setImportedMesh(undefined);
           },
         );
       },
-      (progress: any) => {},
-      (error: any) => {
+      (progress) => {},
+      (error) => {
         log.error(error);
         setImportedMesh(undefined);
       },
@@ -67,11 +68,11 @@ function loadObjModel(info: FileInfo, setImportedMesh: (mesh: any) => void) {
   } else {
     objLoader.load(
       info.path,
-      (loadedObj: any) => {
+      (loadedObj) => {
         setImportedMesh(loadedObj);
       },
-      (progress: any) => {},
-      (error: any) => {
+      (progress) => {},
+      (error) => {
         log.error(error);
         setImportedMesh(undefined);
       },
@@ -79,14 +80,14 @@ function loadObjModel(info: FileInfo, setImportedMesh: (mesh: any) => void) {
   }
 }
 
-function loadStlModel(info: FileInfo, setImportedMesh: (mesh: any) => void) {
+function loadStlModel(info: FileInfo, setImportedMesh: (mesh: unknown) => void) {
   if (loadAssimpModel(info, setImportedMesh)) {
     return;
   }
 
   stlLoader.load(
     info?.path,
-    (obj: any) => {
+    (obj) => {
       setImportedMesh(
         <mesh>
           <bufferGeometry {...obj} />
@@ -94,8 +95,8 @@ function loadStlModel(info: FileInfo, setImportedMesh: (mesh: any) => void) {
         </mesh>,
       );
     },
-    (progress: any) => {},
-    (error: any) => {
+    (progress) => {},
+    (error) => {
       log.error(error);
       setImportedMesh(undefined);
     },
@@ -107,14 +108,14 @@ function loadFbxModel(info: FileInfo): Promise<any | undefined> {
     return;
   }*/
 
-  const loadPromise = new Promise<any | undefined>((resolve, reject) => {
+  const loadPromise = new Promise<Object3DEventMap | undefined>((resolve, reject) => {
     fbxLoader.load(
       info?.path,
-      (obj: any) => {
+      (obj) => {
         resolve(obj);
       },
-      (progress: any) => {},
-      (error: any) => {
+      (progress) => {},
+      (error) => {
         reject(error);
       },
     );
@@ -122,13 +123,13 @@ function loadFbxModel(info: FileInfo): Promise<any | undefined> {
   return loadPromise;
 }
 
-async function loadGltfModel(info: FileInfo): Promise<any | undefined> {
-  const gltfLoader = new GLTFLoader().setPath(`${info.directory}/`);
-  const gltf = await gltfLoader.loadAsync(info?.name);
+async function loadGltfModel(info: FileInfo): Promise<Group<Object3DEventMap> | undefined> {
+  const loader = new GLTFLoader().setPath(`${info.directory}/`);
+  const gltf = await loader.loadAsync(info?.name);
   return gltf.scene;
 }
 
-async function loadModel(info: FileInfo): Promise<any | undefined> {
+async function loadModel(info: FileInfo): Promise<Group<Object3DEventMap> | undefined> {
   if (info.modelData) {
     try {
       const gltf = await gltfLoader.parseAsync(
@@ -155,7 +156,7 @@ function loadAudio(info: FileInfo): Promise<{ url: string; duration?: number }> 
   });
 }
 
-type ExtensionLoaderSetter = (fileInfo: FileInfo) => Promise<any>;
+type ExtensionLoaderSetter = (fileInfo: FileInfo) => Promise<Group<Object3DEventMap> | undefined>;
 
 const modelLoaders = new Map<string, ExtensionLoaderSetter>([
   ['.obj', loadModel],
@@ -185,7 +186,7 @@ const audioLoaders = new Map<
 ]);
 
 export const ImportMedia = (fileInfo: FileInfo | null | undefined) => {
-  const importedMesh = useQuery<any | null>({
+  const importedMesh = useQuery<Group<Object3DEventMap> | undefined>({
     enabled: !!fileInfo && modelLoaders.has(fileInfo.fileExt),
     refetchOnWindowFocus: false,
     queryKey: ['imported-mesh', fileInfo?.path],

@@ -121,10 +121,11 @@ const SearchResultEntry = memo(
         onDoubleClick={onDoubleClick}
         onKeyDown={onKeyDown}
         onContextMenu={handleContextMenu}
-        className={cn('search-result-entry', Classes.INTENT_PRIMARY, Classes.PANEL_STACK2, {
+        className={cn('search-result-entry', Classes.INTENT_PRIMARY, Classes.PANEL_STACK, {
           selected: isSelected,
         })}
-        role="button"
+        role="treeitem"
+        aria-selected={isSelected}
       >
         <div className="search-result-preview">{preview}</div>
 

@@ -1,5 +1,5 @@
 /* eslint-disable react/no-children-prop */
-import { Alert, Button, ButtonGroup, Classes, Icon, Tag, Tooltip } from '@blueprintjs/core';
+import { Alert, Button, ButtonGroup, Classes, Tag, Tooltip } from '@blueprintjs/core';
 import { useBlocker } from 'react-router-dom';
 import { useFormContext } from './Form';
 
@@ -8,7 +8,7 @@ interface Props {
   children: JSX.Element[] | JSX.Element;
 }
 
-export default function OptionsForm({ children, isFetching }: Props) {
+export default function OptionsForm({ children, isFetching = false }: Props) {
   const form = useFormContext();
 
   return (
@@ -20,13 +20,14 @@ export default function OptionsForm({ children, isFetching }: Props) {
     >
       {children}
       <form.Subscribe
-        selector={(s) => [
+        selector={() => [
           form.state.canSubmit,
           form.state.isDefaultValue,
           form.state.isSubmitting,
           form.state.errors.length > 0,
         ]}
         children={([canSubmit, isDefault, isSubmitting, errors]) => {
+          // eslint-disable-next-line react-hooks/rules-of-hooks
           const blocker = useBlocker(!isDefault);
 
           return (
@@ -62,7 +63,7 @@ export default function OptionsForm({ children, isFetching }: Props) {
                         {form.state.errors.map((e) =>
                           Object.keys(e).map((k) => (
                             <li>
-                              <b>{k}</b>: {e[k].map((p: any) => p.message).join('\n')}
+                              <b>{k}</b>: {e[k].map((p: Error) => p.message).join('\n')}
                             </li>
                           )),
                         )}

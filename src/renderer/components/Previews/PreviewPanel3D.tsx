@@ -9,15 +9,15 @@ import {
 } from '@react-three/drei';
 import { UseQueryResult } from '@tanstack/react-query';
 import { Suspense, useEffect, useRef } from 'react';
-import { Sphere, SphereGeometry, Vector3 } from 'three';
+import { Box3, Object3D, Object3DEventMap, Sphere, SphereGeometry, Vector3 } from 'three';
 
 type Props = {
-  importedMesh: UseQueryResult<any | null, unknown>;
+  importedMesh: UseQueryResult<unknown | null, unknown>;
 };
 
 function PrimitiveComponent({ importedMesh }: Props) {
   const bounds = useBounds();
-  const primitiveRef = useRef<any>();
+  const primitiveRef = useRef<Object3D<Object3DEventMap> | Box3 | undefined>();
   useEffect(() => {
     // Calculate scene bounds
     bounds.refresh(primitiveRef.current).clip().fit();
@@ -30,7 +30,9 @@ function PrimitiveComponent({ importedMesh }: Props) {
     importedMesh.data && (
       <primitive
         ref={primitiveRef}
+        // eslint-disable-next-line react/no-unknown-property
         visible={!importedMesh.isPlaceholderData}
+        // eslint-disable-next-line react/no-unknown-property
         object={importedMesh.data}
       />
     )

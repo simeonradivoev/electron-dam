@@ -10,7 +10,7 @@ function TitleBar() {
     <div className="titlebar">
       {/* Left side */}
       <div className="left">
-        <img src={icon} className="icon" />
+        <img alt={document.title} src={icon} className="icon" />
         <span className="title">{document.title}</span>
       </div>
 

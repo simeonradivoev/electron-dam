@@ -106,8 +106,12 @@ export function registerMainHandlers(api: any) {
 
 export function registerMainCallbacks(api: any) {
   Object.keys(channelsSchema.on).forEach((channel) => {
-    api[channel] = (...args: any[]) =>
-      BrowserWindow.getAllWindows()[0].webContents.send(channel, ...args);
+    api[channel] = (...args: any[]) => {
+      const allWindows = BrowserWindow.getAllWindows();
+      if (allWindows.length > 0) {
+        allWindows[0].webContents?.send(channel, ...args);
+      }
+    };
   });
 }
 

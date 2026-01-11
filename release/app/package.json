@@ -33,6 +33,7 @@
   },
   "dependencies": {
     "@huggingface/transformers": "^3.8.1",
+    "audio-decode": "^2.2.3",
     "puppeteer-extra": "^3.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2",
     "sharp": "^0.34.5"

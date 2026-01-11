@@ -28,7 +28,7 @@ export const getIntersectionObserver = () => {
   return observer;
 };
 
-export const useIntersection = (elem: MutableRefObject<Element | null>, callback: any) => {
+export const useIntersection = (elem: MutableRefObject<Element | null>, callback: unknown) => {
   useEffect(() => {
     if (!elem.current) return undefined;
     const target = elem.current;

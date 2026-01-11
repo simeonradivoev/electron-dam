@@ -72,6 +72,7 @@ export default function General() {
             .map(({ key }) => (
               <form.AppField
                 key={key}
+                // eslint-disable-next-line react/no-children-prop
                 children={(field) => (
                   <field.Option
                     instantSubmit={instantSubmit}
@@ -79,7 +80,7 @@ export default function General() {
                     isFetching={isFetching}
                   />
                 )}
-                name={key as any}
+                name={key}
               />
             ))}
         </form.OptionsForm>

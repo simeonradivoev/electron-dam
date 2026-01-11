@@ -7,7 +7,7 @@ type ChannelType = keyof ChannelsSchema['get'];
 export default function ipcMainApiInvokeHandler(
   electronApp: ElectronApplication,
   message: ChannelType,
-  ...args: any[]
+  ...args: unknown[]
 ): Promise<unknown> {
   return ipcMainInvokeHandler(electronApp, message, ...args);
 }

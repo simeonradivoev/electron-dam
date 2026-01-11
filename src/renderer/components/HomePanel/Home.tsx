@@ -1,20 +1,15 @@
-/* eslint-disable prettier/prettier */
 // src/renderer/components/HomePanel/Home.tsx
 import { Card, Classes, Icon, NonIdealState, Spinner, Tag, Text, Tooltip } from '@blueprintjs/core';
 import { useQuery } from '@tanstack/react-query';
 import classNames from 'classnames';
-import { useCallback, useContext } from 'react';
+import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from 'renderer/contexts/AppContext';
 import { LoadGlobalTags } from 'renderer/scripts/file-tree';
 import { humanFileSize, QueryKeys } from 'renderer/scripts/utils';
 import Bundle from '../Bundles/Bundle';
 
-interface Props {
-  // Add any props you need here
-}
-
-function Home(props: Props) {
+function Home() {
   const stats = useQuery({ queryKey: ['stats'], queryFn: () => window.api.getHomeBundles() });
   const { setFileInfo, database, projectDirectory } = useApp();
   const { data: tagsData } = useQuery({

@@ -14,7 +14,7 @@ import {
 import { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { isValidHttpUrl } from 'renderer/scripts/utils';
-import { AppToaster } from 'renderer/toaster';
+import { AppToaster, ShowAppToaster } from 'renderer/toaster';
 import { ImportType } from 'shared/constants';
 import { generateUUID } from 'three/src/math/MathUtils';
 
@@ -70,7 +70,7 @@ function BundleNew(props: Props) {
           setTags(metadata.tags);
         }
       } catch (error) {
-        AppToaster.then((t) => t.show({ message: `${error}`, intent: 'danger' }));
+        ShowAppToaster({ message: `${error}`, intent: 'danger' });
       } finally {
         setIsImportingMetadata(false);
       }

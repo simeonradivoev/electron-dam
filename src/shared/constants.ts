@@ -72,12 +72,12 @@ export const supportedTypes = new Set<string>(supportedTypesFlat);
 
 export const previewTypes: string[] = ['.webp', '.png', '.jpg', '.gif', '.jpeg'];
 
-export type ChannelGetter<TReturn, TArgs extends any[] = any[]> = {
+export type ChannelGetter<TReturn, TArgs extends unknown[] = unknown[]> = {
   renderer: (...args: TArgs) => Promise<TReturn>;
   main: (...args: TArgs) => Promise<TReturn>;
 };
 
-export type ChannelSub<TArgs extends any[] = any[]> = {
+export type ChannelSub<TArgs extends unknown[] = unknown[]> = {
   renderer: (func: (...eventArg: TArgs) => void) => () => void;
   main: (...args: TArgs) => void;
 };
@@ -133,10 +133,10 @@ export const channelsSchema = {
     generateEmbeddings: {} as ChannelGetter<void, [path: string]>,
     generateMissingEmbeddings: {} as ChannelGetter<void>,
     canGenerateEmbeddings: {} as ChannelGetter<boolean, [path: string]>,
-    getSetting: {} as ChannelGetter<any, [key: keyof typeof Options]>,
-    getSettings: {} as ChannelGetter<{ [key: string]: any }, [category: OptionCategory]>,
-    getDefaultSettingValue: {} as ChannelGetter<any, [key: keyof typeof Options]>,
-    setSetting: {} as ChannelGetter<any, [key: keyof typeof Options, value: any]>,
+    getSetting: {} as ChannelGetter<unknown, [key: keyof typeof Options]>,
+    getSettings: {} as ChannelGetter<{ [key: string]: unknown }, [category: OptionCategory]>,
+    getDefaultSettingValue: {} as ChannelGetter<unknown, [key: keyof typeof Options]>,
+    setSetting: {} as ChannelGetter<unknown, [key: keyof typeof Options, value: unknown]>,
     setSettings: {} as ChannelGetter<void, [settings: OptionDefaultValuesOptional]>,
     cancelTask: {} as ChannelGetter<void, [id: string]>,
     exportBundle: {} as ChannelGetter<void, [path: string]>,
@@ -197,8 +197,8 @@ export type OptionType = {
   schema: z.ZodTypeAny;
   type: 'string' | 'number' | 'bool' | 'enum';
   category: OptionCategory;
-  default?: any;
-  options?: any[];
+  default?: unknown;
+  options?: unknown[];
   hintValue?: string;
   localType?: 'local' | 'session';
   min?: number;

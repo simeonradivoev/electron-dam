@@ -1,6 +1,6 @@
 import { spawn } from 'child_process';
 import { createWriteStream } from 'fs';
-import { lstat, writeFile, readFile, mkdir, rename, stat, rm } from 'fs/promises';
+import { writeFile, readFile, mkdir, rename, stat, rm } from 'fs/promises';
 import path, { normalize } from 'path';
 import { dialog, BrowserWindow, shell, Notification } from 'electron';
 import log from 'electron-log/main';
@@ -57,7 +57,7 @@ export async function loadDirectoryBundle(
   bundleDirectory: FilePath,
 ): Promise<BundleInfo | undefined> {
   const bundlePath = bundleDirectory.join(BundleMetaFile);
-  const bundleStat = await pathStat(bundlePath).catch((e) => null);
+  const bundleStat = await pathStat(bundlePath).catch(() => null);
   if (bundleStat) {
     const fileData = await readFile(path.join(bundlePath.projectDir, bundlePath.path), 'utf8');
     const entry: BundleInfo = {
@@ -351,7 +351,7 @@ async function exportBundle(
     const bundleFiles = await getAllAssetsIn(p);
     const zip = new JSZip();
     bundleFiles.forEach((file, i) => {
-      zip.file(file.path.substring(p.path.length + 1), readFile(file.path) as any);
+      zip.file(file.path.substring(p.path.length + 1), readFile(file.path));
       abort.throwIfAborted();
       progress(i / bundleFiles.length);
     });
@@ -459,7 +459,7 @@ export default function InitializeBundlesApi(
       return;
     }
     const bundlePath = normalize(path.join(getProjectDir(store) ?? '', bundleId, BundleMetaFile));
-    if (await stat(bundlePath).catch((e) => false)) {
+    if (await stat(bundlePath).catch(() => false)) {
       await rm(bundlePath);
     }
   }

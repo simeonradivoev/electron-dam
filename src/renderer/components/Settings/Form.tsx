@@ -26,7 +26,7 @@ export const {
   },
 });
 
-interface FormMeta {}
+type FormMeta = object;
 
 export function safeParse(key: string, storage: Storage) {
   try {
@@ -35,7 +35,7 @@ export function safeParse(key: string, storage: Storage) {
       return undefined;
     }
     return JSON.parse(data);
-  } catch (error) {
+  } catch {
     return undefined;
   }
 }
@@ -61,7 +61,7 @@ export function useSettings(category: OptionCategory) {
           return {
             ...localData,
             ...d,
-          } as { [key: string]: any };
+          } as { [key: string]: string | null | undefined };
         })
         .catch((e) => log.error(e)),
   });
@@ -74,12 +74,12 @@ export function useSettings(category: OptionCategory) {
     defaultValues: data,
     validators: { onChangeAsync: z.object(validators) },
     onSubmitMeta: defaultMeta,
-    onSubmit: async ({ value, meta }) => {
+    onSubmit: async ({ value }) => {
       if (!value) return Promise.reject(new Error('No Default Values Loaded'));
       // Save locals
       Object.keys(value)
         .map((key) => ({ key, v: value[key], option: getOption(key) }))
-        .filter(({ key, v, option }) => !!option.localType && data?.[key] != v)
+        .filter(({ key, v, option }) => !!option.localType && data?.[key] !== v)
         .forEach(({ key, v, option }) => {
           if (option.localType === 'local')
             localStorage.setItem(key, JSON.stringify(option.schema.parse(v)));
@@ -102,7 +102,7 @@ export function useSettings(category: OptionCategory) {
     },
   });
 
-  const instantSubmit = (key: string, value: any) => {
+  const instantSubmit = (key: string, value: string | null | undefined) => {
     const option = getOption(key);
     if (option && option.localType) {
       if (option.localType === 'local')

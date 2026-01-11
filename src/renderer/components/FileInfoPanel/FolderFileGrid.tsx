@@ -2,7 +2,7 @@ import { NonIdealState, ResizeSensor, Spinner } from '@blueprintjs/core';
 import { useQuery } from '@tanstack/react-query';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import classNames from 'classnames';
-import { Key, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Key, useMemo, useRef, useState } from 'react';
 import BundleFileEntry from '../Bundles/BundleFileEntry';
 
 type Props = {
