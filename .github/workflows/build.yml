@@ -26,12 +26,12 @@ jobs:
     - name: Install Dependencies Linux
       if: matrix.os == 'ubuntu-latest'
       run: |
-        npm install --cpu=x64 --os=linux --libc=glibc
+        npm install --cpu=x64 --os=linux --libc=glibc sharp
 
     - name: Install Dependencies Windows
       if: matrix.os == 'windows-latest'
       run: |
-        npm install --cpu=x64 --os=windows
+        npm install --cpu=x64 --os=windows sharp
 
     - name: Post Install
       run: |
