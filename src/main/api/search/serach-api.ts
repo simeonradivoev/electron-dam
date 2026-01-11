@@ -32,7 +32,7 @@ import {
   index,
   loadIndex,
   persistIndex,
-} from './orama';
+} from './Orama';
 
 export async function removeIndex(filePath: FilePath) {
   await remove(filePath);

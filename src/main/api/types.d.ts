@@ -2,7 +2,7 @@ import { Stats } from 'fs';
 import { DBSchema } from 'idb';
 import { IAudioMetadata } from 'music-metadata';
 import { FileType } from 'shared/constants';
-import { IndexSchema } from './search/orama';
+import { IndexSchema } from './search/Orama';
 
 declare global {
   interface FileTreeNode {
