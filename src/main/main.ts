@@ -167,7 +167,7 @@ app
     InitializeTasks(mainWindow);
 
     mainWindow.on('ready-to-show', async () => {
-      if (process.env.DAM_PROJECT_DIR) {
+      if (!process.env.DAM_PROJECT_DIR) {
         const database = await LoadDatabase(context.store);
         // this is mainly for handling page reloads, dispose old database
         mainWindow!.once('ready-to-show', () => {
