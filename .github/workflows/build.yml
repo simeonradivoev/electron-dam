@@ -1,10 +1,6 @@
 name: Build
 
-on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+on: [workflow_dispatch]
 
 jobs:
   build:
@@ -14,16 +10,23 @@ jobs:
       matrix:
         os: [windows-latest, ubuntu-latest]
 
+    env:
+      ELECTRON_CACHE: ${{ github.workspace }}/.cache/electron
+      ELECTRON_BUILDER_CACHE: ${{ github.workspace }}/.cache/electron-builder
+      # Optional: skip postinstall rebuild in CI
+      CI: true
+
     steps:
     - uses: actions/checkout@v4
 
-    - name: Cache Electron
-      uses: actions/cache@v4
+    # Cache electron + electron-builder
+    - name: Cache electron and builder
+      uses: actions/cache@v3
       with:
         path: |
-          ~/.cache/electron
-          ~/.cache/electron-builder
-        key: ${{ runner.os }}-electron-${{ hashFiles('**/package-lock.json') }}
+          ${{ github.workspace }}/.cache/electron
+          ${{ github.workspace }}/.cache/electron-builder
+        key: ${{ runner.os }}-electron-${{ hashFiles('package-lock.json') }}
 
     - name: Use Node.js
       uses: actions/setup-node@v4
