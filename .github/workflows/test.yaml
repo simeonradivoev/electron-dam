@@ -20,15 +20,9 @@ jobs:
           node-version: 24
           cache: npm
 
-      - name: Install Dependencies Linux
-        if: matrix.os == 'ubuntu-latest'
+      - name: Install Dependencies
         run: |
-          npm install --cpu=x64 --os=linux --libc=glibc
-
-      - name: Install Dependencies Windows
-        if: matrix.os == 'windows-latest'
-        run: |
-          npm install --cpu=x64 --os=windows
+          npm install node-addon-api node-gyp
 
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps
@@ -38,8 +32,6 @@ jobs:
           npm run build
 
       - name: Test
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           npm test
 

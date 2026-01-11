@@ -44,4 +44,31 @@ module.exports = {
       '@typescript-eslint/parser': ['.ts', '.tsx'],
     },
   },
+  ignores: [
+    // # Logs
+    'logs',
+    '*.log',
+    // Runtime data
+    'pids',
+    '*.pid',
+    '*.seed',
+    // Coverage directory used by tools like istanbul
+    'coverage',
+    '.eslintcache',
+    // Dependency directory
+    'node_modules',
+    // OSX
+    '.DS_Store',
+    'release/app/dist',
+    'release/build',
+    '.erb/dll',
+    '.idea',
+    'npm-debug.log.*',
+    '*.css.d.ts',
+    '*.sass.d.ts',
+    '*.scss.d.ts',
+    // eslint ignores hidden directories by default:
+    // https://github.com/eslint/eslint/issues/8429
+    '!.erb',
+  ]
 };

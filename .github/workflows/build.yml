@@ -23,23 +23,11 @@ jobs:
         node-version: 24
         cache: 'npm'
 
-    - name: Install Dependencies Linux
-      if: matrix.os == 'ubuntu-latest'
+    - name: Install Dependencies
       run: |
-        npm install --cpu=x64 --os=linux --libc=glibc sharp
-
-    - name: Install Dependencies Windows
-      if: matrix.os == 'windows-latest'
-      run: |
-        npm install --cpu=x64 --os=windows sharp
-
-    - name: Post Install
-      run: |
-        npm run postinstall
+        npm install node-addon-api node-gyp
 
     - name: Build
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         npm run package
 
