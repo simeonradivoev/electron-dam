@@ -159,16 +159,22 @@ app
       });
     }
 
+    if (process.env.DAM_PROJECT_DIR) {
+      await LoadDatabase(context.store);
+    }
+
     mainWindow = await createWindow(context.store);
     InitializeTasks(mainWindow);
 
     mainWindow.on('ready-to-show', async () => {
-      const database = await LoadDatabase(context.store);
+      if (process.env.DAM_PROJECT_DIR) {
+        const database = await LoadDatabase(context.store);
+        // this is mainly for handling page reloads, dispose old database
+        mainWindow!.once('ready-to-show', () => {
+          database?.close();
+        });
+      }
       mainWindow!.webContents.send('app:ready');
-      // this is mainly for handling page reloads, dispose old database
-      mainWindow!.once('ready-to-show', () => {
-        database?.close();
-      });
     });
 
     app.on('activate', async () => {

@@ -20,12 +20,6 @@ test.describe.serial(() => {
       },
     });
     page = await electronApp.firstWindow();
-    await page.evaluate(
-      () =>
-        new Promise<void>((resolve) =>
-          window.addEventListener('app:ready' as any, resolve, { once: true }),
-        ),
-    );
     // Direct Electron console to Node terminal.
     page.on('console', console.log);
   });

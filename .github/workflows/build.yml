@@ -41,14 +41,14 @@ jobs:
 
     - name: Upload Windows artifact
       if: matrix.os == 'windows-latest'
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: electron-dam-windows
         path: release/build/*.exe
 
     - name: Upload Linux artifact
       if: matrix.os == 'ubuntu-latest'
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: electron-dam-linux
         path: release/build/*.AppImage
