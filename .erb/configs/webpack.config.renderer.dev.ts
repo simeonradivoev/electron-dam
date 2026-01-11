@@ -33,7 +33,7 @@ if (!skipDLLs && !(fs.existsSync(webpackPaths.dllPath) && fs.existsSync(manifest
       'The DLL files are missing. Sit back while we build them for you with "npm run build-dll"',
     ),
   );
-  execSync('npm run postinstall');
+  execSync('npm run build-dll');
 }
 
 const configuration: webpack.Configuration = {
