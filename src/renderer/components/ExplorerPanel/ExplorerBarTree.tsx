@@ -192,15 +192,19 @@ const Inner = forwardRef<Virtualizer<HTMLDivElement, Element>, Props>(
         role="tree"
         onKeyDown={(e) => {
           e.preventDefault();
-          tree.getDataRef<HotkeysCoreDataRef>().current.keydownHandler?.(e as any as KeyboardEvent);
+          tree
+            .getDataRef<HotkeysCoreDataRef>()
+            .current.keydownHandler?.(e as unknown as KeyboardEvent);
         }}
         onKeyUp={(e) => {
           e.preventDefault();
-          tree.getDataRef<HotkeysCoreDataRef>().current.keyupHandler?.(e as any as KeyboardEvent);
+          tree
+            .getDataRef<HotkeysCoreDataRef>()
+            .current.keyupHandler?.(e as unknown as KeyboardEvent);
         }}
         onBlur={(e) => {
           e.preventDefault();
-          tree.getDataRef<HotkeysCoreDataRef>().current.resetHandler?.(e as any as FocusEvent);
+          tree.getDataRef<HotkeysCoreDataRef>().current.resetHandler?.(e as unknown as FocusEvent);
         }}
       >
         <div

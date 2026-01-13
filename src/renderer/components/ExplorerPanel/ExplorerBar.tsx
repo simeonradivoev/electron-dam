@@ -153,9 +153,11 @@ function ExplorerBar({
     hotkeys: {
       focusPreviousItem: {
         hotkey: 'ArrowUp',
+        handler: () => tree.focusPreviousItem(),
       },
       focusNextItem: {
         hotkey: 'ArrowDown',
+        handler: () => tree.focusNextItem(),
       },
       custom: {
         hotkey: 'KeyQ',

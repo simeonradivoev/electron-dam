@@ -61,7 +61,7 @@ function Explorer() {
       >
         <ExplorerBar
           focusedItem={focusedItem}
-          setFocusedItem={(e) => viewInExplorer(e as string)}
+          setFocusedItem={viewInExplorer}
           typeFilter={typeFilter}
           contextMenu={setContextMenuTarget}
           quickAction={handleQuickAction}
