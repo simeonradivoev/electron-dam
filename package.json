@@ -6,6 +6,7 @@
     "build:renderer": "cross-env NODE_ENV=production TS_NODE_TRANSPILE_ONLY=true webpack --config ./.erb/configs/webpack.config.renderer.prod.ts",
     "postinstall": "ts-node .erb/scripts/check-native-dep.js && electron-builder install-app-deps && cross-env NODE_ENV=development TS_NODE_TRANSPILE_ONLY=true webpack --config ./.erb/configs/webpack.config.renderer.dev.dll.ts",
     "lint": "cross-env NODE_ENV=development eslint . --ext .js,.jsx,.ts,.tsx",
+    "version": "standard-version --sign",
     "package": "ts-node ./.erb/scripts/clean.js dist && npm run build && electron-builder build --publish never",
     "prepare": "husky install",
     "rebuild": "electron-rebuild --parallel --types prod,dev,optional --module-dir release/app",
@@ -236,6 +237,7 @@
     "sass": "^1.97.2",
     "sass-loader": "^16.0.6",
     "sharp": "^0.34.5",
+    "standard-version": "^9.5.0",
     "style-loader": "^4.0.0",
     "terser-webpack-plugin": "^5.3.16",
     "ts-jest": "^28.0.8",
@@ -339,6 +341,10 @@
       ".erb/dll/**"
     ],
     "logLevel": "quiet"
+  },
+  "standard-version": {
+    "packageFiles": "release/app/package.json",
+    "bumpFiles": "release/app/package.json"
   },
   "overrides": {
     "react-popper": {
