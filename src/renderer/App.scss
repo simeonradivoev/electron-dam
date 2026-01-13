@@ -141,20 +141,29 @@ textarea.changed {
     }
   }
 
-  .search-result-entry {
-    background-color: $dark-gray3;
+  .search-page {
+    .search-result-entry {
+      background-color: $dark-gray3;
 
-    &:hover {
-      background-color: $dark-gray4;
-    }
+      &:hover {
+        background-color: $dark-gray4;
+      }
 
-    .search-result-preview {
-      background-color: $dark-gray1;
+      .search-result-preview {
+        background-color: $dark-gray1;
+      }
     }
   }
 
   .tasks-page {
     background: linear-gradient(135deg, $dark-gray1 0%, $dark-gray2 100%);
+  }
+
+    .bp6-tree-node:not(.bp6-tree-node-selected) {
+    &.multi-selection {
+      background-color: color.mix($pt-intent-primary, $pt-dark-app-background-color, 10%);
+      border-color: color.scale($color: $pt-intent-primary, $alpha: 80%);
+    }
   }
 }
 
