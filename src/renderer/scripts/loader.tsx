@@ -187,7 +187,7 @@ const audioLoaders = new Map<
 
 export const ImportMedia = (fileInfo: FileInfo | null | undefined) => {
   const importedMesh = useQuery<Group<Object3DEventMap> | undefined>({
-    enabled: !!fileInfo && fileInfo.modelData && modelLoaders.has(fileInfo.fileExt),
+    enabled: !!fileInfo && !!fileInfo.modelData && modelLoaders.has(fileInfo.fileExt),
     refetchOnWindowFocus: false,
     queryKey: ['imported-mesh', fileInfo?.path],
     queryFn: () => modelLoaders.get(fileInfo!.fileExt)!(fileInfo!),
