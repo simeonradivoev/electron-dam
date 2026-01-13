@@ -71,3 +71,50 @@ jobs:
       with:
         name: electron-dam-linux
         path: release/build/*.AppImage
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: artifacts
+
+      - name: Read changelog
+        id: changelog
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          python3 << 'EOF'
+          import re
+
+          with open('CHANGELOG.md', 'r') as f:
+              content = f.read()
+
+          # Find the version section
+          pattern = rf'## \[{re.escape(os.environ["VERSION"])}\].*?(?=## \[|$)'
+          match = re.search(pattern, content, re.DOTALL)
+
+          if match:
+              changelog = match.group(0).strip()
+          else:
+              changelog = "See CHANGELOG.md for details"
+
+          # Write to file for safe multiline handling
+          with open('changelog.txt', 'w') as f:
+              f.write(changelog)
+          EOF
+
+          cat changelog.txt
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          body_path: changelog.txt
+          files: artifacts/**/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
