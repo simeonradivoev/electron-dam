@@ -1427,6 +1427,8 @@ textarea.changed {
   }
 
   .settings-content-tabs {
+    @extend .y-scroll;
+    width: 100%;
     .bp6-tab-list {
       display: none;
     }
@@ -1435,6 +1437,11 @@ textarea.changed {
   .settings-content {
     padding: 1em;
     padding-top: 0;
+    width: fit-content;
+
+    &.full {
+      width: 100%;
+    }
 
     .app-info {
       gap: 0.5em;

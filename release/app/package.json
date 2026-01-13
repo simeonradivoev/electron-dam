@@ -1,7 +1,7 @@
 {
   "name": "electron-dam",
   "version": "1.0.0",
-  "description": "A bundle based digital asset manager built on top of electron using React and typescript. Based on the Electron React Boilerplate",
+  "description": "A bundle based digital asset manager built on top of electron using React and typescript. Featuring semantic searching and Ollama support.",
   "keywords": [
     "DAM",
     "manager",
@@ -11,6 +11,7 @@
     "digital-assets"
   ],
   "homepage": "https://github.com/simeonradivoev/electron-dam",
+  "icon": "../../assets/icons/16x16.png",
   "bugs": {
     "url": "https://github.com/simeonradivoev/electron-dam/issues"
   },

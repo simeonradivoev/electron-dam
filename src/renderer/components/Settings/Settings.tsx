@@ -1,5 +1,6 @@
 import { Divider, Tab, Tabs } from '@blueprintjs/core';
 import { useMatch, useNavigate } from 'react-router-dom';
+import About from './About';
 import Debug from './Debug';
 import General from './General';
 import Metadata from './Metadata';
@@ -19,6 +20,8 @@ function Settings() {
         <Tab icon="settings" id="general" title="General" />
         <Tab icon="search-template" id="metadata" title="Metadata" />
         <Tab icon="bug" id="debug" title="Debug" />
+        <Tab icon="help" id="help" title="Help" />
+        <Tab icon="info-sign" id="about" title="About" />
       </Tabs>
       <Divider />
       <Tabs
@@ -29,6 +32,8 @@ function Settings() {
         <Tab className="settings-content" id="general" panel={<General />} />
         <Tab className="settings-content" id="metadata" panel={<Metadata />} />
         <Tab className="settings-content" id="debug" panel={<Debug />} />
+        <Tab className="settings-content" id="help" />
+        <Tab className="settings-content" id="about" panel={<About />} />
       </Tabs>
     </div>
   );

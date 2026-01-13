@@ -90,6 +90,11 @@ const configuration: webpack.Configuration = {
         test: /\.(png|jpg|jpeg|gif)$/i,
         type: 'asset/resource',
       },
+      // MD
+      {
+        test: /\.md$/,
+        use: 'raw-loader',
+      },
       // SVG
       {
         test: /\.svg$/,
