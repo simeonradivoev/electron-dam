@@ -110,7 +110,7 @@ export function LoadDatabaseExact(store: Store<StoreSchema>, directory: string):
             unregisterMainHandlers(api);
           });
         },
-        { blocking: true },
+        { blocking: true, silent: true },
       );
 
       reIndexTask();

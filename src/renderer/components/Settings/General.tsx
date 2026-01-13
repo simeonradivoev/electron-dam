@@ -1,6 +1,7 @@
 import {
   Button,
   ButtonGroup,
+  Collapse,
   ControlGroup,
   Divider,
   FormGroup,
@@ -10,14 +11,20 @@ import {
   Tag,
   Tooltip,
 } from '@blueprintjs/core';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import Markdown from 'react-markdown';
+import rehypeExternalLinks from 'rehype-external-links';
+import rehypeRaw from 'rehype-raw';
 import { useApp } from 'renderer/contexts/AppContext';
 import { humanFileSize } from 'renderer/scripts/utils';
 import { getOption, OptionCategory, Options } from 'shared/constants';
+import { string } from 'zod/v3';
 import { useSettings } from './Form';
 
 export default function General() {
   const { setSelectedProjectDirectory, projectDirectory } = useApp();
+  const [showVersionChangelog, setShowVersionChangelog] = useState(false);
   const { data: version } = useQuery({
     queryKey: ['version'],
     queryFn: () => window.api.getVersion(),
@@ -26,6 +33,16 @@ export default function General() {
   const cacheSize = useQuery({
     queryKey: ['cacheSize'],
     queryFn: () => window.api.getCacheSize(),
+  });
+
+  const versionInfo = useQuery({
+    queryKey: ['updates'],
+    queryFn: () => window.api.getHasUpdate(),
+  });
+
+  const updateAndRestartMutation = useMutation({
+    mutationKey: ['update'],
+    mutationFn: () => window.api.updateAndRestart(),
   });
 
   const { form, data, isFetching, instantSubmit } = useSettings(OptionCategory.General);
@@ -38,6 +55,46 @@ export default function General() {
           <Tooltip position="bottom" content="App Version">
             <Tag icon="application">{version?.version}</Tag>
           </Tooltip>
+          {versionInfo.isSuccess && (
+            <ButtonGroup>
+              <Tooltip
+                position="bottom"
+                content={
+                  versionInfo.data?.isUpdateAvailable
+                    ? `New Version ${versionInfo.data.info.version}`
+                    : `Remote Version: ${versionInfo.data?.info.version}`
+                }
+              >
+                <Button
+                  size="small"
+                  intent={versionInfo.data?.isUpdateAvailable ? 'warning' : 'none'}
+                  icon="automatic-updates"
+                  endIcon="caret-down"
+                  onClick={() => setShowVersionChangelog(!showVersionChangelog)}
+                >
+                  {versionInfo.data?.info.version}
+                </Button>
+              </Tooltip>
+              <Tooltip position="bottom" content="The App Will Restart">
+                <Button
+                  disabled={updateAndRestartMutation.isPending}
+                  onClick={() => updateAndRestartMutation.mutate()}
+                  intent="primary"
+                  icon="updated"
+                  size="small"
+                >
+                  Update
+                </Button>
+              </Tooltip>
+            </ButtonGroup>
+          )}
+          {versionInfo.isError && (
+            <Tooltip position="bottom" content={versionInfo.error.message}>
+              <Tag intent="warning" icon="automatic-updates">
+                error
+              </Tag>
+            </Tooltip>
+          )}
           <Tooltip position="bottom" content="Cache Size">
             <Tag icon="outdated">
               {cacheSize.isFetching ? (
@@ -49,7 +106,24 @@ export default function General() {
           </Tooltip>
         </ButtonGroup>
       </FormGroup>
-
+      <Collapse isOpen={!!versionInfo.data?.info.releaseNotes && showVersionChangelog}>
+        {!!versionInfo.data && (
+          <div className="change-log">
+            {(versionInfo.data?.info.releaseNotes as []).map(
+              (value: { version: string; note: string }) => (
+                <>
+                  <Markdown
+                    rehypePlugins={[rehypeRaw, [rehypeExternalLinks, { target: '_blank' }]]}
+                  >
+                    {value.note}
+                  </Markdown>
+                  <Divider />
+                </>
+              ),
+            )}
+          </div>
+        )}
+      </Collapse>
       <FormGroup label="Project Directory">
         <ControlGroup id="project-dir">
           <InputGroup value={directory ?? 'No Project'} id="text-input" disabled />

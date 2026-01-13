@@ -14,7 +14,6 @@ import electronDebug from 'electron-debug';
 import { installExtension, REACT_DEVELOPER_TOOLS } from 'electron-extension-installer';
 import log from 'electron-log/main';
 import Store from 'electron-store';
-import { autoUpdater } from 'electron-updater';
 import 'source-map-support/register';
 import { StoreSchema, MainIpcCallbacks, MainIpcGetter, StoreSchemaZod } from '../shared/constants';
 import InitializeCallbacks from './api/callbacks';
@@ -27,23 +26,20 @@ import { initialize as InitializeEmbeddings } from './api/search/EmbeddingsServi
 import { InitializeGlobalSearchApi } from './api/search/serach-api';
 import InitializeSettingsApi from './api/settings';
 import InitializeTransformersApi from './api/transformers-api';
+import InstallUpdateChecks from './api/updates';
 import InitializeWindowApi from './api/window-api';
 import { InitializeTasks, InitializeTasksApi } from './managers/task-manager';
 import { getAssetPath, registerMainCallbacks, registerMainHandlers, resolveHtmlPath } from './util';
 
 log.initialize({ preload: true });
-
-class AppUpdater {
-  constructor() {
-    log.transports.file.level = 'info';
-    autoUpdater.checkForUpdatesAndNotify();
-  }
-}
+log.transports.file.level = 'info';
 
 let mainWindow: BrowserWindow | null = null;
 
 const isDebug = process.env.NODE_ENV === 'development' || process.env.DEBUG_PROD === 'true';
-if (isDebug) electronDebug();
+if (isDebug) {
+  electronDebug();
+}
 
 const createWindow = async (store: Store<StoreSchema>) => {
   const windowSize = store.get('windowSize', { width: 1024, height: 728 });
@@ -107,9 +103,6 @@ const createWindow = async (store: Store<StoreSchema>) => {
     return { action: 'deny' };
   });
 
-  // Remove this if your app does not use auto updates
-  // eslint-disable-next-line
-  new AppUpdater();
   return window;
 };
 
@@ -147,6 +140,9 @@ app
     await InitializeGenerateMetadataApi(apiGetters, store);
     InitializeSettingsApi(apiGetters, store);
     InitializeProtocols(store);
+    InstallUpdateChecks(apiGetters, apiCallbacks);
+
+    // Register the API handlers
     registerMainHandlers(apiGetters);
     return { store };
   })

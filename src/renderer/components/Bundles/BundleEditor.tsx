@@ -17,8 +17,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import cn from 'classnames';
 import React, { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useBlocker, useOutletContext } from 'react-router-dom';
+import { AppToaster, ShowAppToaster } from 'renderer/scripts/toaster';
 import { arraysEqual, QueryKeys } from 'renderer/scripts/utils';
-import { AppToaster, ShowAppToaster } from 'renderer/toaster';
 import { ImportType } from 'shared/constants';
 import { BundleDetailsContextType } from './BundleDetailsLayout';
 

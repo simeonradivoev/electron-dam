@@ -1,7 +1,7 @@
 import { Button, ButtonGroup, ControlGroup, Divider, Slider } from '@blueprintjs/core';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { AppToaster, ShowAppToaster } from 'renderer/scripts/toaster';
 import { decodePeaks, encodePeaks, useEvent } from 'renderer/scripts/utils';
-import { AppToaster, ShowAppToaster } from 'renderer/toaster';
 import { useLocalStorage } from 'usehooks-ts';
 import WaveSurfer from 'wavesurfer.js';
 import Hover from 'wavesurfer.js/dist/plugins/hover';

@@ -12,7 +12,7 @@ import {
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createContext, ReactNode, useContext, useEffect, useMemo } from 'react';
 import { useApp } from 'renderer/contexts/AppContext';
-import { AppToaster } from 'renderer/toaster';
+import { AppToaster } from 'renderer/scripts/toaster';
 
 interface TasksContextType {
   tasks: TaskMetadata[];
@@ -64,65 +64,71 @@ export function TasksProvider({ children }: { children: ReactNode | ReactNode[] 
       // eslint-disable-next-line promise/always-return
       AppToaster.then((toaster) => {
         const existinToastKeys = toaster.getToasts().map((t) => t.key);
-        const taskSet = new Set(tasks.map((t) => t.id));
+        const taskSet = new Set(
+          tasks
+            .filter((t) => t.options.silent !== true && t.options.blocking !== true)
+            .map((t) => t.id),
+        );
         existinToastKeys
           .filter((t) => t.startsWith('task-') && !taskSet.has(t.substring('task-'.length)))
           .forEach((t) => toaster.dismiss(t));
-        tasks.forEach((task) => {
-          const props: ToastProps = {
-            timeout: 0,
-            intent: task.error ? 'danger' : 'none',
-            icon: task.options.icon as IconName,
-            isCloseButtonShown: false,
-            message: (
-              <div className="task-card">
-                <div className="task-header">
-                  <H5>{task.label}</H5>
+        tasks
+          .filter((t) => t.options.silent !== true && t.options.blocking !== true)
+          .forEach((task) => {
+            const props: ToastProps = {
+              timeout: 0,
+              intent: task.error ? 'danger' : 'none',
+              icon: task.options.icon as IconName,
+              isCloseButtonShown: false,
+              message: (
+                <div className="task-card">
+                  <div className="task-header">
+                    <H5>{task.label}</H5>
+                  </div>
+
+                  {task.error}
+
+                  <div className="task-actions">
+                    {(task.status === 'PENDING' || task.status === 'RUNNING') && (
+                      <Button
+                        small
+                        minimal
+                        intent={Intent.DANGER}
+                        onClick={() => cancelTask(task.id)}
+                        text="Cancel"
+                      />
+                    )}
+                  </div>
                 </div>
+              ),
+            };
+            switch (task.status) {
+              case 'CANCELED':
+                props.action = { icon: 'disable' };
+                break;
+              case 'FAILED':
+                props.action = { icon: 'cross' };
+                break;
+              case 'COMPLETED':
+                props.action = { icon: 'tick' };
+                break;
+              case 'PENDING':
+              case 'RUNNING':
+                props.action = {
+                  icon: task.progress ? (
+                    <Spinner size={IconSize.STANDARD} value={task.progress} />
+                  ) : (
+                    <Spinner size={IconSize.STANDARD} />
+                  ),
+                  disabled: true,
+                };
+                break;
+              default:
+                break;
+            }
 
-                {task.error}
-
-                <div className="task-actions">
-                  {(task.status === 'PENDING' || task.status === 'RUNNING') && (
-                    <Button
-                      small
-                      minimal
-                      intent={Intent.DANGER}
-                      onClick={() => cancelTask(task.id)}
-                      text="Cancel"
-                    />
-                  )}
-                </div>
-              </div>
-            ),
-          };
-          switch (task.status) {
-            case 'CANCELED':
-              props.action = { icon: 'disable' };
-              break;
-            case 'FAILED':
-              props.action = { icon: 'cross' };
-              break;
-            case 'COMPLETED':
-              props.action = { icon: 'tick' };
-              break;
-            case 'PENDING':
-            case 'RUNNING':
-              props.action = {
-                icon: task.progress ? (
-                  <Spinner size={IconSize.STANDARD} value={task.progress} />
-                ) : (
-                  <Spinner size={IconSize.STANDARD} />
-                ),
-                disabled: true,
-              };
-              break;
-            default:
-              break;
-          }
-
-          toaster.show(props, `task-${task.id}`);
-        });
+            toaster.show(props, `task-${task.id}`);
+          });
       }).catch(() => {});
     }
   }, [tasks]);

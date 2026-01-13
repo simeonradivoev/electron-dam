@@ -50,6 +50,6 @@ export default function InitializeThumbnailCache(
   }
 
   store.onDidChange('cachedStorageSize', () => addTask('Rebuilding Thumbnail Cache', rebuildCache));
-  addTask('Rebuilding Thumbnail Cache', rebuildCache);
+  addTask('Rebuilding Thumbnail Cache', rebuildCache, { icon: 'media' });
   api.getCacheSize = async () => thumbCache?.calculatedSize ?? 0;
 }

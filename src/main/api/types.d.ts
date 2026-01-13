@@ -1,4 +1,4 @@
-import { Stats } from 'fs';
+import { UpdateInfo } from 'electron-updater';
 import { DBSchema } from 'idb';
 import { IAudioMetadata } from 'music-metadata';
 import { FileType } from 'shared/constants';
@@ -168,7 +168,7 @@ declare global {
     status: 'PENDING' | 'RUNNING' | 'COMPLETED' | 'FAILED' | 'CANCELED';
     progress?: number;
     error?: string;
-    options: { blocking: boolean; icon?: string };
+    options: { blocking?: boolean; silent?: boolean; icon?: string };
     userData?: any;
   }
 
@@ -200,5 +200,10 @@ declare global {
   export interface FileIndexerParams {
     projectDir: string;
     abort: AbortSignal;
+  }
+
+  export interface VersionCheck {
+    info: UpdateInfo;
+    isUpdateAvailable: boolean;
   }
 }

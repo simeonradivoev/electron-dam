@@ -45,7 +45,7 @@ export function addTask<T>(
     progress: 0,
     status: 'PENDING',
     abortController,
-    options: options ?? { blocking: false },
+    options: options ?? {},
     userData,
   };
 

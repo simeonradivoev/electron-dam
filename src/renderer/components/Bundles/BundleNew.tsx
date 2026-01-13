@@ -13,8 +13,8 @@ import {
 } from '@blueprintjs/core';
 import { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { AppToaster, ShowAppToaster } from 'renderer/scripts/toaster';
 import { isValidHttpUrl } from 'renderer/scripts/utils';
-import { AppToaster, ShowAppToaster } from 'renderer/toaster';
 import { ImportType } from 'shared/constants';
 import { generateUUID } from 'three/src/math/MathUtils';
 

@@ -2,8 +2,8 @@ import { FocusStyleManager, PortalProvider, Spinner } from '@blueprintjs/core';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { ReactQueryDevtoolsPanel } from '@tanstack/react-query-devtools';
 import { IDBPDatabase } from 'idb';
-import { useCallback } from 'react';
-import { Outlet } from 'react-router-dom';
+import { useCallback, useEffect, useState } from 'react';
+import { Outlet, useNavigate } from 'react-router-dom';
 import { Options } from 'shared/constants';
 import { useLocalStorage, useSessionStorage } from 'usehooks-ts';
 import '../../node_modules/file-icons-js/css/style.css';
@@ -13,6 +13,7 @@ import SideMenu from './components/SideMenu';
 import TitleBar from './components/TitleBar';
 import { AppContextProvider } from './contexts/AppContext';
 import { TasksProvider } from './contexts/TasksContext';
+import { ShowAppToaster } from './scripts/toaster';
 
 FocusStyleManager.onlyShowFocusOnTabs();
 
@@ -36,6 +37,9 @@ function App({ database }: { database: Promise<IDBPDatabase<FilesDB>> }) {
     },
   });
 
+  const navigate = useNavigate();
+  const [updateShown, setUpdateShown] = useState(false);
+
   const setSelectedProjectDirectory = useCallback(
     (path: string | null) => mutateProjectDir(path),
     [mutateProjectDir],
@@ -49,6 +53,38 @@ function App({ database }: { database: Promise<IDBPDatabase<FilesDB>> }) {
     'queryDebugTools',
     false,
   );
+
+  const showUpdateNofitication = useCallback(
+    (versionInfo: VersionCheck | null) => {
+      if (versionInfo?.isUpdateAvailable && !updateShown) {
+        setUpdateShown(true);
+        ShowAppToaster(
+          {
+            icon: 'automatic-updates',
+            message: `New Version ${versionInfo.info.version}`,
+            intent: 'primary',
+            action: {
+              icon: 'settings',
+              text: 'Settings',
+              onClick: () => {
+                navigate('/settings/general');
+              },
+            },
+          },
+          'update',
+        );
+      }
+    },
+    [setUpdateShown, updateShown],
+  );
+
+  useEffect(() => {
+    window.api
+      .getHasUpdate()
+      .then(showUpdateNofitication)
+      .catch(() => {});
+    return window.apiCallbacks.onUpdateNotification(showUpdateNofitication);
+  }, [showUpdateNofitication]);
 
   return (
     <>

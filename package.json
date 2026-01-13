@@ -12,7 +12,7 @@
     "rebuild": "electron-rebuild --parallel --types prod,dev,optional --module-dir release/app",
     "prestart": "cross-env NODE_ENV=development TS_NODE_TRANSPILE_ONLY=true NODE_OPTIONS=\"-r ts-node/register --no-warnings\" webpack --config ./.erb/configs/webpack.config.main.dev.ts",
     "start": "ts-node ./.erb/scripts/check-port-in-use.js && npm run prestart && npm run start:renderer",
-    "start:main": "concurrently -k -P \"cross-env NODE_ENV=development TS_NODE_TRANSPILE_ONLY=true webpack --watch --config ./.erb/configs/webpack.config.main.dev.ts\" \"electronmon --main ./release/app/dist/main/main.js -- {@}\" --",
+    "start:main": "concurrently -k -P \"cross-env NODE_ENV=development TS_NODE_TRANSPILE_ONLY=true webpack --watch --config ./.erb/configs/webpack.config.main.dev.ts\" \"electronmon --main ./release/app -- {@}\" --",
     "start:main:old": "cross-env NODE_ENV=development electronmon -r ts-node/register/transpile-only .",
     "start:main:trace": "cross-env NODE_ENV=development electron --trace-warnings -r ts-node/register/transpile-only .",
     "start:preload": "cross-env NODE_ENV=development TS_NODE_TRANSPILE_ONLY=true webpack --config ./.erb/configs/webpack.config.preload.dev.ts",
@@ -33,6 +33,7 @@
       "prettier --ignore-path .eslintignore --single-quote --write"
     ]
   },
+  "private": true,
   "browserslist": [],
   "prettier": {
     "singleQuote": true,
@@ -141,6 +142,7 @@
     "react-markdown": "^10.1.0",
     "react-router-dom": "^7.12.0",
     "react-split": "^2.0.14",
+    "rehype-external-links": "^3.0.0",
     "rehype-raw": "^7.0.0",
     "scroll-into-view-if-needed": "^3.1.0",
     "semver": "^7.7.3",

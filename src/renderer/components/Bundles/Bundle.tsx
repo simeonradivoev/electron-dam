@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { normalize } from 'pathe';
 import { memo, useCallback, useState } from 'react';
 import { useApp } from 'renderer/contexts/AppContext';
-import { AppToaster, ShowAppToaster } from 'renderer/toaster';
+import { AppToaster, ShowAppToaster } from 'renderer/scripts/toaster';
 
 interface Props {
   bundle: BundleInfo;

@@ -8,6 +8,8 @@ on:
 jobs:
   build:
     runs-on: ${{ matrix.os }}
+    outputs:
+      changelog: ${{ steps.save-changelog.outputs.changelog }}
 
     strategy:
       matrix:
@@ -59,6 +61,19 @@ jobs:
       run: |
         npm run package
 
+    - name: Get Version
+      id: package-version
+      uses: martinbeentjes/npm-get-version-action@v1.3.1
+      with:
+        path: release/app
+
+    - name: Save Changelog
+      id: save-changelog
+      run: |
+        $OUTPUT=${npx run version -- --dry-run --release-as ${{ steps.package-version.outputs.current-version}}}
+        echo "$OUTPUT"
+        echo "changelog=$OUTPUT" >> "$GITHUB_OUTPUT"
+
     - name: Upload Windows artifact
       if: matrix.os == 'windows-latest'
       uses: actions/upload-artifact@v4
@@ -67,6 +82,7 @@ jobs:
         path: |
           release/build/*.exe
           release/build/*.blockmap
+          release/build/latest*.yml
 
     - name: Upload Linux artifact
       if: matrix.os == 'ubuntu-latest'
@@ -98,6 +114,7 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
+          body: ${{ needs.build.outputs.changelog }}
           name: v${{ steps.package-version.outputs.current-version}}
           files: artifacts/**/*
         env:

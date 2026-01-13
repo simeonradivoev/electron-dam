@@ -145,6 +145,8 @@ export const channelsSchema = {
     saveAudioPeaks: {} as ChannelGetter<void, [path: string, peaks: string]>,
     removeDescription: {} as ChannelGetter<void, [path: string]>,
     getCacheSize: {} as ChannelGetter<number>,
+    getHasUpdate: {} as ChannelGetter<VersionCheck | null>,
+    updateAndRestart: {} as ChannelGetter<void>,
   },
   on: {
     fileAdded: {} as ChannelSub<[path: string]>,
@@ -153,6 +155,7 @@ export const channelsSchema = {
     folderAdded: {} as ChannelSub<[path: string]>,
     folderUnlinked: {} as ChannelSub<[path: string]>,
     onTasksUpdate: {} as ChannelSub<[tasks: TaskMetadata[]]>,
+    onUpdateNotification: {} as ChannelSub<[info: VersionCheck]>,
   },
 };
 

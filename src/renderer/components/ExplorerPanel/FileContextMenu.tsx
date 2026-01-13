@@ -3,8 +3,8 @@ import { useIsMutating, useMutation, useQuery } from '@tanstack/react-query';
 import { normalize } from 'pathe';
 import { useCallback } from 'react';
 import { NavigateFunction } from 'react-router-dom';
+import { AppToaster, ShowAppToaster } from 'renderer/scripts/toaster';
 import { QueryKeys } from 'renderer/scripts/utils';
-import { AppToaster, ShowAppToaster } from 'renderer/toaster';
 import { AutoTagType } from 'shared/constants';
 
 interface Params {
