@@ -86,7 +86,31 @@ const FileInfoPanel: React.FC<FileInfoPanelProps> = ({
   const { importedMesh, importedImage, importedAudio } = ImportMedia(fileInfo);
 
   let previewPanel;
-  if (importedImage.data) {
+  if (importedMesh.isEnabled) {
+    previewPanel = (
+      <div className="preview-3d">
+        {importedMesh.error ? (
+          <NonIdealState
+            layout="horizontal"
+            title={importedMesh.error.name}
+            description={importedMesh.error.message}
+            icon="error"
+          />
+        ) : (
+          <Canvas
+            style={{
+              display: importedMesh.isSuccess ? 'block' : 'none',
+            }}
+            dpr={[1, 2]}
+            shadows
+          >
+            <PreviewPanel3D importedMesh={importedMesh} />
+          </Canvas>
+        )}
+        {!!importedMesh.isPending && <NonIdealState icon={<Spinner />} title="Loading" />}
+      </div>
+    );
+  } else if (importedImage.data) {
     previewPanel = (
       <div className="preview preview-image">
         <PreviewPanelImage image={importedImage} />
@@ -149,8 +173,6 @@ const FileInfoPanel: React.FC<FileInfoPanelProps> = ({
   // Folder
   else if (fileInfo?.isDirectory) {
     previewPanel = <FolderFileGrid className="preview" path={fileInfo.path} />;
-  } else if (!importedMesh.data && item && loadingFileInfo) {
-    previewPanel = <NonIdealState icon={<Spinner />} title="Loading" />;
   } else {
     previewPanel = <NonIdealState icon="eye-open">Select Asset to Preview</NonIdealState>;
   }
@@ -273,26 +295,6 @@ const FileInfoPanel: React.FC<FileInfoPanelProps> = ({
           )}
         </NavbarGroup>
       </Navbar>
-      <div className="preview-3d">
-        {importedMesh.error ? (
-          <NonIdealState
-            layout="horizontal"
-            title={importedMesh.error.name}
-            description={importedMesh.error.message}
-            icon="error"
-          />
-        ) : (
-          <Canvas
-            style={{
-              display: importedMesh.isSuccess || importedMesh.isFetched ? 'block' : 'none',
-            }}
-            dpr={[1, 2]}
-            shadows
-          >
-            <PreviewPanel3D importedMesh={importedMesh} />
-          </Canvas>
-        )}
-      </div>
       {fileInfoError ? (
         <NonIdealState
           layout="horizontal"

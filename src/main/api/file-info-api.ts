@@ -124,8 +124,8 @@ export default function InitializeFileInfoApi(
       info.bundlePath = (await findBundlePath(filePath))?.path;
     } else {
       const fileStat = await pathStat(filePath);
-      const materialPath = filePath.path.replace('.obj', '.mtl');
-      const matExists = existsSync(filePath.with(materialPath).absolute);
+      const materialPath = filePath.with(filePath.path.replace('.obj', '.mtl'));
+      const matExists = existsSync(materialPath.absolute);
       info = {
         size: fileStat.size,
         path: filePath.path,
@@ -170,40 +170,33 @@ export default function InitializeFileInfoApi(
           info.bundlePath = filePath.path;
         }
       } else if (modelsToCovertMatch(filePath.path)) {
-        const objContents = await fs.readFile(path.join(filePath.projectDir, filePath.path));
-        const absoluteMaterialPath = filePath.with(materialPath);
-        const materialContents = matExists
-          ? await fs.readFile(absoluteMaterialPath.absolute)
-          : undefined;
+        const objContents = await fs.readFile(filePath.absolute);
+        const materialContents = matExists ? await fs.readFile(materialPath.absolute) : undefined;
 
-        info.modelData = await assimpjs()
-          .then((ajs: any) => {
-            // create new file list object
-            const fileList = new ajs.FileList();
+        info.modelData = await assimpjs().then((ajs: any) => {
+          // create new file list object
+          const fileList = new ajs.FileList();
 
-            // add model files
-            fileList.AddFile(info.path, objContents);
-            if (materialContents) {
-              fileList.AddFile(absoluteMaterialPath, materialContents);
-            }
+          // add model files
+          fileList.AddFile(filePath.absolute, objContents);
+          if (materialContents) {
+            fileList.AddFile(materialPath.absolute, materialContents);
+          }
 
-            // convert file list to assimp json
-            const result = ajs.ConvertFileList(fileList, 'glb2');
+          // convert file list to assimp json
+          const result = ajs.ConvertFileList(fileList, 'glb2');
 
-            // check if the conversion succeeded
-            if (!result.IsSuccess() || result.FileCount() === 0) {
-              log.error(result.GetErrorCode());
-              return;
-            }
+          // check if the conversion succeeded
+          if (!result.IsSuccess() || result.FileCount() === 0) {
+            throw new Error(result.GetErrorCode());
+          }
 
-            // get the result file, and convert to string
-            const resultFile = result.GetFile(0);
-            const jsonContent = new TextDecoder().decode(resultFile.GetContent());
+          // get the result file, and convert to string
+          const resultFile = result.GetFile(0);
 
-            // fs.writeFile(info.path.concat('.gltf2'), jsonContent);
-            return resultFile.GetContent();
-          })
-          .catch((e: any) => e);
+          // fs.writeFile(info.path.concat('.gltf2'), jsonContent);
+          return resultFile.GetContent();
+        });
       } else if (audioMediaFormatsMatch(filePath.path)) {
         // Load audio metadata
         const metadata = await parseMusicFile(filePath.absolute);
