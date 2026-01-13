@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.0.2](https://github.com/simeonradivoev/electron-dam/compare/v1.0.1...v1.0.2) (2026-01-13)
+
+
+### Bug Fixes
+
+* Made sure auto update works and added changelog generation to Github actions ([c8ba2be](https://github.com/simeonradivoev/electron-dam/commit/c8ba2be1b6d8efaf23f6d758a93c3b02dfa92dea))
+
 ### [1.0.1](https://github.com/simeonradivoev/electron-dam/compare/v1.0.0...v1.0.1) (2026-01-13)
 
 
