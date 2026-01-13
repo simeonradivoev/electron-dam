@@ -90,7 +90,7 @@ jobs:
         id: package-version
         uses: martinbeentjes/npm-get-version-action@v1.3.1
         with:
-          path: release/app/package.json
+          path: release/app
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
