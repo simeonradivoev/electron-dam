@@ -8,6 +8,7 @@ I created this app because I got to a point where I had a ton of assets accumula
 
 ## Features
 * 3D Model Preview of multiple formats
+* Can handle large libraries
 * Audio Preview with visualization
 * Easy Metadata Fetching with Ollama support
 * Light/Dark Mode using [Blueprint JS](https://blueprintjs.com/)
