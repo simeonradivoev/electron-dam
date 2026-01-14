@@ -9,6 +9,8 @@ on:
 jobs:
   create-draft:
     runs-on: ubuntu-latest
+    outputs:
+      current-version: ${{ steps.package-version.outputs }}
 
     steps:
       - name: Checkout
@@ -95,7 +97,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   release:
-    needs: build
+    needs: [build, create-draft]
     runs-on: ubuntu-latest
 
     steps:
@@ -104,3 +106,7 @@ jobs:
         with:
           draft: false
           allowUpdates: true
+          tag: ${{ needs.create-draft.outputs.current-version }}
+          omitNameDuringUpdate: true
+          omitBodyDuringUpdate: true
+          token: ${{ secrets.GITHUB_TOKEN }}
