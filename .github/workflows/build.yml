@@ -61,16 +61,11 @@ jobs:
       run: |
         npm run package
 
-    - name: Get Version
-      id: package-version
-      uses: martinbeentjes/npm-get-version-action@v1.3.1
-      with:
-        path: release/app
-
     - name: Save Changelog
       id: save-changelog
       run: |
-        $OUTPUT=$(npx run version -- --dry-run --release-as ${{ steps.package-version.outputs.current-version}})
+        TAG=${{ github.ref_name }}
+        OUTPUT=$(npx run version -- --dry-run --release-as ${TAG#v})
         echo "$OUTPUT"
         echo "changelog=$OUTPUT" >> "$GITHUB_OUTPUT"
 
