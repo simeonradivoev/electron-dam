@@ -68,24 +68,26 @@ export default function General() {
                 <Button
                   size="small"
                   intent={versionInfo.data?.isUpdateAvailable ? 'warning' : 'none'}
-                  icon="automatic-updates"
-                  endIcon="caret-down"
+                  icon={versionInfo.data?.isUpdateAvailable ? 'automatic-updates' : 'updated'}
+                  endIcon={versionInfo.data?.isUpdateAvailable && 'caret-down'}
                   onClick={() => setShowVersionChangelog(!showVersionChangelog)}
                 >
                   {versionInfo.data?.info.version}
                 </Button>
               </Tooltip>
-              <Tooltip position="bottom" content="The App Will Restart">
-                <Button
-                  disabled={updateAndRestartMutation.isPending}
-                  onClick={() => updateAndRestartMutation.mutate()}
-                  intent="primary"
-                  icon="updated"
-                  size="small"
-                >
-                  Update
-                </Button>
-              </Tooltip>
+              {versionInfo.data?.isUpdateAvailable && (
+                <Tooltip position="bottom" content="The App Will Restart">
+                  <Button
+                    disabled={updateAndRestartMutation.isPending}
+                    onClick={() => updateAndRestartMutation.mutate()}
+                    intent="primary"
+                    icon="updated"
+                    size="small"
+                  >
+                    Update
+                  </Button>
+                </Tooltip>
+              )}
             </ButtonGroup>
           )}
           {versionInfo.isError && (
