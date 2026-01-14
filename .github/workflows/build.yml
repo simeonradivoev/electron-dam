@@ -70,7 +70,7 @@ jobs:
     - name: Save Changelog
       id: save-changelog
       run: |
-        $OUTPUT=${npx run version -- --dry-run --release-as ${{ steps.package-version.outputs.current-version}}}
+        $OUTPUT=$(npx run version -- --dry-run --release-as ${{ steps.package-version.outputs.current-version}})
         echo "$OUTPUT"
         echo "changelog=$OUTPUT" >> "$GITHUB_OUTPUT"
 
