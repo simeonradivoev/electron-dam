@@ -7,7 +7,39 @@ on:
   workflow_dispatch:
 
 jobs:
+  create-draft:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Get Version
+        id: package-version
+        uses: martinbeentjes/npm-get-version-action@v1.3.1
+        with:
+          path: release/app
+
+      - name: Get Changelog Entry
+        id: changelog_reader
+        uses: artlaman/conventional-changelog-reader-action@v1.1.0
+        with:
+          version: ${{ steps.package-version.outputs.current-version }}
+          path: ./CHANGELOG.md
+
+      - name: Create release draft
+        uses: ncipollo/release-action@v1
+        with:
+          # This pulls from the "Get Changelog Entry" step above, referencing it's ID to get its outputs object.
+          # See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps
+          draft: true
+          tag: ${{ steps.changelog_reader.outputs.version }}
+          name: Release ${{ steps.changelog_reader.outputs.version }}
+          body: ${{ steps.changelog_reader.outputs.changes }}
+          prerelease: ${{ steps.changelog_reader.outputs.status == 'prereleased' }}
+          allowUpdates: true
+          token: ${{ secrets.GITHUB_TOKEN }}
   build:
+    needs: create-draft
     runs-on: ${{ matrix.os }}
 
     strategy:
@@ -21,7 +53,8 @@ jobs:
       CI: true
 
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout
+      uses: actions/checkout@v4
       with:
         lfs: true
 
@@ -58,61 +91,16 @@ jobs:
 
     - name: Build
       run: |
-        npm run package
-
-    - name: Upload Windows artifact
-      if: matrix.os == 'windows-latest'
-      uses: actions/upload-artifact@v4
-      with:
-        name: electron-dam-windows
-        path: |
-          release/build/*.exe
-          release/build/*.blockmap
-          release/build/latest*.yml
-
-    - name: Upload Linux artifact
-      if: matrix.os == 'ubuntu-latest'
-      uses: actions/upload-artifact@v4
-      with:
-        name: electron-dam-linux
-        path: release/build/*.AppImage
+        npm run publish
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   release:
     needs: build
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Download all artifacts
-        uses: actions/download-artifact@v5
-        with:
-          merge-multiple: true
-          path: artifacts
-
-      - name: Get Version
-        id: package-version
-        uses: martinbeentjes/npm-get-version-action@v1.3.1
-        with:
-          path: release/app
-
-      - name: Get Changelog Entry
-        id: changelog_reader
-        uses: artlaman/conventional-changelog-reader-action@v1.1.0
-        with:
-          version: ${{ steps.package-version.outputs.current-version }}
-          path: ./CHANGELOG.md
-
-      - name: Create/update release
+      - name: Publish Release
         uses: ncipollo/release-action@v1
         with:
-          # This pulls from the "Get Changelog Entry" step above, referencing it's ID to get its outputs object.
-          # See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps
-          tag: ${{ steps.changelog_reader.outputs.version }}
-          name: Release ${{ steps.changelog_reader.outputs.version }}
-          body: ${{ steps.changelog_reader.outputs.changes }}
-          prerelease: ${{ steps.changelog_reader.outputs.status == 'prereleased' }}
+          draft: false
           allowUpdates: true
-          token: ${{ secrets.GITHUB_TOKEN }}
-          artifacts: artifacts/**/*
