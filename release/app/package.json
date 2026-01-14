@@ -1,6 +1,6 @@
 {
   "name": "electron-dam",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "A bundle based digital asset manager built on top of electron using React and typescript. Featuring semantic searching and Ollama support.",
   "keywords": [
     "DAM",
