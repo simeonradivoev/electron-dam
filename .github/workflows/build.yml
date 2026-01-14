@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - "v*.*.*"
+  workflow_dispatch:
 
 jobs:
   build:
@@ -114,3 +115,4 @@ jobs:
           prerelease: ${{ steps.changelog_reader.outputs.status == 'prereleased' }}
           allowUpdates: true
           token: ${{ secrets.GITHUB_TOKEN }}
+          artifacts: artifacts/**/*
