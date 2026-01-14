@@ -63,6 +63,7 @@ jobs:
 
     - name: Save Changelog
       id: save-changelog
+      shell: bash
       run: |
         TAG=${{ github.ref_name }}
         OUTPUT=$(npx run version -- --dry-run --release-as ${TAG#v})
