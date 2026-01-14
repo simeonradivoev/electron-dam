@@ -8,6 +8,9 @@ on:
 
 jobs:
   test:
+    if: |
+      startsWith(github.event.head_commit.message, 'fix') ||
+      startsWith(github.event.head_commit.message, 'feat')
     runs-on: ${{ matrix.os }}
 
     env:
