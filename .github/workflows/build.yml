@@ -8,8 +8,6 @@ on:
 jobs:
   build:
     runs-on: ${{ matrix.os }}
-    outputs:
-      changelog: ${{ steps.save-changelog.outputs.changelog }}
 
     strategy:
       matrix:
@@ -61,15 +59,6 @@ jobs:
       run: |
         npm run package
 
-    - name: Save Changelog
-      id: save-changelog
-      shell: bash
-      run: |
-        TAG=${{ github.ref_name }}
-        OUTPUT=$(npm run version -- --dry-run --release-as ${TAG#v})
-        echo "$OUTPUT"
-        echo "changelog=$OUTPUT" >> "$GITHUB_OUTPUT"
-
     - name: Upload Windows artifact
       if: matrix.os == 'windows-latest'
       uses: actions/upload-artifact@v4
@@ -107,11 +96,21 @@ jobs:
         with:
           path: release/app
 
-      - name: Create Release
-        uses: softprops/action-gh-release@v2
+      - name: Get Changelog Entry
+        id: changelog_reader
+        uses: artlaman/conventional-changelog-reader-action@v1.1.0
         with:
-          body: ${{ needs.build.outputs.changelog }}
-          name: v${{ steps.package-version.outputs.current-version}}
-          files: artifacts/**/*
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          version: ${{ steps.package-version.outputs.current-version }}
+          path: ./CHANGELOG.md
+
+      - name: Create/update release
+        uses: ncipollo/release-action@v1
+        with:
+          # This pulls from the "Get Changelog Entry" step above, referencing it's ID to get its outputs object.
+          # See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps
+          tag: ${{ steps.changelog_reader.outputs.version }}
+          name: Release ${{ steps.changelog_reader.outputs.version }}
+          body: ${{ steps.changelog_reader.outputs.changes }}
+          prerelease: ${{ steps.changelog_reader.outputs.status == 'prereleased' }}
+          allowUpdates: true
+          token: ${{ secrets.GITHUB_TOKEN }}
