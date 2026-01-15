@@ -6,7 +6,12 @@ import Loki from 'lokijs';
 import { addTask } from 'main/managers/task-manager';
 import { satisfies } from 'semver';
 import { memoryStorage, Umzug } from 'umzug';
-import { MainIpcCallbacks, MainIpcGetter, StoreSchema } from '../../shared/constants';
+import {
+  LoginProvider,
+  MainIpcCallbacks,
+  MainIpcGetter,
+  StoreSchema,
+} from '../../shared/constants';
 import migrations, { MigrationContext } from '../migrations/migrations';
 import {
   appVersion,
@@ -15,7 +20,9 @@ import {
   registerMainHandlers,
   unregisterMainHandlers,
 } from '../util';
+import InitializeAccounts from './accounts';
 import InitializeBundlesApi from './bundles-api';
+import InstallHumbleImporter from './bundles/humble-importer';
 import InitializeThumbnailCache from './cache/thumbnail-cache';
 import { InitializeDatabaseCallbacks } from './callbacks';
 import InitializeFileInfoApi from './file-info-api';
@@ -93,13 +100,15 @@ export function LoadDatabaseExact(store: Store<StoreSchema>, directory: string):
           fileSystemApi = InitializeFileSystemApi(api, apiCallback, store, database);
           InitializeThumbnailCache(api, store);
           InitializeFileInfoApi(api, store, database);
-          InitializeBundlesApi(api, store, database);
+          const importers = InitializeAccounts(store, database, api);
+          InitializeBundlesApi(importers, api, store, database);
           const searchApi = InitializeSearchApi(
             api,
             store,
             database,
             fileSystemApi.fileIndexRegistry,
           );
+
           InitializeDatabaseCallbacks(store, database);
           api.reIndexFiles = reIndexTask;
           registerMainHandlers(api);

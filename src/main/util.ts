@@ -217,6 +217,9 @@ export async function foreachAsync<T>(
       }
     } catch (error) {
       log.error(error);
+      if (abort?.aborted) {
+        break;
+      }
     }
   }
 }

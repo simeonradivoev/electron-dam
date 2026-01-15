@@ -16,7 +16,7 @@ import z from 'zod/v3';
 import { StoreSchema, ImportType, MainIpcGetter, previewTypes } from '../../shared/constants';
 import { addTask } from '../managers/task-manager';
 
-async function openGraphBundleImport(
+export async function openGraphBundleImport(
   url: string,
   abort: AbortSignal,
   progress: (p: number) => void,

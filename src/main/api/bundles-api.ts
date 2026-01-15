@@ -1,16 +1,28 @@
+/* eslint-disable no-await-in-loop */
 import { spawn } from 'child_process';
 import { createWriteStream } from 'fs';
 import { writeFile, readFile, mkdir, rename, stat, rm } from 'fs/promises';
 import path, { normalize } from 'path';
-import { dialog, BrowserWindow, shell, Notification } from 'electron';
-import log from 'electron-log/main';
+import { setTimeout } from 'timers/promises';
+import { uuid } from '@tanstack/react-form';
+import { load } from 'cheerio';
+import { dialog, BrowserWindow, shell, Notification, session, net } from 'electron';
+import log from 'electron-log';
 import Store from 'electron-store';
 import JSZip from 'jszip';
 import Loki from 'lokijs';
 import StreamZip from 'node-stream-zip';
-import { BundleMetaFile, StoreSchema, MainIpcGetter, previewTypes } from '../../shared/constants';
+import {
+  BundleMetaFile,
+  StoreSchema,
+  MainIpcGetter,
+  previewTypes,
+  HUMBLE_PARTITION,
+  ImportType,
+  LoginProvider,
+} from '../../shared/constants';
 import { addTask } from '../managers/task-manager';
-import { FilePath, getProjectDir, getRandom, ignoredFilesMatch } from '../util';
+import { FilePath, foreachAsync, getProjectDir, getRandom, ignoredFilesMatch } from '../util';
 import {
   findBundlePath,
   forAllAssetsInProject,
@@ -219,13 +231,14 @@ export async function getVirtualBundles(
         bundle: b,
         isVirtual: true,
         date: new Date(b.date),
+        sourceType: b.sourceType,
       }) satisfies BundleInfo as BundleInfo,
   );
 }
 
 export async function getBundles(
   store: Store<StoreSchema>,
-  virtualBundles: Collection<VirtualBundle>,
+  virtualBundles?: Collection<VirtualBundle>,
 ): Promise<BundleInfo[]> {
   const bundles: BundleInfo[] = [];
   const projectDir = getProjectDir(store);
@@ -233,7 +246,9 @@ export async function getBundles(
     await findChildrenBundles(new FilePath(projectDir, ''), bundles);
   }
 
-  bundles.push(...(await getVirtualBundles(virtualBundles)));
+  if (virtualBundles) {
+    bundles.push(...(await getVirtualBundles(virtualBundles)));
+  }
 
   return bundles.sort((a, b) => b.date?.getTime() - a.date?.getTime());
 }
@@ -369,9 +384,18 @@ async function exportBundle(
   }
 }
 
+async function getHumbleCookieHeader(): Promise<string> {
+  const cookies = await session.defaultSession.cookies.get({
+    domain: '.humblebundle.com',
+  });
+
+  return cookies.map((c) => `${c.name}=${c.value}`).join('; ');
+}
+
 /* ----------------------------- Initialize API  ----------------------------- */
 
 export default function InitializeBundlesApi(
+  importers: Record<LoginProvider, BundleImporter>,
   api: MainIpcGetter,
   store: Store<StoreSchema>,
   db: Loki,
@@ -447,6 +471,7 @@ export default function InitializeBundlesApi(
         bundle: virtualBundle as Bundle,
         previewUrl: virtualBundle.previewUrl,
         name: virtualBundle.name,
+        sourceType: virtualBundle.sourceType,
       } as BundleInfo;
     }
     return tryGetBundleEntryFromFolderPath(FilePath.fromStore(store, id));
@@ -502,6 +527,15 @@ export default function InitializeBundlesApi(
   }
 
   api.updateBundle = updateBundle;
+  api.importBundles = async (type) => {
+    const importer = importers[type];
+    if (importer) {
+      return addTask('Importing Bundles', async (abort, progress) =>
+        importer.import(abort, progress),
+      );
+    }
+    throw new Error(`No Importer of type ${type}`);
+  };
   api.getBundles = () => getBundles(store, virtualBundles);
   api.getHomeBundles = getHomeBundles;
   api.createVirtualBundle = createVirtualBundle;

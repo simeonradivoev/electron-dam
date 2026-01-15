@@ -296,12 +296,18 @@ textarea.changed {
         left: 0;
         right: 0;
         display: flex;
+        gap: 0.2em;
         flex-direction: row-reverse;
         padding-right: 1em;
         padding-left: 1em;
         padding-bottom: 0.5em;
 
-        span {
+        svg {
+          width: 1em;
+          height: 1em;
+        }
+
+        .virtual {
           color: $pt-app-background-color;
           background-color: color.adjust($color: $pt-text-color, $alpha: -0.3);
           border-radius: 0.2em;

@@ -1,18 +1,27 @@
 import {
   Button,
+  ContextMenu,
+  Divider,
   InputGroup,
+  Menu,
+  MenuItem,
   Navbar,
   NavbarDivider,
   NavbarGroup,
+  Popover,
   ResizeSensor,
   Spinner,
+  SpinnerSize,
 } from '@blueprintjs/core';
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useIsMutating, useMutation, useQuery } from '@tanstack/react-query';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { normalize } from 'pathe';
 import { Key, useMemo, useRef, useState } from 'react';
+import { SiHumblebundle, SiItchdotio } from 'react-icons/si';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from 'renderer/contexts/AppContext';
+import { QueryKeys } from 'renderer/scripts/utils';
+import { LoginProvider } from 'shared/constants';
 import Bundle from './Bundle';
 
 function BundlesGrid() {
@@ -21,6 +30,14 @@ function BundlesGrid() {
   const [selectedBundles, setSelectedBundles] = useState<string[]>([]);
   const parentRef = useRef<HTMLDivElement>(null);
   const [parentWidth, setParentWidth] = useState<number | undefined>(undefined);
+  const isImporting = useIsMutating({ mutationKey: ['import'] }) > 0;
+  const importMutation = useMutation({
+    mutationKey: ['import'],
+    mutationFn: (provider: LoginProvider) => window.api.importBundles(provider),
+    onSuccess: (data, vars, result, context) => {
+      context.client.invalidateQueries({ queryKey: [QueryKeys.bundles, projectDirectory] });
+    },
+  });
 
   const {
     data: bundles,
@@ -30,34 +47,47 @@ function BundlesGrid() {
     enabled: !!projectDirectory,
     refetchOnWindowFocus: false,
     placeholderData: keepPreviousData,
-    queryKey: ['bundles', projectDirectory],
+    queryKey: [QueryKeys.bundles, projectDirectory],
     queryFn: () => {
       return window.api.getBundles();
     },
   });
   const navigate = useNavigate();
+  const lastSelectedRef = useRef<string | null>(null);
 
   const handleSelect = (id: string | number, e?: React.MouseEvent) => {
-    if (e?.ctrlKey || e?.metaKey) {
+    if (!bundles) return;
+
+    const idStr = id.toString();
+
+    if (e?.shiftKey && lastSelectedRef.current) {
       setSelectedBundles((prev) => {
-        if (prev.includes(id.toString())) {
-          return prev.filter((i) => i !== id.toString());
+        const start = bundles.findIndex((b) => b.id === lastSelectedRef.current!);
+        const end = bundles?.findIndex((b) => b.id === idStr);
+
+        if (start === -1 || end === -1) {
+          return prev;
         }
-        return [...prev, id.toString()];
+
+        const [from, to] = start < end ? [start, end] : [end, start];
+        const range = bundles.slice(from, to + 1);
+
+        // Typical UX: replace selection
+        return range.map((b) => b.id.toString());
       });
-    } else if (e?.shiftKey) {
-      // Simple shift select implementation (range selection could be added later if needed)
-      setSelectedBundles((prev) => {
-        if (!prev.includes(id.toString())) {
-          return [...prev, id.toString()];
-        }
-        return prev;
-      });
+    } else if (e?.ctrlKey || e?.metaKey) {
+      setSelectedBundles((prev) =>
+        prev.includes(idStr) ? prev.filter((i) => i !== idStr) : [...prev, idStr],
+      );
     } else {
+      // Normal click = single select + navigate
+      setSelectedBundles([idStr]);
       navigate({
-        pathname: `/bundles/${encodeURIComponent(normalize(id.toString()))}/info`,
+        pathname: `/bundles/${encodeURIComponent(normalize(idStr))}/info`,
       });
     }
+
+    lastSelectedRef.current = idStr;
   };
 
   const handleMassDelete = async () => {
@@ -127,6 +157,34 @@ function BundlesGrid() {
               intent="danger"
             />
           )}
+          <NavbarDivider />
+          <Popover
+            minimal
+            position="bottom-left"
+            content={
+              <Menu>
+                <MenuItem
+                  icon={<SiHumblebundle />}
+                  text="Humble Bundles"
+                  onClick={() => importMutation.mutate(LoginProvider.Humble)}
+                />
+                <MenuItem
+                  icon={<SiItchdotio />}
+                  text="Itch.io"
+                  onClick={() => importMutation.mutate(LoginProvider.Humble)}
+                />
+              </Menu>
+            }
+          >
+            <Button
+              variant="minimal"
+              disabled={isImporting}
+              icon="import"
+              endIcon={isImporting ? <Spinner size={SpinnerSize.SMALL} /> : 'caret-down'}
+            >
+              Import
+            </Button>
+          </Popover>
         </NavbarGroup>
         <NavbarGroup align="right">
           <InputGroup

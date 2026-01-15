@@ -1,7 +1,8 @@
 import { Button, Icon, Menu, MenuItem, showContextMenu } from '@blueprintjs/core';
 import { useQueryClient } from '@tanstack/react-query';
 import { normalize } from 'pathe';
-import { memo, useCallback, useState } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
+import { SiHumblebundle, SiItchdotio } from 'react-icons/si';
 import { useApp } from 'renderer/contexts/AppContext';
 import { AppToaster, ShowAppToaster } from 'renderer/scripts/toaster';
 
@@ -78,6 +79,28 @@ const Bundle = memo(
       </Menu>
     );
 
+    const icon = useMemo(() => {
+      if (bundle.sourceType) {
+        if (bundle.sourceType === 'humble') {
+          return (
+            <span className="bp6-icon bp6-icon-cloud virtual">
+              <SiHumblebundle />
+            </span>
+          );
+        }
+        if (bundle.sourceType === 'itch') {
+          return (
+            <span className="bp6-icon bp6-icon-cloud virtual">
+              <SiItchdotio />
+            </span>
+          );
+        }
+      } else if (bundle.isVirtual) {
+        return <Icon title="Virtual Bundle" className="virtual" icon="cloud" />;
+      }
+      return undefined;
+    }, [bundle.isVirtual, bundle.sourceType]);
+
     return (
       <li
         onContextMenu={(e) =>
@@ -98,10 +121,10 @@ const Bundle = memo(
         role="button"
         draggable
       >
-        <Button className={`preview ${bundle.isVirtual ? 'virtual' : ''}`} minimal>
+        <Button className={`preview ${bundle.isVirtual ? 'virtual' : ''}`} variant="minimal">
           <Icon className="overlay-icon" icon="search" />
           <div id="properties">
-            {bundle.isVirtual && <Icon title="Virtual Bundle" className="virtual" icon="cloud" />}
+            {icon}
             {bundle.name.endsWith('.zip') && <Icon className="virtual" icon="compressed" />}
           </div>
           {validPreview ? (

@@ -39,6 +39,10 @@ export enum TextFormat {
   Md = '.md',
 }
 
+export enum LoginProvider {
+  Humble = 'humble',
+}
+
 export const zipDelimiter = `.zip`;
 
 export const MetaFileExtension = 'dam';
@@ -147,6 +151,10 @@ export const channelsSchema = {
     getCacheSize: {} as ChannelGetter<number>,
     getHasUpdate: {} as ChannelGetter<VersionCheck | null>,
     updateAndRestart: {} as ChannelGetter<void>,
+    login: {} as ChannelGetter<void, [provider: LoginProvider]>,
+    logout: {} as ChannelGetter<void, [provider: LoginProvider]>,
+    checkLogin: {} as ChannelGetter<boolean, [provider: LoginProvider]>,
+    importBundles: {} as ChannelGetter<void, [provider: LoginProvider]>,
   },
   on: {
     fileAdded: {} as ChannelSub<[path: string]>,
@@ -331,3 +339,5 @@ export const StoreSchemaZod = z
         .map(({ key, option }) => [key, option.schema]),
     ) as OptionRemoteValidators,
   );
+
+export const HUMBLE_PARTITION = 'persist:humble';

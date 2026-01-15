@@ -80,12 +80,16 @@ declare global {
     previewUrl?: string | undefined;
     name: string;
     date: Date;
+    // The source ID to look up downloads and other metadata from the source, like say Humble Bundle
+    sourceId?: string;
+    sourceType?: string;
   }
   interface BundleInfo {
     name: string;
     id: string;
     previewUrl?: string;
     isVirtual: boolean;
+    sourceType?: string;
     bundle: Bundle;
     date: Date;
   }
@@ -205,5 +209,11 @@ declare global {
   export interface VersionCheck {
     info: UpdateInfo;
     isUpdateAvailable: boolean;
+  }
+
+  export interface BundleImporter {
+    import: (abort?: AbortSignal, progress?: ProgressReporter) => Promise<void>;
+    isLoggedIn: () => Promise<boolean>;
+    login: () => Promise<void>;
   }
 }

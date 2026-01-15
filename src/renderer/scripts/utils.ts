@@ -59,6 +59,7 @@ export const QueryKeys = {
   tags: 'tags',
   fileInfo: 'fileInfo',
   embeddings: 'embeddings',
+  bundles: 'bundles',
 };
 
 export function isValidHttpUrl(string: string) {
