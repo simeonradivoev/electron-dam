@@ -15,6 +15,7 @@ import { useApp } from 'renderer/contexts/AppContext';
 import { AppToaster } from 'renderer/scripts/toaster';
 
 interface TasksContextType {
+  isPending: boolean;
   tasks: TaskMetadata[];
   cancelTask: (id: string) => void;
 }
@@ -24,7 +25,7 @@ const TasksContext = createContext<TasksContextType | undefined>(undefined);
 export function TasksProvider({ children }: { children: ReactNode | ReactNode[] }) {
   const queryClient = useQueryClient();
   const { projectDirectory } = useApp();
-  const { data: tasks } = useQuery({
+  const { data: tasks, isPending } = useQuery({
     queryKey: ['tasks', projectDirectory],
     queryFn: () => window.api.getTasks(),
     placeholderData: [],
@@ -47,8 +48,8 @@ export function TasksProvider({ children }: { children: ReactNode | ReactNode[] 
   };
 
   const taskContext = useMemo(
-    (): TasksContextType => ({ cancelTask, tasks: tasks ?? [] }),
-    [tasks],
+    (): TasksContextType => ({ cancelTask, tasks: tasks ?? [], isPending }),
+    [isPending, tasks],
   );
 
   const blockingTasks = useMemo(

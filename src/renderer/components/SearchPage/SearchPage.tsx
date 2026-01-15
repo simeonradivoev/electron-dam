@@ -119,7 +119,7 @@ function SearchPage() {
   const [selected, setSelected] = useSessionStorage<string[]>('selected', []);
   const [showFileView, setShowFileView] = useLocalStorage('showSearchFileView', false);
   const [sideBarSize, setSideBarSize] = useState(38);
-  const { tasks } = useTasks();
+  const { tasks, isPending: isPendingTasks } = useTasks();
 
   const toggleType = useCallback(
     (type: FileType) => {
@@ -160,17 +160,15 @@ function SearchPage() {
     }
   }, [database, selectedRef]);
 
+  const indexingFiles = tasks.some(
+    (t) =>
+      (t.status === 'RUNNING' || t.status === 'PENDING') && t.label.startsWith('Indexing Assets'),
+  );
   const searchQuery = useQuery({
     queryKey: [SEARCH_QUERY_KEY, projectDirectory, search, typeFilter, page],
     queryFn: ({ queryKey }) =>
       fetchSearchResults(queryKey[2] as string, queryKey[3] as FileType[], queryKey[4] as number),
-    enabled:
-      !!search &&
-      !tasks.some(
-        (t) =>
-          (t.status === 'RUNNING' || t.status === 'PENDING') &&
-          t.label.startsWith('Indexing Assets'),
-      ),
+    enabled: !indexingFiles && !isPendingTasks,
   });
 
   const pageCount = useMemo(() => {
@@ -253,6 +251,86 @@ function SearchPage() {
     </div>
   );
 
+  let searchSection: JSX.Element | undefined;
+  if (indexingFiles || isPendingTasks) {
+    searchSection = (
+      <div className="search-empty">
+        <NonIdealState icon={<Spinner />} title="Indexing Files..." />
+      </div>
+    );
+  } else if (searchQuery.isLoading) {
+    searchSection = (
+      <div className="search-loading-state">
+        <div className="search-loading-content">
+          <Spinner size={40} />
+          <div className="search-loading-text">
+            <p>Searching for &quot;{search}&quot;...</p>
+            <p className="search-status">Please wait</p>
+          </div>
+        </div>
+        <ProgressBar intent="primary" />
+      </div>
+    );
+  } else if (
+    searchQuery.isEnabled &&
+    (!searchQuery.data || searchQuery.data.nodes.length === 0) &&
+    search
+  ) {
+    searchSection = (
+      <div className="search-empty">
+        <NonIdealState
+          icon="search"
+          title="No results found"
+          description={`No files matched "${search}"`}
+        />
+      </div>
+    );
+  } else if (searchQuery.isEnabled && !search) {
+    searchSection = (
+      <div className="search-empty">
+        <NonIdealState
+          icon="search"
+          title="Search for files"
+          description="Press Enter to search or type to update your query"
+        />
+      </div>
+    );
+  } else if (searchQuery.isEnabled && searchQuery.data && searchQuery.data.nodes.length > 0) {
+    if (showFileView) {
+      searchSection = (
+        <Split
+          direction="horizontal"
+          cursor="col-resize"
+          className="search-results-split"
+          snapOffset={30}
+          minSize={100}
+          expandToMin={false}
+          gutterSize={5}
+          sizes={[sideBarSize, 100 - sideBarSize]}
+          onDragEnd={(size) => {
+            setSideBarSize(size[0]);
+          }}
+        >
+          {searchResults}
+          <div className="search-explorer">
+            {!!selected && selected.length > 0 && showFileView ? (
+              <FileInfoPanel
+                allowTagEditing={false}
+                searchQuery={search}
+                showSource
+                item={selected[0]}
+              />
+            ) : (
+              <NonIdealState icon="eye-open">Select asset to view</NonIdealState>
+            )}
+          </div>
+        </Split>
+      );
+    } else {
+      searchSection = searchResults;
+    }
+  }
+
   return (
     <div className="search-page">
       <div className="search-input-container">
@@ -287,18 +365,6 @@ function SearchPage() {
       </div>
 
       <div className="search-results-container">
-        {searchQuery.isLoading && search && (
-          <div className="search-loading-state">
-            <div className="search-loading-content">
-              <Spinner size={40} />
-              <div className="search-loading-text">
-                <p>Searching for &quot;{search}&quot;...</p>
-                <p className="search-status">Please wait</p>
-              </div>
-            </div>
-            <ProgressBar intent="primary" />
-          </div>
-        )}
         <div className="search-results-header">
           <NavbarGroup className="results-count">
             Page {page + 1} out of {pageCount} <Divider /> <Tag>{searchQuery.data?.count}</Tag>{' '}
@@ -329,70 +395,7 @@ function SearchPage() {
             </NavbarGroup>
           </NavbarGroup>
         </div>
-        {!searchQuery.isLoading &&
-          searchQuery.isEnabled &&
-          searchQuery.data &&
-          searchQuery.data.nodes.length > 0 &&
-          showFileView && (
-            <Split
-              direction="horizontal"
-              cursor="col-resize"
-              className="search-results-split"
-              snapOffset={30}
-              minSize={100}
-              expandToMin={false}
-              gutterSize={5}
-              sizes={[sideBarSize, 100 - sideBarSize]}
-              onDragEnd={(size) => {
-                setSideBarSize(size[0]);
-              }}
-            >
-              {searchResults}
-              <div className="search-explorer">
-                {!!selected && selected.length > 0 && showFileView ? (
-                  <FileInfoPanel
-                    allowTagEditing={false}
-                    searchQuery={search}
-                    showSource
-                    item={selected[0]}
-                  />
-                ) : (
-                  <NonIdealState icon="eye-open">Select asset to view</NonIdealState>
-                )}
-              </div>
-            </Split>
-          )}
-        {!searchQuery.isLoading &&
-          searchQuery.data &&
-          searchQuery.data.nodes.length > 0 &&
-          !showFileView &&
-          searchResults}
-        {!searchQuery.isLoading &&
-          searchQuery.isEnabled &&
-          (!searchQuery.data || searchQuery.data.nodes.length === 0) &&
-          search && (
-            <div className="search-empty">
-              <NonIdealState
-                icon="search"
-                title="No results found"
-                description={`No files matched "${search}"`}
-              />
-            </div>
-          )}
-        {!searchQuery.isLoading && searchQuery.isEnabled && !search && (
-          <div className="search-empty">
-            <NonIdealState
-              icon="search"
-              title="Search for files"
-              description="Press Enter to search or type to update your query"
-            />
-          </div>
-        )}
-        {search && !searchQuery.isEnabled && (
-          <div className="search-empty">
-            <NonIdealState icon="search" title="Indexing Files" />
-          </div>
-        )}
+        {searchSection}
       </div>
     </div>
   );
