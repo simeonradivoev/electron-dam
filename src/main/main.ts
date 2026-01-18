@@ -15,7 +15,13 @@ import { installExtension, REACT_DEVELOPER_TOOLS } from 'electron-extension-inst
 import log from 'electron-log/main';
 import Store from 'electron-store';
 import 'source-map-support/register';
-import { StoreSchema, MainIpcCallbacks, MainIpcGetter, StoreSchemaZod } from '../shared/constants';
+import {
+  StoreSchema,
+  MainIpcCallbacks,
+  MainIpcGetter,
+  StoreSchemaZod,
+  channelsSchema,
+} from '../shared/constants';
 import InitializeCallbacks from './api/callbacks';
 import { LoadDatabase } from './api/database-api';
 import InitializeGenerateMetadataApi from './api/generate-metadata-api';
@@ -29,7 +35,7 @@ import InitializeTransformersApi from './api/transformers-api';
 import InstallUpdateChecks from './api/updates';
 import InitializeWindowApi from './api/window-api';
 import { InitializeTasks, InitializeTasksApi } from './managers/task-manager';
-import { getAssetPath, registerMainCallbacks, registerMainHandlers, resolveHtmlPath } from './util';
+import { getAssetPath, registerMainHandlers, resolveHtmlPath } from './util';
 
 log.initialize({ preload: true });
 log.transports.file.level = 'info';
@@ -116,6 +122,14 @@ app.on('window-all-closed', () => {
 
 RegisterProtocols();
 
+function registerMainCallbacks(api: MainIpcCallbacks) {
+  Object.keys(channelsSchema.on).forEach((channel) => {
+    api[channel as keyof typeof channelsSchema.on] = (...args: unknown[]) => {
+      mainWindow?.webContents?.send(channel, ...args);
+    };
+  });
+}
+
 app
   .whenReady()
   .then(async () => {
@@ -144,7 +158,7 @@ app
 
     // Register the API handlers
     registerMainHandlers(apiGetters);
-    return { store };
+    return { store, apiCallbacks };
   })
   .then(async (context) => {
     if (isDebug) {
@@ -156,7 +170,7 @@ app
     }
 
     if (process.env.DAM_PROJECT_DIR) {
-      await LoadDatabase(context.store);
+      await LoadDatabase(context.apiCallbacks, context.store);
     }
 
     mainWindow = await createWindow(context.store);
@@ -164,7 +178,7 @@ app
 
     mainWindow.on('ready-to-show', async () => {
       if (!process.env.DAM_PROJECT_DIR) {
-        const database = await LoadDatabase(context.store);
+        const database = await LoadDatabase(context.apiCallbacks, context.store);
         // this is mainly for handling page reloads, dispose old database
         mainWindow!.once('ready-to-show', () => {
           database?.close();

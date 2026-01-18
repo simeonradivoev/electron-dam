@@ -1,7 +1,8 @@
+import { IconName } from '@blueprintjs/icons';
 import { UpdateInfo } from 'electron-updater';
 import { DBSchema } from 'idb';
 import { IAudioMetadata } from 'music-metadata';
-import { FileType } from 'shared/constants';
+import { FileType, LoginProvider } from 'shared/constants';
 import { IndexSchema } from './search/Orama';
 
 declare global {
@@ -50,6 +51,9 @@ declare global {
   interface Bundle extends Tags, Description {
     sourceUrl?: string | undefined;
     licenseType?: string | undefined;
+    // The source ID to look up downloads and other metadata from the source, like say Humble Bundle
+    sourceId?: string;
+    sourceType?: LoginProvider;
   }
   interface FileContents {
     info: FileInfo;
@@ -80,16 +84,12 @@ declare global {
     previewUrl?: string | undefined;
     name: string;
     date: Date;
-    // The source ID to look up downloads and other metadata from the source, like say Humble Bundle
-    sourceId?: string;
-    sourceType?: string;
   }
   interface BundleInfo {
     name: string;
     id: string;
     previewUrl?: string;
     isVirtual: boolean;
-    sourceType?: string;
     bundle: Bundle;
     date: Date;
   }
@@ -164,6 +164,7 @@ declare global {
   export interface Task extends TaskMetadata {
     abortController?: AbortController;
     userData?: any;
+    hash: number;
   }
 
   export interface TaskMetadata {
@@ -172,7 +173,7 @@ declare global {
     status: 'PENDING' | 'RUNNING' | 'COMPLETED' | 'FAILED' | 'CANCELED';
     progress?: number;
     error?: string;
-    options: { blocking?: boolean; silent?: boolean; icon?: string };
+    options: { blocking?: boolean; silent?: boolean; icon?: IconName };
     userData?: any;
   }
 
@@ -215,5 +216,6 @@ declare global {
     import: (abort?: AbortSignal, progress?: ProgressReporter) => Promise<void>;
     isLoggedIn: () => Promise<boolean>;
     login: () => Promise<void>;
+    getDownload: (bunde: VirtualBundle) => Promise<string>;
   }
 }

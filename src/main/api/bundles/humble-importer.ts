@@ -3,8 +3,27 @@ import { uuid } from '@tanstack/react-form';
 import { BrowserWindow } from 'electron';
 import ElectronStore from 'electron-store';
 import { foreachAsync } from 'main/util';
-import { HUMBLE_PARTITION, StoreSchema } from 'shared/constants';
+import { HUMBLE_PARTITION, LoginProvider, StoreSchema } from 'shared/constants';
 import { getBundles } from '../bundles-api';
+
+interface HumbleBundleData {
+  subproducts?: {
+    human_name: string;
+    url?: string;
+    downloads: {
+      platform: 'ebook' | 'windows' | 'other' | 'audio' | 'image';
+      download_struct: {
+        url: {
+          web?: string;
+        };
+      }[];
+    }[];
+    icon?: string;
+  }[];
+  gamekey: string;
+  created: Date;
+  product: { category: 'bundle' | 'subscriptionplan' | 'subscriptioncontent'; human_name: string };
+}
 
 export default function InstallHumbleImporter(store: ElectronStore<StoreSchema>, db: Loki) {
   const virtualBundles = db.getCollection<VirtualBundle>('bundles');
@@ -70,20 +89,7 @@ export default function InstallHumbleImporter(store: ElectronStore<StoreSchema>,
         })()
       `);
 
-        const jsonData: Record<
-          string,
-          {
-            subproducts?: {
-              human_name: string;
-              url?: string;
-              downloads: { platform: 'ebook' | 'windows' | 'other' | 'audio' | 'image' }[];
-              icon?: string;
-            }[];
-            gamekey: string;
-            created: Date;
-            product: { category: 'bundle' | 'subscriptionplan' | 'subscriptioncontent' };
-          }
-        > = JSON.parse(data);
+        const jsonData: Record<string, HumbleBundleData> = JSON.parse(data);
         await foreachAsync(
           Object.keys(jsonData),
           async (key) => {
@@ -118,7 +124,7 @@ export default function InstallHumbleImporter(store: ElectronStore<StoreSchema>,
                 if (existingBundle) {
                   existingBundle.sourceId = order.gamekey;
                   existingBundle.previewUrl ??= product.icon;
-                  existingBundle.sourceType = 'humble';
+                  existingBundle.sourceType = LoginProvider.Humble;
                   existingBundle.sourceUrl = product.url;
                   virtualBundles.update(existingBundle);
                 } else {
@@ -129,7 +135,7 @@ export default function InstallHumbleImporter(store: ElectronStore<StoreSchema>,
                     date: order.created,
                     sourceId: order.gamekey,
                     previewUrl: product.icon,
-                    sourceType: 'humble',
+                    sourceType: LoginProvider.Humble,
                   };
                   virtualBundles.insertOne(newBundle);
                 }
@@ -217,6 +223,56 @@ export default function InstallHumbleImporter(store: ElectronStore<StoreSchema>,
           }
         });
       });
+    },
+    getDownload: async (bundle: VirtualBundle) => {
+      if (!bundle.sourceId) {
+        throw new Error(`Bundle ${bundle.name} has no source ID`);
+      }
+
+      const downloadWindow = new BrowserWindow({
+        width: 1000,
+        height: 800,
+        show: false,
+        webPreferences: {
+          contextIsolation: true,
+          partition: HUMBLE_PARTITION,
+        },
+      });
+
+      await downloadWindow.loadURL(
+        `https://www.humblebundle.com/api/v1/orders?all_tpkds=true&gamekeys=${encodeURIComponent(bundle.sourceId)}`,
+      );
+      const data = await downloadWindow.webContents.executeJavaScript(`
+        (() => {
+          const pre = document.querySelector('pre');
+          if (!pre) throw new Error('No JSON found');
+          return pre.innerText;
+        })()
+      `);
+
+      const jsonData: Record<string, HumbleBundleData> = JSON.parse(data);
+      const product = jsonData[bundle.sourceId];
+      if (product) {
+        const subProduct = product.subproducts?.find((p) => p.url === bundle.sourceUrl);
+        if (subProduct) {
+          const validDownload = subProduct.downloads.find((d) =>
+            d.download_struct?.some((s) => s.url?.web),
+          );
+          if (validDownload) {
+            return validDownload.download_struct.find((d) => d.url.web)!.url.web!;
+          }
+
+          throw new Error(
+            `Could not find valid download in sub product ${subProduct.human_name} for bundle ${bundle.name}`,
+          );
+        } else {
+          throw new Error(
+            `No sub product int ${product.product.human_name} that matches the bundle ${bundle.name}`,
+          );
+        }
+      } else {
+        throw new Error(`Could not retrieve bundle ${bundle.name} from humble`);
+      }
     },
   } satisfies BundleImporter;
 }

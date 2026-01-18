@@ -11,7 +11,7 @@ import Bundle from '../Bundles/Bundle';
 
 function Home() {
   const stats = useQuery({ queryKey: ['stats'], queryFn: () => window.api.getHomeBundles() });
-  const { setFileInfo, database, projectDirectory } = useApp();
+  const { database, projectDirectory } = useApp();
   const { data: tagsData } = useQuery({
     enabled: !!database && !!projectDirectory,
     queryKey: [QueryKeys.tags, projectDirectory],
@@ -150,12 +150,7 @@ function Home() {
           <div className="bundles-grid">
             <div className="grid y-scroll">
               {stats?.data?.random?.map((randomBundle) => (
-                <Bundle
-                  setFileInfo={setFileInfo}
-                  onSelect={handleSelect}
-                  bundle={randomBundle}
-                  key={randomBundle.id}
-                />
+                <Bundle onSelect={handleSelect} bundle={randomBundle} key={randomBundle.id} />
               ))}
             </div>
           </div>
@@ -167,12 +162,7 @@ function Home() {
           <div className="bundles-grid">
             <div className="grid y-scroll">
               {stats?.data?.recent?.map((bundle) => (
-                <Bundle
-                  setFileInfo={setFileInfo}
-                  onSelect={handleSelect}
-                  bundle={bundle}
-                  key={bundle.id}
-                />
+                <Bundle onSelect={handleSelect} bundle={bundle} key={bundle.id} />
               ))}
             </div>
           </div>

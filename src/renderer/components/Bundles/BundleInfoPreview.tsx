@@ -23,7 +23,7 @@ function BundleInfoPreview() {
 
   return (
     <BundlePreview
-      bundle={bundle ?? null}
+      bundle={bundle}
       onSelect={handleView}
       onEdit={handleEditBundle}
       showFiles

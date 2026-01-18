@@ -1,4 +1,16 @@
-import { Button, ButtonGroup, Spinner, SpinnerSize } from '@blueprintjs/core';
+import {
+  Button,
+  ButtonGroup,
+  Classes,
+  Icon,
+  IconName,
+  ProgressBar,
+  Size,
+  Spinner,
+  SpinnerSize,
+  Tag,
+  Tooltip,
+} from '@blueprintjs/core';
 import { useIsFetching } from '@tanstack/react-query';
 import cn from 'classnames';
 import { useEffect, useMemo, useState } from 'react';
@@ -31,8 +43,8 @@ function SideMenu() {
   const isBundles = useMatch('bundles/*');
   const isSettings = useMatch('settings/*');
   const isFetching = useIsFetching();
-  const activeTasks = useMemo(
-    () => tasks.filter((t) => t.status === 'PENDING' || t.status === 'RUNNING').length,
+  const activeTaskIcons = useMemo(
+    () => tasks.filter((t) => t.status === 'PENDING' || t.status === 'RUNNING'),
     [tasks],
   );
 
@@ -101,7 +113,7 @@ function SideMenu() {
         onClick={() => {
           navigate('/tasks');
         }}
-        icon="inbox"
+        icon={tasks.length > 0 ? 'inbox-update' : 'inbox'}
       />
       <Button
         title={`Search (${searchQuery})`}
@@ -121,9 +133,29 @@ function SideMenu() {
         }}
         icon="cog"
       />
-      {(isFetching > 0 || activeTasks > 0) && (
-        <Spinner className="loading" size={SpinnerSize.SMALL} />
-      )}
+      <ButtonGroup className="loading">
+        {isFetching > 0 && (
+          <Tooltip content={`${isFetching} Queries`}>
+            <Icon className={Classes.TEXT_MUTED} icon="data-search" />
+          </Tooltip>
+        )}
+        {activeTaskIcons
+          .filter((i) => i.options.icon)
+          .slice(undefined, 6)
+          .map((i) => (
+            <Tooltip
+              content={
+                <>
+                  {i.label}
+                  <ProgressBar value={i.progress} />
+                </>
+              }
+            >
+              <Icon className={Classes.TEXT_MUTED} icon={i.options.icon as IconName} />
+            </Tooltip>
+          ))}
+        {(isFetching > 0 || activeTaskIcons.length > 0) && <Spinner size={SpinnerSize.SMALL} />}
+      </ButtonGroup>
     </ButtonGroup>
   );
 }

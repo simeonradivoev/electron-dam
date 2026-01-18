@@ -1,3 +1,5 @@
+/* eslint-disable promise/always-return */
+/* eslint-disable promise/catch-or-return */
 import {
   Button,
   H5,
@@ -6,13 +8,16 @@ import {
   Intent,
   NonIdealState,
   ProgressBar,
+  Size,
   Spinner,
   ToastProps,
 } from '@blueprintjs/core';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { createContext, ReactNode, useContext, useEffect, useMemo } from 'react';
+import { hashKey, useQuery, useQueryClient } from '@tanstack/react-query';
+import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo } from 'react';
 import { useApp } from 'renderer/contexts/AppContext';
-import { AppToaster } from 'renderer/scripts/toaster';
+import { AppToaster, ShowAppToaster } from 'renderer/scripts/toaster';
+import { TaskUpdateType } from 'shared/constants';
+import { useSessionStorage } from 'usehooks-ts';
 
 interface TasksContextType {
   isPending: boolean;
@@ -30,26 +35,132 @@ export function TasksProvider({ children }: { children: ReactNode | ReactNode[] 
     queryFn: () => window.api.getTasks(),
     placeholderData: [],
   });
+  const [taskHistory, setTaskHistory] = useSessionStorage<TaskMetadata[]>('taskHistory', []);
+
+  const cancelTask = useCallback((id: string) => {
+    window.api.cancelTask(id);
+  }, []);
+
+  const buildToasterParams = useCallback(
+    (task: TaskMetadata) => {
+      const props: ToastProps = {
+        intent: task.error ? 'danger' : 'none',
+        icon: task.options.icon as IconName,
+        isCloseButtonShown: false,
+        message: (
+          <div className="task-card">
+            <div className="task-header">
+              <H5>{task.label}</H5>
+            </div>
+
+            {task.error}
+
+            <div className="task-actions">
+              {(task.status === 'PENDING' || task.status === 'RUNNING') && (
+                <Button
+                  size={Size.SMALL}
+                  variant="minimal"
+                  intent={Intent.DANGER}
+                  onClick={() => cancelTask(task.id)}
+                  text="Cancel"
+                />
+              )}
+            </div>
+          </div>
+        ),
+      };
+      switch (task.status) {
+        case 'CANCELED':
+          props.action = { icon: 'disable' };
+          break;
+        case 'FAILED':
+          props.action = { icon: 'cross' };
+          break;
+        case 'COMPLETED':
+          props.action = { icon: 'tick' };
+          break;
+        case 'PENDING':
+        case 'RUNNING':
+          props.action = {
+            icon: task.progress ? (
+              <Spinner size={IconSize.STANDARD} value={task.progress} />
+            ) : (
+              <Spinner size={IconSize.STANDARD} />
+            ),
+            disabled: true,
+          };
+          break;
+        default:
+          break;
+      }
+
+      return props;
+    },
+    [cancelTask],
+  );
+
+  // First tasks
+  useEffect(() => {
+    tasks?.forEach((t) => ShowAppToaster(buildToasterParams(t), `task-${t.id}`));
+  }, [isPending]);
 
   useEffect(() => {
     // Listen for task updates
-    const removeListener = window.apiCallbacks.onTasksUpdate((updateTasks) => {
-      // Use a function to ensure React sees this as a state change
-      queryClient.setQueryData(['tasks', projectDirectory], updateTasks);
+    const removeListener = window.apiCallbacks.onTasksUpdate((type, tasksParam) => {
+      if (type === TaskUpdateType.Ended) {
+        setTaskHistory([...tasksParam, ...taskHistory.slice(0, 32)]);
+        const newParams = buildToasterParams(tasksParam[0]);
+        newParams.timeout = 2000;
+        ShowAppToaster(newParams, `task-${tasksParam[0].id}`);
+      } else if (type === TaskUpdateType.Added) {
+        if (tasksParam[0].options.silent !== true) {
+          ShowAppToaster(buildToasterParams(tasksParam[0]), `task-${tasksParam[0].id}`);
+        }
+      } else if (type === TaskUpdateType.Structure) {
+        const taskIndex = tasksParam.findIndex((t) => t.id === tasksParam[0].id);
+        const newTasks = Array.from(tasksParam);
+        newTasks[taskIndex] = tasksParam[taskIndex];
+        // Use a function to ensure React sees this as a state change
+        queryClient.setQueryData(['tasks', projectDirectory], newTasks);
+      } else if (type === TaskUpdateType.Update) {
+        // Use a function to ensure React sees this as a state change
+        queryClient.setQueryData(['tasks', projectDirectory], tasksParam);
+        AppToaster.then((toaster) => {
+          const existingToast = toaster
+            .getToasts()
+            .find((t) => t.key === `task-${tasksParam[0].id}`);
+          if (existingToast) {
+            const existingHash = hashKey([
+              existingToast.message,
+              existingToast.action,
+              existingToast.icon,
+              existingToast.intent,
+              existingToast.isCloseButtonShown,
+            ]);
+            const newProps = buildToasterParams(tasksParam[0]);
+            const hash = hashKey([
+              newProps.message,
+              newProps.action,
+              newProps.icon,
+              newProps.intent,
+              newProps.isCloseButtonShown,
+            ]);
+            if (existingHash !== hash) {
+              ShowAppToaster(newProps, `task-${tasksParam[0].id}`);
+            }
+          }
+        });
+      }
     });
 
     return () => {
       removeListener();
     };
-  }, [projectDirectory, queryClient]);
-
-  const cancelTask = (id: string) => {
-    window.api.cancelTask(id);
-  };
+  }, [buildToasterParams, projectDirectory, queryClient, setTaskHistory, taskHistory]);
 
   const taskContext = useMemo(
     (): TasksContextType => ({ cancelTask, tasks: tasks ?? [], isPending }),
-    [isPending, tasks],
+    [isPending, tasks, setTaskHistory],
   );
 
   const blockingTasks = useMemo(
@@ -59,80 +170,6 @@ export function TasksProvider({ children }: { children: ReactNode | ReactNode[] 
       ),
     [tasks],
   );
-
-  useEffect(() => {
-    if (tasks) {
-      // eslint-disable-next-line promise/always-return
-      AppToaster.then((toaster) => {
-        const existinToastKeys = toaster.getToasts().map((t) => t.key);
-        const taskSet = new Set(
-          tasks
-            .filter((t) => t.options.silent !== true && t.options.blocking !== true)
-            .map((t) => t.id),
-        );
-        existinToastKeys
-          .filter((t) => t.startsWith('task-') && !taskSet.has(t.substring('task-'.length)))
-          .forEach((t) => toaster.dismiss(t));
-        tasks
-          .filter((t) => t.options.silent !== true && t.options.blocking !== true)
-          .forEach((task) => {
-            const props: ToastProps = {
-              timeout: 0,
-              intent: task.error ? 'danger' : 'none',
-              icon: task.options.icon as IconName,
-              isCloseButtonShown: false,
-              message: (
-                <div className="task-card">
-                  <div className="task-header">
-                    <H5>{task.label}</H5>
-                  </div>
-
-                  {task.error}
-
-                  <div className="task-actions">
-                    {(task.status === 'PENDING' || task.status === 'RUNNING') && (
-                      <Button
-                        small
-                        minimal
-                        intent={Intent.DANGER}
-                        onClick={() => cancelTask(task.id)}
-                        text="Cancel"
-                      />
-                    )}
-                  </div>
-                </div>
-              ),
-            };
-            switch (task.status) {
-              case 'CANCELED':
-                props.action = { icon: 'disable' };
-                break;
-              case 'FAILED':
-                props.action = { icon: 'cross' };
-                break;
-              case 'COMPLETED':
-                props.action = { icon: 'tick' };
-                break;
-              case 'PENDING':
-              case 'RUNNING':
-                props.action = {
-                  icon: task.progress ? (
-                    <Spinner size={IconSize.STANDARD} value={task.progress} />
-                  ) : (
-                    <Spinner size={IconSize.STANDARD} />
-                  ),
-                  disabled: true,
-                };
-                break;
-              default:
-                break;
-            }
-
-            toaster.show(props, `task-${task.id}`);
-          });
-      }).catch(() => {});
-    }
-  }, [tasks]);
 
   return (
     <TasksContext.Provider value={taskContext}>

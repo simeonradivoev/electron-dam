@@ -1,28 +1,17 @@
-import { lstat, stat } from 'fs/promises';
+import { existsSync } from 'fs';
 import path from 'path';
+import { BrowserWindow } from 'electron';
 import log from 'electron-log/main';
 import Store from 'electron-store';
 import Loki from 'lokijs';
 import { addTask } from 'main/managers/task-manager';
 import { satisfies } from 'semver';
 import { memoryStorage, Umzug } from 'umzug';
-import {
-  LoginProvider,
-  MainIpcCallbacks,
-  MainIpcGetter,
-  StoreSchema,
-} from '../../shared/constants';
+import { MainIpcCallbacks, MainIpcGetter, StoreSchema } from '../../shared/constants';
 import migrations, { MigrationContext } from '../migrations/migrations';
-import {
-  appVersion,
-  getProjectDir,
-  registerMainCallbacks,
-  registerMainHandlers,
-  unregisterMainHandlers,
-} from '../util';
+import { appVersion, getProjectDir, registerMainHandlers, unregisterMainHandlers } from '../util';
 import InitializeAccounts from './accounts';
 import InitializeBundlesApi from './bundles-api';
-import InstallHumbleImporter from './bundles/humble-importer';
 import InitializeThumbnailCache from './cache/thumbnail-cache';
 import { InitializeDatabaseCallbacks } from './callbacks';
 import InitializeFileInfoApi from './file-info-api';
@@ -30,7 +19,11 @@ import InitializeFileSystemApi from './file-system-api';
 import { projectEvents } from './project-api';
 import { InitializeSearchApi } from './search/serach-api';
 
-export function LoadDatabaseExact(store: Store<StoreSchema>, directory: string): Promise<Loki> {
+export function LoadDatabaseExact(
+  apiCallbacks: MainIpcCallbacks,
+  store: Store<StoreSchema>,
+  directory: string,
+): Promise<Loki> {
   const database: Loki = new Loki(path.join(directory, 'dam-database.db'), {
     autosave: true,
     serializationMethod: 'pretty',
@@ -53,8 +46,6 @@ export function LoadDatabaseExact(store: Store<StoreSchema>, directory: string):
       }
 
       const api = {} as MainIpcGetter;
-      const apiCallback = {} as MainIpcCallbacks;
-      registerMainCallbacks(apiCallback);
       let migrationsToRun = migrations
         .filter((m: any) => m.since && appVersion && satisfies(database.name ?? '0.0.0', m.since))
         .map((m: any) => m.name);
@@ -86,18 +77,20 @@ export function LoadDatabaseExact(store: Store<StoreSchema>, directory: string):
       }
 
       database.name = appVersion;
+      const databaseAbortController = new AbortController();
       let fileSystemApi: ReturnType<typeof InitializeFileSystemApi>;
       const reIndexTask = () =>
         addTask(
           'Indexing Assets',
-          (abort, progress) => fileSystemApi.fileIndexRegistry.index(abort, progress),
-          { blocking: false, icon: 'search-text' },
+          (manualAbort, progress) =>
+            fileSystemApi.fileIndexRegistry.index(databaseAbortController.signal, progress),
+          { blocking: false, icon: 'search-text', signal: databaseAbortController.signal },
         );
 
       await addTask(
         'Initializing',
         async () => {
-          fileSystemApi = InitializeFileSystemApi(api, apiCallback, store, database);
+          fileSystemApi = InitializeFileSystemApi(api, apiCallbacks, store, database);
           InitializeThumbnailCache(api, store);
           InitializeFileInfoApi(api, store, database);
           const importers = InitializeAccounts(store, database, api);
@@ -117,9 +110,10 @@ export function LoadDatabaseExact(store: Store<StoreSchema>, directory: string):
             fileSystemApi.cleanup();
             searchApi.cleanup();
             unregisterMainHandlers(api);
+            databaseAbortController.abort('Database Closed');
           });
         },
-        { blocking: true, silent: true },
+        { blocking: true, silent: true, signal: databaseAbortController.signal },
       );
 
       reIndexTask();
@@ -128,14 +122,17 @@ export function LoadDatabaseExact(store: Store<StoreSchema>, directory: string):
   });
 }
 
-export async function LoadDatabase(store: Store<StoreSchema>): Promise<Loki | undefined> {
+export async function LoadDatabase(
+  apiCallbacks: MainIpcCallbacks,
+  store: Store<StoreSchema>,
+): Promise<Loki | undefined> {
   const projectDir = getProjectDir(store);
   if (projectDir) {
-    if (!!(await stat(projectDir).catch(() => false))) {
-      return LoadDatabaseExact(store, projectDir);
-    } else {
-      log.error(`Project at ${projectDir} did not exist`);
+    if (existsSync(projectDir)) {
+      return LoadDatabaseExact(apiCallbacks, store, projectDir);
     }
+
+    log.error(`Project at ${projectDir} did not exist`);
   }
   return undefined;
 }

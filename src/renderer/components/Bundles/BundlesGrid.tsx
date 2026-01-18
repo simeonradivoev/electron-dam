@@ -25,7 +25,7 @@ import { LoginProvider } from 'shared/constants';
 import Bundle from './Bundle';
 
 function BundlesGrid() {
-  const { setFileInfo, projectDirectory } = useApp();
+  const { projectDirectory } = useApp();
   const [filter, setFilter] = useState('');
   const [selectedBundles, setSelectedBundles] = useState<string[]>([]);
   const parentRef = useRef<HTMLDivElement>(null);
@@ -251,10 +251,8 @@ function BundlesGrid() {
                           onKeyDown={() => {}}
                         >
                           <Bundle
-                            setFileInfo={setFileInfo}
                             onSelect={handleSelect}
                             bundle={bundles[index]}
-                            handleRefresh={handleRefresh}
                             allowDelete
                             isSelected={selectedBundles.includes(bundles[index].id.toString())}
                           />

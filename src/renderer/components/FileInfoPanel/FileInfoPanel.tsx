@@ -156,7 +156,7 @@ const FileInfoPanel: React.FC<FileInfoPanelProps> = ({
     );
   }
   // Bundles
-  else if (fileInfo?.bundle) {
+  else if (fileInfo?.bundle && !fileInfo.bundle.isParentBundle) {
     previewPanel = (
       <BundlePreview
         searchQuery={searchQuery}
@@ -212,11 +212,17 @@ const FileInfoPanel: React.FC<FileInfoPanelProps> = ({
     [viewInExplorer],
   );
 
-  const sourceUrl = useMemo(
-    () =>
-      fileInfo?.bundle?.bundle.bundle.sourceUrl && new URL(fileInfo.bundle.bundle.bundle.sourceUrl),
-    [fileInfo?.bundle?.bundle.bundle.sourceUrl],
-  );
+  const sourceUrl = useMemo(() => {
+    try {
+      return (
+        fileInfo?.bundle?.bundle.bundle.sourceUrl &&
+        new URL(fileInfo.bundle.bundle.bundle.sourceUrl)
+      );
+    } catch (error) {
+      return null;
+    }
+  }, [fileInfo?.bundle?.bundle.bundle.sourceUrl]);
+
   const fileInfoPath = useMemo(
     () =>
       (showSource || fileInfo?.bundle?.bundle.isVirtual) && sourceUrl

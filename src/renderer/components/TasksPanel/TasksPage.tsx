@@ -1,11 +1,31 @@
-import { Button, Card, H2, H5, Intent, ProgressBar, Text, Icon } from '@blueprintjs/core';
+import {
+  Button,
+  Card,
+  H2,
+  H5,
+  Intent,
+  ProgressBar,
+  Text,
+  Icon,
+  NonIdealState,
+  Classes,
+} from '@blueprintjs/core';
+import classNames from 'classnames';
+import { useCallback } from 'react';
+import { useSessionStorage } from 'usehooks-ts';
 import '../../App.scss';
 import { useTasks } from '../../contexts/TasksContext';
 
-function TasksPage() {
-  const { tasks, cancelTask } = useTasks();
-
-  const getStatusIcon = (status: string) => {
+function Task({
+  task,
+  cancelTask,
+  isHistory,
+}: {
+  task: TaskMetadata;
+  cancelTask?: (id: string) => void;
+  isHistory: boolean;
+}) {
+  const getStatusIcon = useCallback((status: string) => {
     switch (status) {
       case 'COMPLETED':
         return <Icon icon="tick" intent={Intent.SUCCESS} />;
@@ -18,60 +38,85 @@ function TasksPage() {
       default:
         return <Icon icon="pause" intent={Intent.NONE} />;
     }
-  };
+  }, []);
+
+  return (
+    <Card
+      key={task.id}
+      elevation={1}
+      className={classNames(`task-card status-${task.status.toLowerCase()}`, {
+        active: !isHistory,
+      })}
+    >
+      <div className={classNames('task-header', { [Classes.TEXT_MUTED]: isHistory })}>
+        <div className="task-title">
+          {isHistory ? <Icon icon={task.options.icon} /> : getStatusIcon(task.status)}
+          <H5 className={classNames({ [Classes.TEXT_MUTED]: isHistory })}>{task.label}</H5>
+        </div>
+        <Text className="task-status">{task.status}</Text>
+      </div>
+
+      {task.status === 'RUNNING' && (
+        <div className="task-progress">
+          <div className="progress-row">
+            <div className="progress-bar-container">
+              <ProgressBar intent="primary" value={task.progress} />
+            </div>
+            {!!task.progress && (
+              <span className="progress-percentage">
+                {task.progress.toLocaleString(undefined, { style: 'percent' })}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {task.error && <Text className="task-error">{task.error}</Text>}
+
+      <div className="task-actions">
+        {(task.status === 'PENDING' || task.status === 'RUNNING') && (
+          <Button
+            size="small"
+            intent={Intent.DANGER}
+            onClick={() => cancelTask?.(task.id)}
+            text="Cancel"
+          />
+        )}
+      </div>
+    </Card>
+  );
+}
+
+function TasksPage() {
+  const { tasks, cancelTask } = useTasks();
+  const [taskHistory, setTaskHistory] = useSessionStorage<TaskMetadata[]>('taskHistory', []);
 
   return (
     <div className="tasks-page">
       <H2 className="tasks-header">Active Tasks</H2>
 
-      {tasks.length === 0 ? (
-        <Card className="tasks-empty">
-          <Icon icon="inbox" size={48} />
-          <Text>No active tasks</Text>
-        </Card>
-      ) : (
-        <div className="tasks-container">
-          {tasks.map((task) => (
-            <Card
-              key={task.id}
-              elevation={1}
-              className={`task-card status-${task.status.toLowerCase()}`}
-            >
-              <div className="task-header">
-                <div className="task-title">
-                  {getStatusIcon(task.status)}
-                  <H5>{task.label}</H5>
-                </div>
-                <Text className="task-status">{task.status}</Text>
-              </div>
-
-              {task.status === 'RUNNING' && task.progress && (
-                <div className="task-progress">
-                  <div className="progress-row">
-                    <div className="progress-bar-container">
-                      <ProgressBar value={task.progress} />
-                    </div>
-                    <span className="progress-percentage">{Math.round(task.progress * 100)}%</span>
-                  </div>
-                </div>
-              )}
-
-              {task.error && <Text className="task-error">{task.error}</Text>}
-
-              <div className="task-actions">
-                {(task.status === 'PENDING' || task.status === 'RUNNING') && (
-                  <Button
-                    size="small"
-                    intent={Intent.DANGER}
-                    onClick={() => cancelTask(task.id)}
-                    text="Cancel"
-                  />
-                )}
-              </div>
-            </Card>
-          ))}
-        </div>
-      )}
+      <div className="tasks-container active">
+        {tasks.length <= 0 && (
+          <NonIdealState className="tasks-empty" icon="inbox">
+            No Active Tasks
+          </NonIdealState>
+        )}
+        {tasks.map((task) => (
+          <Task task={task} isHistory={false} cancelTask={cancelTask} />
+        ))}
+      </div>
+      <H2 className="tasks-header">
+        History{' '}
+        <Button
+          style={{ marginLeft: 'auto' }}
+          variant="minimal"
+          icon="trash"
+          onClick={() => setTaskHistory([])}
+        />
+      </H2>
+      <div className="tasks-container">
+        {taskHistory.length > 0 && taskHistory.map((task) => <Task isHistory task={task} />)}
+      </div>
     </div>
   );
 }

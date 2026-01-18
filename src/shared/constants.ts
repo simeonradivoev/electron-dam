@@ -127,6 +127,7 @@ export const channelsSchema = {
     createVirtualBundle: {} as ChannelGetter<VirtualBundle | undefined, [bundle: VirtualBundle]>,
     getHomeBundles: {} as ChannelGetter<HomePageBundles | undefined>,
     convertBundleToLocal: {} as ChannelGetter<boolean, [id: string]>,
+    downloadBundle: {} as ChannelGetter<void, [id: string, extract: boolean]>,
     moveBundle: {} as ChannelGetter<boolean, [oldPath: string, newPath: string]>,
     search: {} as ChannelGetter<
       { nodes: SearchEntryResult[]; count: number; pageSize: number },
@@ -162,7 +163,7 @@ export const channelsSchema = {
     fileUnlinked: {} as ChannelSub<[path: string]>,
     folderAdded: {} as ChannelSub<[path: string]>,
     folderUnlinked: {} as ChannelSub<[path: string]>,
-    onTasksUpdate: {} as ChannelSub<[tasks: TaskMetadata[]]>,
+    onTasksUpdate: {} as ChannelSub<[updateType: TaskUpdateType, tasks: TaskMetadata[]]>,
     onUpdateNotification: {} as ChannelSub<[info: VersionCheck]>,
   },
 };
@@ -184,6 +185,13 @@ export type MainIpcGetter = {
 export type MainIpcCallbacks = {
   [K in keyof ChannelsSchema['on']]: ChannelsSchema['on'][K]['main'];
 };
+
+export enum TaskUpdateType {
+  Update = 'update',
+  Structure = 'structure',
+  Ended = 'ended',
+  Added = 'added',
+}
 
 export enum AutoTagType {
   Transformers = 'transformers',

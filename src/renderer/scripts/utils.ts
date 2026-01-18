@@ -1,8 +1,8 @@
-import { IconName } from '@blueprintjs/core';
+import { IconName, Tooltip } from '@blueprintjs/core';
 import { Highlight } from '@orama/highlight';
 import { hashKey, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useSyncExternalStore } from 'react';
-import { FileType } from 'shared/constants';
+import { FileType, LoginProvider } from 'shared/constants';
 
 export const highlighter = new Highlight();
 
@@ -60,6 +60,22 @@ export const QueryKeys = {
   fileInfo: 'fileInfo',
   embeddings: 'embeddings',
   bundles: 'bundles',
+  convert: 'convert',
+  files: 'files',
+  delete: 'delete',
+  download: 'download',
+};
+
+export const Help = {
+  popUpDelay: 1000,
+  text: {
+    editBundle: 'Edit',
+    bundleViewInExplorer: 'View In Explorer',
+    downloadBundleExtract: 'If download is a zip file Extract contents',
+    downloadBundleNonExtract:
+      "If download is a zip then treat it as compressed bundle and don't extract",
+    embeddings: 'Embeddings',
+  },
 };
 
 export function isValidHttpUrl(string: string) {

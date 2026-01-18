@@ -1,12 +1,13 @@
 import { BrowserWindow } from 'electron';
+import log from 'electron-log';
 import PQueue from 'p-queue';
 import { v4 } from 'uuid';
-import { MainIpcCallbacks, MainIpcGetter } from '../../shared/constants';
+import { MainIpcCallbacks, MainIpcGetter, TaskUpdateType } from '../../shared/constants';
 
 let window: BrowserWindow | undefined;
 let queue: PQueue;
 let tasks: Map<string, Task>;
-let updateClient: (tasks: TaskMetadata[]) => void;
+let updateClient: (type: TaskUpdateType, tasks: TaskMetadata[]) => void;
 
 function getActiveTasks(): TaskMetadata[] {
   return Array.from<TaskMetadata>(tasks.values()).map<TaskMetadata>((task) => {
@@ -22,19 +23,46 @@ function getActiveTasks(): TaskMetadata[] {
   });
 }
 
-function emitUpdate() {
-  const activeTasks = getActiveTasks();
-  if (!window) {
+function emitUpdate(id: string) {
+  const task = tasks.get(id);
+  if (!task || !window) {
     return;
   }
-  updateClient(activeTasks);
+  updateClient(TaskUpdateType.Update, [task]);
+}
+
+function emitAdded(id: string) {
+  const task = tasks.get(id);
+  if (!task || !window) {
+    return;
+  }
+  updateClient(TaskUpdateType.Added, [task]);
+}
+
+function emitTasks() {
+  const task = getActiveTasks();
+  if (!task || !window) {
+    return;
+  }
+  updateClient(TaskUpdateType.Structure, task);
+}
+
+function emitEnded(id: string) {
+  const task = tasks.get(id);
+  if (!task || !window) {
+    return;
+  }
+  updateClient(TaskUpdateType.Ended, [task]);
 }
 
 export function addTask<T>(
   label: string,
   taskFn: (signal: AbortSignal, progress: ProgressReporter) => Promise<T>,
-  options?: TaskMetadata['options'],
-  userData?: any,
+  options?: {
+    timeout?: number;
+    signal?: AbortSignal;
+    userData?: any;
+  } & TaskMetadata['options'],
 ): Promise<T> {
   const id = v4();
   const abortController = new AbortController();
@@ -45,47 +73,63 @@ export function addTask<T>(
     progress: 0,
     status: 'PENDING',
     abortController,
-    options: options ?? {},
-    userData,
+    options: {
+      blocking: options?.blocking,
+      icon: options?.icon,
+      silent: options?.silent,
+    },
+    userData: options?.userData,
+    hash: 0,
   };
 
   tasks.set(id, task);
-  emitUpdate();
 
-  return queue.add(async () => {
-    if (task.status === 'CANCELED') {
-      throw new Error('Task canceled');
-    }
+  const abortSignal = options?.signal
+    ? AbortSignal.any([abortController.signal, options?.signal])
+    : abortController.signal;
 
-    task.status = 'RUNNING';
-    emitUpdate();
-
-    try {
-      const report = (p: number) => {
-        task.progress = p;
-        emitUpdate();
-      };
-      const result = await taskFn(abortController.signal, report);
-      task.status = 'COMPLETED';
-      emitUpdate();
-      return result;
-    } catch (error: any) {
-      if (error.name === 'AbortError' || (task.status as string) === 'CANCELED') {
-        task.status = 'CANCELED';
-      } else {
-        task.status = 'FAILED';
-        task.error = error.message;
+  return queue.add(
+    async () => {
+      if (task.status === 'CANCELED') {
+        return Promise.reject(new Error('Task canceled'));
       }
-      throw error;
-    } finally {
-      emitUpdate();
-      // Cleanup after a delay to let the UI show the final state
-      setTimeout(() => {
+
+      task.status = 'RUNNING';
+      emitAdded(id);
+      emitUpdate(id);
+      let dirty = false;
+      const interval = setInterval(() => {
+        if (dirty) {
+          emitUpdate(id);
+        }
+      }, 300);
+
+      try {
+        const report = (p: number) => {
+          task.progress = p;
+          dirty = true;
+        };
+
+        const result = await taskFn(abortSignal, report);
+        task.status = 'COMPLETED';
+        emitEnded(id);
+        return result;
+      } catch (error: any) {
+        if (error.name === 'AbortError' || (task.status as string) === 'CANCELED') {
+          task.status = 'CANCELED';
+        } else {
+          task.status = 'FAILED';
+          task.error = error.message;
+        }
+        emitUpdate(id);
+        throw error;
+      } finally {
         tasks.delete(id);
-        emitUpdate();
-      }, 5000);
-    }
-  });
+        interval.close();
+      }
+    },
+    { signal: abortSignal, id, timeout: options?.timeout },
+  );
 }
 
 export function cancelTasks(selector: (t: Task) => boolean) {
@@ -95,7 +139,6 @@ export function cancelTasks(selector: (t: Task) => boolean) {
     t.abortController?.abort();
     tasks.delete(t.id);
   });
-  emitUpdate();
 }
 
 function cancelTask(taskIdRaw: string) {
@@ -104,7 +147,6 @@ function cancelTask(taskIdRaw: string) {
   if (task && task.status !== 'COMPLETED' && task.status !== 'FAILED') {
     task.status = 'CANCELED';
     task.abortController?.abort();
-    emitUpdate();
   }
 }
 
@@ -113,7 +155,10 @@ export function InitializeTasks(win: BrowserWindow) {
 }
 
 export function InitializeTasksApi(api: MainIpcGetter, apiCallbacks: MainIpcCallbacks) {
-  queue = new PQueue({ concurrency: 2 });
+  queue = new PQueue();
+  queue.on('add', emitTasks);
+  queue.on('next', emitTasks);
+  queue.on('error', (e) => log.error(e));
   tasks = new Map();
 
   api.getTasks = () => Promise.resolve(getActiveTasks());

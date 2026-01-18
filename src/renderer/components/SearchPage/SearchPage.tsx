@@ -112,7 +112,7 @@ function SearchPage() {
   const searchMatch = useMatch('/search/:query/:page');
   const search = searchMatch?.params.query;
   const page = searchMatch?.params.page ? Number.parseInt(searchMatch.params.page, 10) : 0;
-  const [query, setQuery] = useLocalStorage<string | undefined>(SEARCH_QUERY_KEY, undefined);
+  const [query, setQuery] = useLocalStorage<string | undefined>(SEARCH_QUERY_KEY, () => search);
   const [typeFilter, setTypeFilter] = useLocalStorage<FileType[]>('searchTypeFilter', []);
   const selectedRef = useRef<HTMLLIElement | null>(null);
   const navigate = useNavigate();

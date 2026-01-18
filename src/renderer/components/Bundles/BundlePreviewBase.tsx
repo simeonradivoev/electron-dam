@@ -1,16 +1,29 @@
-import { Button, Classes, Divider, ResizeSensor, Tag, TagInput, Tooltip } from '@blueprintjs/core';
-import { useQuery } from '@tanstack/react-query';
+import {
+  Button,
+  Classes,
+  Divider,
+  Menu,
+  MenuItem,
+  Popover,
+  ResizeSensor,
+  Tag,
+  TagInput,
+  Tooltip,
+} from '@blueprintjs/core';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import classNames from 'classnames';
 import { normalize } from 'pathe';
 import React, { forwardRef, Key, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
-import { highlighter } from 'renderer/scripts/utils';
+import { ProviderIcons } from 'renderer/scripts/bundles';
+import { ShowAppToaster } from 'renderer/scripts/toaster';
+import { Help, highlighter, QueryKeys } from 'renderer/scripts/utils';
 import BundleFileEntry from './BundleFileEntry';
 
 type PropsTop = {
-  bundle: BundleInfo | null;
+  bundle: BundleInfo;
   showInExplorerEnabled?: boolean;
   onSelect: (id: string) => void;
   onEdit: (id: string | number) => void;
@@ -19,7 +32,7 @@ type PropsTop = {
 };
 
 type Props = {
-  bundle: BundleInfo | null;
+  bundle: BundleInfo;
   className?: string;
   showFiles?: boolean;
   showInExplorerEnabled?: boolean;
@@ -31,23 +44,54 @@ type Props = {
 
 const BundleTop = forwardRef<HTMLDivElement, PropsTop>(
   (
-    { style, bundle, onSelect: select, onEdit: edit, searchQuery, showInExplorerEnabled = false },
+    {
+      style,
+      bundle: info,
+      onSelect: select,
+      onEdit: edit,
+      searchQuery,
+      showInExplorerEnabled = false,
+    },
     ref,
   ) => {
+    const { bundle } = info;
+
+    const downloadMutation = useMutation({
+      mutationKey: [QueryKeys.download, info.id],
+      mutationFn: (extract: boolean) => window.api.downloadBundle(info.id, extract),
+      onSuccess: (d, v, r, context) => {
+        context.client.invalidateQueries({ queryKey: [QueryKeys.bundles] });
+      },
+      onError: (e) => {
+        const message = e instanceof Error ? e.message : String(e);
+        ShowAppToaster({
+          message: `Failed to download bundle: ${message}`,
+          intent: 'danger',
+        });
+      },
+    });
+
+    let sourceUrl: URL | undefined;
+    try {
+      sourceUrl = bundle?.sourceUrl ? new URL(bundle.sourceUrl) : undefined;
+    } catch {
+      // empty
+    }
+
     return (
       <div ref={ref} style={style}>
-        {bundle?.previewUrl ? (
+        {info?.previewUrl ? (
           <div
             className="preview-image-container"
             style={{
-              backgroundImage: bundle.isVirtual
-                ? `url(${bundle.previewUrl})`
-                : `url(app://${encodeURI(normalize(bundle.previewUrl))})`,
+              backgroundImage: info.isVirtual
+                ? `url(${info.previewUrl})`
+                : `url(app://${encodeURI(normalize(info.previewUrl))})`,
             }}
           >
             <img
-              alt={`${bundle.name} Preview`}
-              src={bundle.isVirtual ? bundle.previewUrl : `app://${normalize(bundle.previewUrl)}`}
+              alt={`${info.name} Preview`}
+              src={info.isVirtual ? info.previewUrl : `app://${normalize(info.previewUrl)}`}
             />
           </div>
         ) : (
@@ -57,64 +101,115 @@ const BundleTop = forwardRef<HTMLDivElement, PropsTop>(
         <div className="bundle-content">
           <div className="title">
             <h1 className={bundle ? '' : Classes.SKELETON}>
-              {bundle?.name ?? 'Bundle Loading Placeholder Text'}
+              {info?.name ?? 'Bundle Loading Placeholder Text'}
             </h1>
-            {!!(bundle?.bundle as any)?.embeddings && (
-              <Tooltip content="Embeddings">
-                <Tag minimal icon="heatmap" />
+            {!info?.isVirtual && bundle?.sourceType && (
+              <Tooltip content={bundle.sourceType}>
+                <Tag size="large" icon={ProviderIcons[bundle.sourceType]} />
               </Tooltip>
             )}
-            {!showInExplorerEnabled || bundle?.isVirtual ? (
-              <></>
-            ) : (
-              <Button
-                onClick={() => select(bundle!.id)}
-                intent="primary"
-                size="small"
-                icon="folder-open"
-                title="View In Explorer"
-              />
+            {!!(bundle as AnyMetadata)?.embeddings && (
+              <Tooltip
+                content={Help.text.embeddings}
+                position="bottom"
+                hoverOpenDelay={Help.popUpDelay}
+              >
+                <Tag size="large" minimal icon="heatmap" />
+              </Tooltip>
             )}
-            <Button
-              onClick={() => edit(bundle!.id)}
-              intent="primary"
-              size="small"
-              icon="edit"
-              title="Edit"
-            />
-            {bundle?.bundle.sourceUrl ? (
-              <Button
-                onClick={() => window.open(bundle.bundle.sourceUrl, '_blank')}
-                title={bundle.bundle.sourceUrl}
-                intent="primary"
-                size="small"
-                icon="link"
-              />
+            {!showInExplorerEnabled || info?.isVirtual ? (
+              <></>
+            ) : (
+              <Tooltip
+                content={Help.text.bundleViewInExplorer}
+                position="bottom"
+                hoverOpenDelay={Help.popUpDelay}
+              >
+                <Button
+                  onClick={() => select(info?.id)}
+                  intent="primary"
+                  size="small"
+                  icon="folder-open"
+                />
+              </Tooltip>
+            )}
+            <Tooltip
+              hoverOpenDelay={Help.popUpDelay}
+              content={Help.text.editBundle}
+              position="bottom"
+            >
+              <Button onClick={() => edit(info!.id)} intent="primary" size="small" icon="edit" />
+            </Tooltip>
+            {sourceUrl ? (
+              <Tooltip content={sourceUrl.href} position="bottom">
+                <Button
+                  onClick={() => window.open(sourceUrl, '_blank')}
+                  intent="primary"
+                  size="small"
+                  icon="link"
+                >
+                  {sourceUrl.host}
+                </Button>
+              </Tooltip>
             ) : (
               <></>
+            )}
+            {info?.isVirtual && bundle?.sourceType && (
+              <Popover
+                minimal
+                position="bottom-right"
+                content={
+                  <Menu>
+                    <Tooltip
+                      hoverOpenDelay={Help.popUpDelay}
+                      content={Help.text.downloadBundleNonExtract}
+                    >
+                      <MenuItem
+                        icon="download"
+                        text="Download"
+                        onClick={() => downloadMutation.mutate(false)}
+                      />
+                    </Tooltip>
+                    <Tooltip
+                      hoverOpenDelay={Help.popUpDelay}
+                      content={Help.text.downloadBundleExtract}
+                    >
+                      <MenuItem
+                        icon="download"
+                        text="Download & Extract"
+                        onClick={() => downloadMutation.mutate(true)}
+                      />
+                    </Tooltip>
+                  </Menu>
+                }
+              >
+                <Button icon={ProviderIcons[bundle.sourceType]} intent="primary" endIcon="download">
+                  Download
+                </Button>
+              </Popover>
             )}
           </div>
           <div className="description css-fix">
             <ReactMarkdown
               skipHtml={false}
               rehypePlugins={[rehypeRaw as any]}
-              urlTransform={(src, _alt) => {
+              urlTransform={(src) => {
                 if (src.startsWith('./')) {
-                  return `app://${src.replace('.', bundle?.id ?? '')}`;
+                  return `app://${src.replace('.', info?.id ?? '')}`;
                 }
                 return src;
               }}
             >
-              {bundle?.bundle.description
+              {bundle?.description
                 ? searchQuery
-                  ? highlighter.highlight(bundle.bundle.description, searchQuery).HTML
-                  : bundle.bundle.description
+                  ? highlighter.highlight(bundle.description, searchQuery).HTML
+                  : bundle.description
                 : ''}
             </ReactMarkdown>
           </div>
           {showInExplorerEnabled && (
             <div className="tags">
-              {bundle?.bundle.tags?.map((t) => (
+              {bundle?.tags?.map((t) => (
                 <Tag minimal>{t}</Tag>
               ))}
             </div>

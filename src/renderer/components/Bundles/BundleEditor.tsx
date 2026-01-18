@@ -80,7 +80,7 @@ function BundleEditor() {
         preview: { value: string };
       };
 
-      const newBundleInfo = structuredClone(bundle);
+      const newBundleInfo = JSON.parse(JSON.stringify(bundle)) as BundleInfo;
       if (newBundleInfo.bundle) {
         newBundleInfo.bundle.description = description;
         newBundleInfo.bundle.sourceUrl = link;
@@ -104,7 +104,7 @@ function BundleEditor() {
 
         queryClient.invalidateQueries({ queryKey: ['bundle', bundle?.id] });
       } catch (error: any) {
-        AppToaster.then((t) => t.show({ message: error.message, intent: 'danger' }));
+        ShowAppToaster({ message: error.message, intent: 'danger' });
       }
     },
     [bundle, tags, queryClient, description, link, name, preview],

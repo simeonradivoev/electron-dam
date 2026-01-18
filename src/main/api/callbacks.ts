@@ -1,5 +1,6 @@
 import { existsSync } from 'fs';
 import { dirname } from 'path';
+import { BrowserWindow } from 'electron';
 import log from 'electron-log/main';
 import Store from 'electron-store';
 import { FilePath, getProjectDir } from 'main/util';
@@ -21,7 +22,7 @@ import { removeIndex, updateFileEmbeddings, updateFileFromPath } from './search/
  */
 export default function InitializeCallbacks(store: Store<StoreSchema>, api: MainIpcCallbacks) {
   projectEvents.on('projectChange', async (directoryPath) => {
-    await LoadDatabaseExact(store, directoryPath);
+    await LoadDatabaseExact(api, store, directoryPath);
   });
 
   fileEvents.on('file-added', async (addedFilePath) => {

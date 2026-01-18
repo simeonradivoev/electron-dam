@@ -3,26 +3,23 @@ import { spawn } from 'child_process';
 import { createWriteStream } from 'fs';
 import { writeFile, readFile, mkdir, rename, stat, rm } from 'fs/promises';
 import path, { normalize } from 'path';
-import { setTimeout } from 'timers/promises';
-import { uuid } from '@tanstack/react-form';
-import { load } from 'cheerio';
-import { dialog, BrowserWindow, shell, Notification, session, net } from 'electron';
+import { dialog, BrowserWindow, shell, Notification, session } from 'electron';
 import log from 'electron-log';
 import Store from 'electron-store';
 import JSZip from 'jszip';
 import Loki from 'lokijs';
 import StreamZip from 'node-stream-zip';
+import sharp from 'sharp';
 import {
   BundleMetaFile,
   StoreSchema,
   MainIpcGetter,
   previewTypes,
-  HUMBLE_PARTITION,
-  ImportType,
   LoginProvider,
+  zipDelimiter,
 } from '../../shared/constants';
 import { addTask } from '../managers/task-manager';
-import { FilePath, foreachAsync, getProjectDir, getRandom, ignoredFilesMatch } from '../util';
+import { FilePath, getProjectDir, getRandom, ignoredFilesMatch } from '../util';
 import {
   findBundlePath,
   forAllAssetsInProject,
@@ -58,8 +55,8 @@ async function searchParents<T>(
   filter: (parentPath: FilePath) => Promise<T | undefined>,
 ): Promise<T | undefined> {
   const parentChain = searchPath.path.split(path.sep);
-  const promises = parentChain.map((parentPath) =>
-    filter(new FilePath(searchPath.projectDir, parentPath)),
+  const promises = parentChain.map((parentPath, index) =>
+    filter(new FilePath(searchPath.projectDir, path.join(...parentChain.slice(0, index + 1)))),
   );
   const results = await Promise.all(promises);
   return results.find((result) => result !== undefined) ?? undefined;
@@ -231,7 +228,6 @@ export async function getVirtualBundles(
         bundle: b,
         isVirtual: true,
         date: new Date(b.date),
-        sourceType: b.sourceType,
       }) satisfies BundleInfo as BundleInfo,
   );
 }
@@ -356,8 +352,7 @@ async function exportBundle(
   abort: AbortSignal,
   progress: (p: number) => void,
 ): Promise<void> {
-  const window = BrowserWindow.getAllWindows()[0];
-  const zipFile = await dialog.showSaveDialog(window, {
+  const zipFile = await dialog.showSaveDialog({
     filters: [{ name: 'Zip', extensions: ['zip'] }],
   });
 
@@ -471,7 +466,6 @@ export default function InitializeBundlesApi(
         bundle: virtualBundle as Bundle,
         previewUrl: virtualBundle.previewUrl,
         name: virtualBundle.name,
-        sourceType: virtualBundle.sourceType,
       } as BundleInfo;
     }
     return tryGetBundleEntryFromFolderPath(FilePath.fromStore(store, id));
@@ -501,7 +495,7 @@ export default function InitializeBundlesApi(
       return finalBundle;
     }
     return operateOnMetadata(FilePath.fromStore(store, bundleId), async (meta) => {
-      Object.assign(meta, JSON.stringify(bundle));
+      Object.assign(meta, bundle);
       return true;
     });
   }
@@ -526,6 +520,106 @@ export default function InitializeBundlesApi(
     return true;
   }
 
+  async function downloadBundle(id: string, extract: boolean) {
+    const virtualBundles = db.getCollection<VirtualBundle>('bundles');
+    const virtualBundle = virtualBundles.findOne({ id });
+    if (!virtualBundle) {
+      throw new Error(`Could not find virtual bundle with ID ${id}`);
+    }
+
+    if (!virtualBundle.sourceType) {
+      throw new Error('Could not find the source type of the bundle');
+    }
+
+    const projectDir = store.get('projectDirectory');
+    const { canceled, filePaths } = await dialog.showOpenDialog({
+      properties: ['createDirectory', 'openDirectory'],
+      defaultPath: projectDir,
+    });
+
+    if (canceled || filePaths.length <= 0) {
+      throw new Error('Canceled Download');
+    }
+
+    return addTask(
+      'Downloading Bundle',
+      async (abort, progress) => {
+        const downloadRaw = await importers[virtualBundle.sourceType!].getDownload(virtualBundle);
+        const downloadURL = new URL(downloadRaw);
+        if (!downloadURL.pathname.toLocaleLowerCase().endsWith(zipDelimiter)) {
+          throw new Error(
+            `Download ${downloadURL.href} format not supported. Only zip files supported`,
+          );
+        }
+
+        progress(0.1);
+        const response = await fetch(downloadURL, { signal: abort });
+        const downloadAbsolutePath = path.join(projectDir, '.cache', `download${zipDelimiter}`);
+        const fileStream = createWriteStream(downloadAbsolutePath);
+        try {
+          const arrayBuffer = await response.arrayBuffer();
+          fileStream.write(Buffer.from(arrayBuffer));
+        } finally {
+          fileStream.close();
+        }
+
+        progress(0.5);
+        const filePath = filePaths[0];
+        if (!filePath.startsWith(normalize(projectDir))) {
+          throw new Error('Path is not in project');
+        }
+
+        const localPath = filePath.substring(projectDir.length + 1);
+        const destinationPath = new FilePath(projectDir, localPath);
+        const existantBundle = await findBundlePath(destinationPath);
+        const existantParentBundle = await searchParentBundle(destinationPath);
+
+        if (existantBundle || existantParentBundle) {
+          throw new Error('Bundle Already exists');
+        }
+
+        await mkdir(filePath, { recursive: true });
+        progress(0.6);
+
+        let bundlePath = destinationPath;
+
+        if (extract) {
+          const zip = new StreamZip.async({ file: downloadAbsolutePath });
+          bundlePath = destinationPath.join(virtualBundle.name);
+          await zip.extract(null, bundlePath.absolute);
+          zip.close();
+          await rm(downloadAbsolutePath);
+          await createBundle(bundlePath);
+        } else {
+          bundlePath = destinationPath.join(`${virtualBundle.name}${zipDelimiter}`);
+          await rename(downloadAbsolutePath, bundlePath.absolute);
+          await createBundle(bundlePath);
+        }
+
+        progress(0.8);
+
+        await operateOnMetadata(bundlePath, async (meta) => {
+          meta.description = virtualBundle.description;
+          meta.sourceUrl = virtualBundle.sourceUrl;
+          meta.tags = virtualBundle.tags;
+          if (virtualBundle.previewUrl && extract) {
+            const res = await fetch(virtualBundle.previewUrl!, {
+              signal: AbortSignal.any([AbortSignal.timeout(10000), abort]),
+            });
+            const data = await res.arrayBuffer();
+            await sharp(data).webp().toFile(bundlePath.join('Preview.webp').absolute);
+          }
+          meta.sourceId = virtualBundle.sourceId;
+          meta.sourceType = virtualBundle.sourceType;
+          return true;
+        });
+        virtualBundles.remove(virtualBundle.$loki);
+        progress(1);
+      },
+      { icon: 'download' },
+    );
+  }
+
   api.updateBundle = updateBundle;
   api.importBundles = async (type) => {
     const importer = importers[type];
@@ -542,6 +636,7 @@ export default function InitializeBundlesApi(
   api.getBundle = getBundle;
   api.deleteBundle = deleteBundle;
   api.convertBundleToLocal = (id) => convertBundleToLocal(store, db, id);
+  api.downloadBundle = (id, extract) => downloadBundle(id, extract);
   api.moveBundle = (oldP, newP) =>
     moveBundle(resolveAssetPath(store, normalize(oldP)), resolveAssetPath(store, normalize(newP)));
   api.exportBundle = (p) =>

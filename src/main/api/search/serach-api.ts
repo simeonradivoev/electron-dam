@@ -62,11 +62,11 @@ export async function updateFileFromPath(projectDir: string, id: string, bundle?
   };
 
   if (bundle) {
-    if (bundle.bundle.description && !entry.description) {
+    if (bundle.bundle?.description && !entry.description) {
       entry.description = bundle.bundle.description ?? '';
     }
 
-    if (!entry.tags && bundle.bundle.tags) {
+    if (!entry.tags && bundle.bundle?.tags) {
       entry.tags = bundle.bundle.tags;
     }
 
