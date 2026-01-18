@@ -58,7 +58,7 @@ const FileInfoPanel: React.FC<FileInfoPanelProps> = ({
 
   const handleEditBundle = useCallback(
     (id: string | number) => {
-      navigate(`/bundles/${encodeURIComponent(id.toString() ?? '')}/edit`);
+      navigate(`/bundles/edit/${encodeURIComponent(id.toString() ?? '')}`);
     },
     [navigate],
   );

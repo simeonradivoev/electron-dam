@@ -83,7 +83,7 @@ function BundlesGrid() {
       // Normal click = single select + navigate
       setSelectedBundles([idStr]);
       navigate({
-        pathname: `/bundles/${encodeURIComponent(normalize(idStr))}/info`,
+        pathname: `/bundles/info/${encodeURIComponent(normalize(idStr))}`,
       });
     }
 

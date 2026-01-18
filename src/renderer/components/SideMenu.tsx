@@ -38,7 +38,7 @@ function SideMenu() {
   );
   const [settingsTab, setSettingsTab] = useState('general');
   const searchMatch = useMatch('search/:query/:page');
-  const bundleMatch = useMatch('/bundles/:focusId/:mode');
+  const bundleMatch = useMatch('/bundles/:mode/:focusId');
   const settingsMatch = useMatch('/settings/:tab');
   const isBundles = useMatch('bundles/*');
   const isSettings = useMatch('settings/*');
@@ -89,7 +89,7 @@ function SideMenu() {
         active={!!isBundles}
         onClick={() => {
           navigate(
-            focusedBundle ? `/bundles/${encodeURIComponent(focusedBundle)}/info` : '/bundles',
+            focusedBundle ? `/bundles/info/${encodeURIComponent(focusedBundle)}` : '/bundles',
           );
         }}
         icon="projects"

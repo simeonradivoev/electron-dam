@@ -158,7 +158,7 @@ const Bundle = memo(
         <Button className={classNames(`preview`, { virtual: bundle.isVirtual })} variant="minimal">
           <Icon className="overlay-icon" icon="search" />
           <div id="properties">
-            {bundle.name.endsWith('.zip') && <Icon className="virtual" icon="compressed" />}
+            {bundle.name?.endsWith('.zip') && <Icon className="virtual" icon="compressed" />}
             {bundle.isVirtual && <Icon title="Virtual Bundle" className="virtual" icon="cloud" />}
             {!!bundle.bundle?.sourceType && !!ProviderIcons[bundle.bundle.sourceType] && (
               <span className="bp6-icon bp6-icon-cloud virtual">

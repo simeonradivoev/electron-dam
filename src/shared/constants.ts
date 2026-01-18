@@ -110,7 +110,10 @@ export const channelsSchema = {
     getFileDetails: {} as ChannelGetter<FileInfo | null, [path: string]>,
     selectProjectDirectory: {} as ChannelGetter<string | null>,
     createBundle: {} as ChannelGetter<boolean, [directory: string]>,
-    updateBundle: {} as ChannelGetter<Bundle | null, [path: string, bundle: Bundle]>,
+    updateBundle: {} as ChannelGetter<
+      Bundle | null,
+      [path: string, changes: z.infer<typeof AnyMetadataChanges>]
+    >,
     deleteBundle: {} as ChannelGetter<void, [path: string]>,
     importBundleMetadata: {} as ChannelGetter<BundleMetadata, [url: string, type: ImportType]>,
     canImportBundleMetadata: {} as ChannelGetter<boolean, [url: string, type: ImportType]>,
@@ -349,3 +352,11 @@ export const StoreSchemaZod = z
   );
 
 export const HUMBLE_PARTITION = 'persist:humble';
+
+export const AnyMetadataChanges = z.object({
+  name: z.string().optional(),
+  previewUrl: z.string().optional(),
+  sourceUrl: z.string().optional(),
+  description: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+});

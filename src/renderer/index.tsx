@@ -39,12 +39,8 @@ const route = createHashRouter(
           children: [
             { index: true, element: <BundlesGrid /> },
             {
-              path: ':file/*',
+              path: ':mode/:bundleId',
               element: <BundleDetailsLayout />,
-              children: [
-                { path: 'info', element: <BundleInfoPreview /> },
-                { path: 'edit', element: <BundleEditor /> },
-              ],
             },
             { path: 'new', element: <BundleNew /> },
           ],

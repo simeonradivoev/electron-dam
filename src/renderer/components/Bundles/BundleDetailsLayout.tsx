@@ -13,25 +13,18 @@ import {
 } from '@blueprintjs/core';
 import { QueryObserverResult, useQuery } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
-import { Outlet, useBlocker, useLocation, useNavigate } from 'react-router-dom';
+import { Outlet, useBlocker, useLocation, useMatch, useNavigate } from 'react-router-dom';
 import { useApp } from 'renderer/contexts/AppContext';
-
-export type BundleDetailsContextType = {
-  bundle: BundleInfo;
-  viewInExplorer: (id: string | number) => void;
-  refetchBundle: () => Promise<QueryObserverResult<BundleInfo | null, Error>>;
-};
+import { QueryKeys } from 'renderer/scripts/utils';
+import BundleEditor from './BundleEditor';
+import BundleInfoPreview from './BundleInfoPreview';
 
 /** Layout for the bundles details and editor */
 function BundleDetailsLayout() {
-  const { viewInExplorer } = useApp();
   const previewRef = useRef<HTMLDivElement | null>(null);
-  const bundleMatch = useLocation();
-  const params = bundleMatch.pathname.substring('/bundles/'.length);
-  const tabParamIndex = params.lastIndexOf('/');
-  const tabParam = tabParamIndex >= 0 ? params.substring(tabParamIndex + 1) : undefined;
-  const idParam =
-    tabParamIndex >= 0 ? decodeURIComponent(params.substring(0, tabParamIndex)) : undefined;
+  const bundleMatch = useMatch('/bundles/:mode/:bundleId');
+  const tabParam = bundleMatch?.params.mode;
+  const idParam = bundleMatch?.params.bundleId;
 
   const {
     data: bundle,
@@ -39,7 +32,7 @@ function BundleDetailsLayout() {
     refetch: refetchBundle,
   } = useQuery({
     enabled: !!idParam,
-    queryKey: ['bundle', idParam],
+    queryKey: [QueryKeys.bundles, idParam],
     queryFn: () => window.api.getBundle(idParam!),
   });
   const navigate = useNavigate();
@@ -61,7 +54,7 @@ function BundleDetailsLayout() {
     prevTabId: TabId | undefined,
     event: React.MouseEvent<HTMLElement, MouseEvent>,
   ) => {
-    navigate(`/bundles/${encodeURIComponent(idParam ?? '')}/${newTabId}`);
+    navigate(`/bundles/${newTabId}/${encodeURIComponent(idParam ?? '')}`);
   };
 
   return (
@@ -83,11 +76,14 @@ function BundleDetailsLayout() {
           <Tab id="edit" title="Edit" disabled={!bundle} />
         </Tabs>
         <div ref={previewRef} id="preview-bundle-tab-panel">
-          {isBundlePending ? (
-            <Spinner />
-          ) : (
-            bundle && <Outlet context={{ bundle, refetchBundle, viewInExplorer }} />
-          )}
+          {isBundlePending && <Spinner />}
+          {!isBundlePending &&
+            !!bundle &&
+            (tabParam === 'edit' ? (
+              <BundleEditor bundle={bundle} refetchBundle={refetchBundle} />
+            ) : (
+              <BundleInfoPreview bundle={bundle} />
+            ))}
         </div>
       </div>
     </div>

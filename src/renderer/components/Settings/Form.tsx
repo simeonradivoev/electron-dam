@@ -98,7 +98,7 @@ export function useSettings(category: OptionCategory) {
             .map(({ key, v }) => [key as keyof typeof Options, v]),
         ),
       );
-      refetch();
+      await refetch();
       form.reset();
       return true;
     },

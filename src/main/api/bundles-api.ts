@@ -10,6 +10,7 @@ import JSZip from 'jszip';
 import Loki from 'lokijs';
 import StreamZip from 'node-stream-zip';
 import sharp from 'sharp';
+import z from 'zod/v3';
 import {
   BundleMetaFile,
   StoreSchema,
@@ -17,6 +18,7 @@ import {
   previewTypes,
   LoginProvider,
   zipDelimiter,
+  AnyMetadataChanges,
 } from '../../shared/constants';
 import { addTask } from '../managers/task-manager';
 import { FilePath, getProjectDir, getRandom, ignoredFilesMatch } from '../util';
@@ -487,15 +489,20 @@ export default function InitializeBundlesApi(
     return virtualBundles.insertOne(bundle);
   }
 
-  async function updateBundle(bundleId: string, bundle: Bundle): Promise<Bundle | null> {
-    const finalBundle: Bundle | null = bundle;
+  async function updateBundle(
+    bundleId: string,
+    changes: z.infer<typeof AnyMetadataChanges>,
+  ): Promise<Bundle | null> {
+    const validChanges = await AnyMetadataChanges.parseAsync(changes);
+
     const virtualBundle = virtualBundles.findOne({ id: bundleId });
     if (virtualBundle) {
-      virtualBundles.update(finalBundle as VirtualBundle);
-      return finalBundle;
+      Object.assign(virtualBundle, validChanges);
+      virtualBundles.update(virtualBundle);
+      return virtualBundle;
     }
     return operateOnMetadata(FilePath.fromStore(store, bundleId), async (meta) => {
-      Object.assign(meta, bundle);
+      Object.assign(meta, validChanges);
       return true;
     });
   }

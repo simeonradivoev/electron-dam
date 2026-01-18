@@ -218,4 +218,8 @@ declare global {
     login: () => Promise<void>;
     getDownload: (bunde: VirtualBundle) => Promise<string>;
   }
+
+  type MatchingKeys<Source, Value> = {
+    [Key in keyof Source]: Source[Key] extends Value ? Key : never;
+  }[keyof Source];
 }

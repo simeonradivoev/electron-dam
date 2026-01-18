@@ -1,14 +1,19 @@
 import { useCallback } from 'react';
-import { useNavigate, useOutletContext } from 'react-router-dom';
-import { BundleDetailsContextType } from './BundleDetailsLayout';
+import { useNavigate } from 'react-router-dom';
+import { useApp } from 'renderer/contexts/AppContext';
 import BundlePreview from './BundlePreviewBase';
+
+export type Params = {
+  bundle: BundleInfo;
+};
 
 /**
  * This is the bundle preview that is shown in the bundles tab not in the explorer
  */
-function BundleInfoPreview() {
-  const { bundle, viewInExplorer } = useOutletContext<BundleDetailsContextType>();
+function BundleInfoPreview({ bundle }: Params) {
   const navigate = useNavigate();
+
+  const { viewInExplorer } = useApp();
 
   const handleView = useCallback(() => {
     viewInExplorer(bundle.id);
@@ -16,7 +21,7 @@ function BundleInfoPreview() {
 
   const handleEditBundle = useCallback(
     (id: string | number) => {
-      navigate(`/bundles/${encodeURI(id.toString() ?? '')}/edit`);
+      navigate(`/bundles/edit/${encodeURIComponent(id.toString() ?? '')}`);
     },
     [navigate],
   );
