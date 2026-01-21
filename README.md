@@ -9,6 +9,9 @@ I created this app because I got to a point where I had a ton of assets accumula
 ## Features
 * 3D Model Preview of multiple formats
 * Can handle large libraries
+* HTML5 Video playback
+* Importing bundles from:
+  * Humble Bundle
 * Audio Preview with visualization
 * Easy Metadata Fetching with Ollama support
 * Light/Dark Mode using [Blueprint JS](https://blueprintjs.com/)
@@ -22,9 +25,10 @@ I created this app because I got to a point where I had a ton of assets accumula
 
 ## Supported formats
 * 3D Models: (obj, fbx, gltf, stl)
-* Audio: (mp3,flac,wav,ogg)
-* Images: (png, jpg, gif, svg, apng,ico, bmp, webp)
+* Audio: (mp3, flac, wav, ogg)
+* Images: (png, jpg, gif, svg, apng, ico, bmp, webp)
 * Text: (txt, md)
+* Video: (mp4, mov, webm, mkv)
 
 ## How To Use
 I keep a minimal [wiki](https://github.com/simeonradivoev/electron-dam/wiki) as most features I've tried to make evident as much as I can in the UX or by adding tooltip all over the place.
