@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.1.0](https://github.com/simeonradivoev/electron-dam/compare/v1.0.7...v1.1.0) (2026-01-21)
+
+
+### Features
+
+* Added support for video files ([b4b6fbc](https://github.com/simeonradivoev/electron-dam/commit/b4b6fbcb73a2d9b5b6283f5485e7de52f785ccf5))
+* Implemented importing of bundles from sources like Humble Bundle ([44f19b8](https://github.com/simeonradivoev/electron-dam/commit/44f19b843f9e5a61b5ad51f8551914ca8a681f96))
+* Implemented logins and bundle importers (only Humble Bundles for now) ([6718758](https://github.com/simeonradivoev/electron-dam/commit/6718758ddfa78f67ce6340de158d5c957e4b7258))
+* moved to threepipe for 3D viewer ([c5fcb7a](https://github.com/simeonradivoev/electron-dam/commit/c5fcb7ab3d0d65a706ebcf12782ce6e82b1a11a2))
+
+
+### Bug Fixes
+
+* Fixed empty query not allowing for search ([6d66a86](https://github.com/simeonradivoev/electron-dam/commit/6d66a860bcbc64bc8d970b6a4ea1ab35f57aa0c7))
+* Fixed update notification ([a3d8921](https://github.com/simeonradivoev/electron-dam/commit/a3d89218f07b586edd90c4175b713481d90abbdf))
+
 ### [1.0.7](https://github.com/simeonradivoev/electron-dam/compare/v1.0.6...v1.0.7) (2026-01-14)
 
 
