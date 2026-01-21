@@ -13,10 +13,10 @@ import {
 } from '@blueprintjs/core';
 import { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AppToaster, ShowAppToaster } from 'renderer/scripts/toaster';
+import { ShowAppToaster } from 'renderer/scripts/toaster';
 import { isValidHttpUrl } from 'renderer/scripts/utils';
 import { ImportType } from 'shared/constants';
-import { generateUUID } from 'three/src/math/MathUtils';
+import { uuidV4 } from 'threepipe';
 
 type Props = {};
 
@@ -24,7 +24,7 @@ function BundleNew(props: Props) {
   const [isImportingMetadata, setIsImportingMetadata] = useState<boolean>(false);
   const [isCreatingBundle, setIsCreatingBundle] = useState<boolean>(false);
   const [sourceUrl, setSourceUrl] = useState<string>('');
-  const [bundleId] = useState<string>(generateUUID());
+  const [bundleId] = useState<string>(uuidV4());
   const bundleUrlValid = useMemo(() => isValidHttpUrl(sourceUrl), [sourceUrl]);
   const [bundleName, setBundleName] = useState<string>('');
   const [bundlePreview, setBundlePreview] = useState<string>('');

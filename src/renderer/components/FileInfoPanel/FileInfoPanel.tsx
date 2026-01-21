@@ -15,7 +15,6 @@ import {
   Tooltip,
   Popover,
 } from '@blueprintjs/core';
-import { Canvas } from '@react-three/fiber';
 import { useIsMutating, useQuery } from '@tanstack/react-query';
 import { join, normalize } from 'pathe';
 import { useCallback, useMemo, useRef } from 'react';
@@ -89,25 +88,7 @@ const FileInfoPanel: React.FC<FileInfoPanelProps> = ({
   if (importedMesh.isEnabled) {
     previewPanel = (
       <div className="preview-3d">
-        {importedMesh.error ? (
-          <NonIdealState
-            layout="horizontal"
-            title={importedMesh.error.name}
-            description={importedMesh.error.message}
-            icon="error"
-          />
-        ) : (
-          <Canvas
-            style={{
-              display: importedMesh.isSuccess ? 'block' : 'none',
-            }}
-            dpr={[1, 2]}
-            shadows
-          >
-            <PreviewPanel3D importedMesh={importedMesh} />
-          </Canvas>
-        )}
-        {!!importedMesh.isPending && <NonIdealState icon={<Spinner />} title="Loading" />}
+        <PreviewPanel3D importedMesh={importedMesh.data} />
       </div>
     );
   } else if (importedImage.data) {
@@ -174,7 +155,11 @@ const FileInfoPanel: React.FC<FileInfoPanelProps> = ({
   else if (fileInfo?.isDirectory) {
     previewPanel = <FolderFileGrid className="preview" path={fileInfo.path} />;
   } else {
-    previewPanel = <NonIdealState icon="eye-open">Select Asset to Preview</NonIdealState>;
+    previewPanel = (
+      <NonIdealState className="preview" icon="eye-open">
+        Select Asset to Preview
+      </NonIdealState>
+    );
   }
 
   const createBreadCrum = useCallback(

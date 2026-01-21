@@ -12,6 +12,8 @@ const configuration: webpack.Configuration = {
   stats: 'errors-only',
 
   module: {
+    // needed for threepipe to fix error because of use of require in package
+    exprContextCritical: false,
     rules: [
       {
         test: /\.[jt]sx?$/,

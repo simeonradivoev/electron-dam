@@ -1,8 +1,6 @@
 import { existsSync } from 'fs';
 import fs, { lstat } from 'fs/promises';
 import path, { basename, dirname, extname, normalize } from 'path';
-import assimpjs from 'assimpjs';
-import log from 'electron-log/main';
 import Store from 'electron-store';
 import { parseFile as parseMusicFile } from 'music-metadata';
 import StreamZip from 'node-stream-zip';
@@ -169,34 +167,6 @@ export default function InitializeFileInfoApi(
           };
           info.bundlePath = filePath.path;
         }
-      } else if (modelsToCovertMatch(filePath.path)) {
-        const objContents = await fs.readFile(filePath.absolute);
-        const materialContents = matExists ? await fs.readFile(materialPath.absolute) : undefined;
-
-        info.modelData = await assimpjs().then((ajs: any) => {
-          // create new file list object
-          const fileList = new ajs.FileList();
-
-          // add model files
-          fileList.AddFile(filePath.absolute, objContents);
-          if (materialContents) {
-            fileList.AddFile(materialPath.absolute, materialContents);
-          }
-
-          // convert file list to assimp json
-          const result = ajs.ConvertFileList(fileList, 'glb2');
-
-          // check if the conversion succeeded
-          if (!result.IsSuccess() || result.FileCount() === 0) {
-            throw new Error(result.GetErrorCode());
-          }
-
-          // get the result file, and convert to string
-          const resultFile = result.GetFile(0);
-
-          // fs.writeFile(info.path.concat('.gltf2'), jsonContent);
-          return resultFile.GetContent();
-        });
       } else if (audioMediaFormatsMatch(filePath.path)) {
         // Load audio metadata
         const metadata = await parseMusicFile(filePath.absolute);

@@ -36,7 +36,6 @@ declare global {
     hasMaterialLibrary: boolean;
     hasThumbnail: boolean;
     audioMetadata?: { peaks?: string } & IAudioMetadata;
-    modelData?: Uint8Array;
     isDirectory: boolean;
     isZip?: boolean;
     previewPath?: string;

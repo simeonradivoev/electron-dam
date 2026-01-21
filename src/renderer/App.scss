@@ -730,6 +730,10 @@ textarea.changed {
 
   .preview-3d {
     display: contents;
+    #three-canvas {
+      width: 100%;
+      height: 100%;
+    }
   }
 
   .preview-empty {

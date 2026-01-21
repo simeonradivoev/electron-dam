@@ -1,67 +1,67 @@
-import { Spinner } from '@blueprintjs/core';
-import {
-  Bounds,
-  GizmoHelper,
-  GizmoViewport,
-  Html,
-  OrbitControls,
-  useBounds,
-} from '@react-three/drei';
-import { UseQueryResult } from '@tanstack/react-query';
-import { Suspense, useEffect, useRef } from 'react';
-import { Box3, Object3D, Object3DEventMap, Sphere, SphereGeometry, Vector3 } from 'three';
+import { isDarkTheme } from '@blueprintjs/core/lib/esm/common/utils';
+import { useQuery } from '@tanstack/react-query';
+import { dirname, basename, isAbsolute } from 'pathe';
+import React, { useEffect } from 'react';
+import { ShowAppToaster } from 'renderer/scripts/toaster';
+import { SSAAPlugin, HemisphereLight, STLLoadPlugin, ThreeViewer } from 'threepipe/lib/index';
 
 type Props = {
-  importedMesh: UseQueryResult<unknown | null, unknown>;
+  importedMesh: string | undefined;
 };
 
-function PrimitiveComponent({ importedMesh }: Props) {
-  const bounds = useBounds();
-  const primitiveRef = useRef<Object3D<Object3DEventMap> | Box3 | undefined>();
-  useEffect(() => {
-    // Calculate scene bounds
-    bounds.refresh(primitiveRef.current).clip().fit();
-    // Or, focus a specific object or box3
-    // bounds.refresh(ref.current).clip().fit()
-    // bounds.refresh(new THREE.Box3()).clip().fit()
-  }, [bounds, importedMesh]);
-
-  return importedMesh.data ? (
-    <primitive
-      ref={primitiveRef}
-      // eslint-disable-next-line react/no-unknown-property
-      visible={!importedMesh.isPlaceholderData}
-      // eslint-disable-next-line react/no-unknown-property
-      object={importedMesh.data}
-    />
-  ) : undefined;
-}
-
 function PreviewPanel3D({ importedMesh }: Props) {
-  return (
-    <>
-      <spotLight position={[-100, -100, -100]} intensity={0.2} angle={0.3} penumbra={1} />
-      <hemisphereLight color="white" groundColor="gray" position={[-7, 25, 13]} intensity={1} />
-      <GizmoHelper
-        alignment="bottom-right" // widget alignment within scene
-        margin={[80, 80]} // widget margins (X, Y)
-      >
-        <GizmoViewport axisColors={['red', 'green', 'blue']} labelColor="black" />
-      </GizmoHelper>
-      <Suspense fallback={null}>
-        <Bounds observe margin={2}>
-          <PrimitiveComponent importedMesh={importedMesh} />
-        </Bounds>
-      </Suspense>
-      <gridHelper args={[10, 10]} />
-      <OrbitControls makeDefault minPolarAngle={0} maxPolarAngle={Math.PI / 1.75} />
-      {importedMesh.isFetching && (
-        <Html center>
-          <Spinner size={64} />
-        </Html>
-      )}
-    </>
-  );
+  const canvasRef = React.useRef<HTMLCanvasElement>(null);
+  const viewerRef = React.useRef<ThreeViewer>();
+  const darkThemeColor = isDarkTheme(canvasRef.current) ? '#1c2127' : '#f6f7f9';
+  useEffect(() => {
+    const viewer = new ThreeViewer({
+      canvas: canvasRef.current ?? undefined,
+      plugins: [STLLoadPlugin, SSAAPlugin],
+      backgroundColor: darkThemeColor,
+    });
+    viewer.assetManager.importer.addEventListener('importFile', (e) => {
+      if (e.state === 'error' && e.error) {
+        ShowAppToaster({
+          message: e.error.message,
+          intent: 'danger',
+          icon: 'model',
+        });
+      }
+    });
+    viewerRef.current = viewer;
+
+    return () => {
+      viewer.dispose();
+    };
+  }, [darkThemeColor]);
+
+  const modelData = useQuery({
+    enabled: !!importedMesh && !!viewerRef.current,
+    queryKey: ['model', importedMesh ?? ''],
+    queryFn: async () => {
+      viewerRef.current?.assetManager.importer.loadingManager.setURLModifier((url) => {
+        if (isAbsolute(url) || url.startsWith('http')) {
+          return url;
+        }
+        return `app://${dirname(importedMesh!)}/${url}`;
+      });
+      await viewerRef.current!.load(basename(importedMesh!), {
+        autoCenter: true,
+        autoScale: true,
+        autoSetEnvironment: true,
+        clearSceneObjects: true,
+      });
+
+      await viewerRef.current!.setEnvironmentMap(
+        'https://samples.threepipe.org/minimal/venice_sunset_1k.hdr',
+      );
+      viewerRef.current?.scene.addObject(new HemisphereLight(0xffffff, 0x444444, 10));
+
+      return true;
+    },
+  });
+
+  return <canvas color={darkThemeColor} id="three-canvas" ref={canvasRef} />;
 }
 
 export default PreviewPanel3D;
