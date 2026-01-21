@@ -30,6 +30,7 @@ import FileContextMenu from '../ExplorerPanel/FileContextMenu';
 import PreviewPanel3D from '../Previews/PreviewPanel3D';
 import PreviewPanelAudio from '../Previews/PreviewPanelAudio';
 import PreviewPanelImage from '../Previews/PreviewPanelImage';
+import PreviewPanelVideo from '../Previews/PreviewPanelVideo';
 import FileInfoTags from './FileInfoTags';
 import FolderFileGrid from './FolderFileGrid';
 
@@ -82,7 +83,7 @@ const FileInfoPanel: React.FC<FileInfoPanelProps> = ({
     },
   });
 
-  const { importedMesh, importedImage, importedAudio } = ImportMedia(fileInfo);
+  const { importedMesh, importedImage, importedAudio, importedVideo } = ImportMedia(fileInfo);
 
   let previewPanel;
   if (importedMesh.isEnabled) {
@@ -95,6 +96,12 @@ const FileInfoPanel: React.FC<FileInfoPanelProps> = ({
     previewPanel = (
       <div className="preview preview-image">
         <PreviewPanelImage image={importedImage} />
+      </div>
+    );
+  } else if (importedVideo.data) {
+    previewPanel = (
+      <div className="preview preview-video">
+        <PreviewPanelVideo video={importedVideo} />
       </div>
     );
   } else if (importedAudio.data) {

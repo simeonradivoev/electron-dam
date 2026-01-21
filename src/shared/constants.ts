@@ -5,6 +5,7 @@ export enum FileType {
   Models = 'Models',
   Textures = 'Textures',
   Text = 'Text',
+  Video = 'Video',
   Bundle = 'Bundle',
 }
 
@@ -21,6 +22,15 @@ export enum ModelFormat {
   Glb = '.glb',
   GLTF = '.gltf',
   Stl = '.stl',
+}
+
+export enum VideoFormat {
+  webm = '.webm',
+  mp4 = '.mp4',
+  avi = '.avi',
+  mov = '.mov',
+  wmv = '.wmv',
+  mkv = '.mkv',
 }
 
 export enum ImageFormat {
@@ -54,6 +64,7 @@ export const FileTypeToFileFormats = {
   [FileType.Models]: Object.values(ModelFormat),
   [FileType.Textures]: Object.values(ImageFormat),
   [FileType.Text]: Object.values(TextFormat),
+  [FileType.Video]: Object.values(VideoFormat),
 };
 
 export const FileFormatsToFileTypes: Map<string, FileType> = new Map<string, FileType>(
@@ -62,6 +73,7 @@ export const FileFormatsToFileTypes: Map<string, FileType> = new Map<string, Fil
     .concat(Object.values(ModelFormat).map((f) => [f, FileType.Models]))
     .concat(Object.values(ImageFormat).map((f) => [f, FileType.Textures]))
     .concat(Object.values(TextFormat).map((f) => [f, FileType.Text]))
+    .concat(Object.values(VideoFormat).map((f) => [f, FileType.Video]))
     .concat([[`.${BundleMetaFile}`, FileType.Bundle]]),
 );
 
@@ -70,6 +82,7 @@ export const supportedTypesFlat = [
   ...Object.values(ModelFormat),
   ...Object.values(ImageFormat),
   ...Object.values(TextFormat),
+  ...Object.values(VideoFormat),
   '.zip',
 ];
 export const supportedTypes = new Set<string>(supportedTypesFlat);

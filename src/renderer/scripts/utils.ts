@@ -51,6 +51,7 @@ export const FileTypeIcons = {
   [FileType.Models]: 'cube' as IconName,
   [FileType.Textures]: 'media' as IconName,
   [FileType.Text]: 'document' as IconName,
+  [FileType.Video]: 'video' as IconName,
   [FileType.Bundle]: 'box' as IconName,
 };
 

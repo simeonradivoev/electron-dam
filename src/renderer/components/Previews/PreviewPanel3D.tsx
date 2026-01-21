@@ -14,26 +14,34 @@ function PreviewPanel3D({ importedMesh }: Props) {
   const viewerRef = React.useRef<ThreeViewer>();
   const darkThemeColor = isDarkTheme(canvasRef.current) ? '#1c2127' : '#f6f7f9';
   useEffect(() => {
-    const viewer = new ThreeViewer({
-      canvas: canvasRef.current ?? undefined,
-      plugins: [STLLoadPlugin, SSAAPlugin],
-      backgroundColor: darkThemeColor,
-    });
-    viewer.assetManager.importer.addEventListener('importFile', (e) => {
-      if (e.state === 'error' && e.error) {
-        ShowAppToaster({
-          message: e.error.message,
-          intent: 'danger',
-          icon: 'model',
-        });
-      }
-    });
-    viewerRef.current = viewer;
-
-    return () => {
-      viewer.dispose();
-    };
+    if (!viewerRef.current) {
+      const viewer = new ThreeViewer({
+        canvas: canvasRef.current ?? undefined,
+        plugins: [STLLoadPlugin, SSAAPlugin],
+        backgroundColor: darkThemeColor,
+      });
+      viewer.assetManager.importer.addEventListener('importFile', (e) => {
+        if (e.state === 'error' && e.error) {
+          ShowAppToaster({
+            message: e.error.message,
+            intent: 'danger',
+            icon: 'model',
+          });
+        }
+      });
+      viewerRef.current = viewer;
+    }
   }, [darkThemeColor]);
+
+  useEffect(() => {
+    const viewer = viewerRef.current;
+    return () => {
+      if (viewer) {
+        viewer.dispose();
+        viewerRef.current = undefined;
+      }
+    };
+  }, [viewerRef]);
 
   const modelData = useQuery({
     enabled: !!importedMesh && !!viewerRef.current,

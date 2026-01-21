@@ -769,6 +769,24 @@ textarea.changed {
     }
   }
 
+  .preview-video {
+    width: 100%;
+    height: 100%;
+
+    .vjs-paused .vjs-big-play-button {
+      display: none;
+    }
+
+    .vjs-paused .vjs-control-bar {
+      display: flex;
+    }
+
+    video {
+      width: 100%;
+      height: 100%;
+    }
+  }
+
   .bp6-tabs {
     flex-grow: 1;
     overflow: auto;
