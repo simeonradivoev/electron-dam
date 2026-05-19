@@ -21,6 +21,7 @@ import {
 import {
   FilePath,
   TypedEventEmitter,
+  ensureForwardPath,
   foreachAsync,
   getProjectDir,
   getZipParentFs,
@@ -609,7 +610,7 @@ async function getFileFromPath(filePath: FilePath) {
     if (zipPath) {
       const zipStats = await pathStat(zipPath);
       const entries = await getZipEntries(zipPath);
-      const entryLocalPath = filePath.path.substring(zipPath.path.length + 1);
+      const entryLocalPath = ensureForwardPath(filePath.path.substring(zipPath.path.length + 1));
       return getFileNodeFromZipEntry(zipPath, zipStats, entryLocalPath, entries[entryLocalPath]);
     }
 

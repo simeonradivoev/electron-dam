@@ -299,3 +299,7 @@ export async function getZipParentFs(p: FilePath): Promise<FilePath | undefined>
 
   return undefined;
 }
+
+export function ensureForwardPath(value: string) {
+  return value.replaceAll('\\', '/');
+}

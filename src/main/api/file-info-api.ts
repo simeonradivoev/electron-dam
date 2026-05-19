@@ -9,6 +9,7 @@ import { StoreSchema, MainIpcGetter, previewTypes } from '../../shared/constants
 import {
   audioMediaFormatsMatch,
   decompressBase64ToString,
+  ensureForwardPath,
   FilePath,
   getZipParentFs,
 } from '../util';
@@ -73,7 +74,8 @@ export default function InitializeFileInfoApi(
         Math.min(zipPath.path.length + 1, filePath.path.length),
       );
 
-      const zipEntry = await zip.entry(localPath);
+      // Only works with forward slashes.
+      const zipEntry = await zip.entry(ensureForwardPath(localPath));
 
       if (!zipEntry) {
         throw new Error(`No Compressed File at ${zipPath} with local path ${localPath}`);
@@ -94,7 +96,7 @@ export default function InitializeFileInfoApi(
 
       info.previewPath = zipPath.path;
 
-      info.bundlePath = (await findBundlePath(filePath))?.path;
+      info.bundlePath = (await findBundlePath(zipPath))?.path;
     } else if (await isArchive(filePath)) {
       // this is the zip bundle file itself
       const stat = await lstat(filePath.absolute);
