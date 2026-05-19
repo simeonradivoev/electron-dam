@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.1.1](https://github.com/simeonradivoev/electron-dam/compare/v1.1.0...v1.1.1) (2026-05-19)
+
+
+### Bug Fixes
+
+* Fixed preview for archive files in sub-paths ([a24d0d5](https://github.com/simeonradivoev/electron-dam/commit/a24d0d5e46472a8573ab5f9e9c9f670c6de824d6)), closes [#9](https://github.com/simeonradivoev/electron-dam/issues/9)
+* replaced missing uuid method ([deb6e0b](https://github.com/simeonradivoev/electron-dam/commit/deb6e0bf02b29c1ad6848f7d793d14af5e9e89f0)), closes [#10](https://github.com/simeonradivoev/electron-dam/issues/10)
+
 ## [1.1.0](https://github.com/simeonradivoev/electron-dam/compare/v1.0.7...v1.1.0) (2026-01-21)
 
 
