@@ -26,6 +26,9 @@
     "allowJs": true,
     "outDir": "release/app/dist",
     "noEmitOnError": false,
+    "types": [
+      "jest"
+    ],
   },
   "exclude": [
     "test",
