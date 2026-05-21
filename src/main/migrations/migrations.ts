@@ -13,6 +13,7 @@ export interface MigrationContext {
   progress: (p: number) => void;
 }
 
+// @ts-expect-error for tests reasons
 const ctx = require.context(
   './', // relative to this file
   false, // no subdirectories
@@ -21,9 +22,9 @@ const ctx = require.context(
 
 export default ctx
   .keys()
-  .filter((k) => !k.endsWith('migrations.ts') && k.startsWith('./'))
+  .filter((k: string) => !k.endsWith('migrations.ts') && k.startsWith('./'))
   .sort()
-  .map((key) => {
+  .map((key: string) => {
     const mod = ctx(key) as RunnableMigration<MigrationContext> & Migration;
 
     return {
